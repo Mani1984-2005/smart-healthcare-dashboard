@@ -1,16 +1,38 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import DoctorCard from "./components/DoctorCard";
 import BookingForm from "./components/BookingForm";
 import AppointmentQueue from "./components/AppointmentQueue";
 
 const doctors = [
-  { id: 1, name: "Dr. Arjun Raza", spec: "Cardiologist", exp: "18 Years", status: "Available" },
-  { id: 2, name: "Dr. Sunita Sharma", spec: "Neurologist", exp: "14 Years", status: "Available" },
-  { id: 3, name: "Dr. Vikram Patel", spec: "Orthopedic", exp: "11 Years", status: "Unavailable" },
+  {
+    id: 1,
+    name: "Dr. Arjun Raza",
+    spec: "Cardiologist",
+    exp: "18 Years",
+    status: "Available",
+  },
+  {
+    id: 2,
+    name: "Dr. Sunita Sharma",
+    spec: "Neurologist",
+    exp: "14 Years",
+    status: "Available",
+  },
+  {
+    id: 3,
+    name: "Dr. Vikram Patel",
+    spec: "Orthopedic",
+    exp: "11 Years",
+    status: "Unavailable",
+  },
 ];
 
 export default function App() {
-  const [appointments, setAppointments] = useState([]);
+  const [appointments, setAppointments] = useState(() => {
+    const savedAppointments = localStorage.getItem("appointments");
+    return savedAppointments ? JSON.parse(savedAppointments) : [];
+  });
+
   const [formData, setFormData] = useState({
     patient: "",
     age: "",
@@ -19,6 +41,10 @@ export default function App() {
 
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("appointments", JSON.stringify(appointments));
+  }, [appointments]);
 
   const handleBooking = (doctor) => {
     if (!formData.patient || !formData.age || !formData.symptoms) {
@@ -30,10 +56,16 @@ export default function App() {
       id: Date.now(),
       token: appointments.length + 1,
       doctor: doctor.name,
-      ...formData,
+      patient: formData.patient,
+      age: formData.age,
+      symptoms: formData.symptoms,
     };
 
-    setAppointments([...appointments, newAppointment]);
+    setAppointments((prevAppointments) => [
+      ...prevAppointments,
+      newAppointment,
+    ]);
+
     alert(`Appointment Confirmed!\n\nToken: ${newAppointment.token}`);
 
     setFormData({
@@ -82,7 +114,7 @@ export default function App() {
         ))}
       </div>
 
-       {selectedDoctor && (
+      {selectedDoctor && (
         <BookingForm
           formData={formData}
           setFormData={setFormData}
