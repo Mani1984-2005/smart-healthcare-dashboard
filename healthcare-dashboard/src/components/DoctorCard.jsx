@@ -1,9 +1,13 @@
-export default function DoctorCard({ doc, setSelectedDoctor }) {
+export default function DoctorCard({ doc, setSelectedDoctor, isSelected }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+    <div
+      className={`bg-slate-900 border rounded-3xl p-6 shadow-xl transition ${
+        isSelected ? "border-cyan-400 scale-[1.02]" : "border-slate-800"
+      }`}
+    >
       <div className="text-5xl mb-4">🩺</div>
 
-      <h3 className="text-2xl font-bold">{doc.name}</h3>
+      <h3 className="text-xl sm:text-2xl font-bold">{doc.name}</h3>
 
       <p className="text-cyan-400 mt-2">{doc.spec}</p>
 
@@ -30,7 +34,7 @@ export default function DoctorCard({ doc, setSelectedDoctor }) {
             : "bg-gray-700 cursor-not-allowed"
         }`}
       >
-        Book Appointment
+        {isSelected ? "Selected" : "Book Appointment"}
       </button>
     </div>
   );
