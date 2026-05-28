@@ -276,6 +276,36 @@ export default function App() {
           </p>
         </div>
 
+        <div className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
+          <h2 className="text-2xl font-bold mb-5">🚑 Emergency & Bed Availability</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-red-950 text-red-300 p-4 rounded-2xl">
+              <p className="text-sm">Emergency</p>
+              <h3 className="text-xl font-bold">24/7 Active</h3>
+              <p className="text-xs mt-1">Call: 108</p>
+            </div>
+
+            <div className="bg-emerald-950 text-emerald-300 p-4 rounded-2xl">
+              <p className="text-sm">General Beds</p>
+              <h3 className="text-3xl font-bold">42</h3>
+              <p className="text-xs mt-1">Available now</p>
+            </div>
+
+            <div className="bg-cyan-950 text-cyan-300 p-4 rounded-2xl">
+              <p className="text-sm">ICU Beds</p>
+              <h3 className="text-3xl font-bold">8</h3>
+              <p className="text-xs mt-1">Critical care ready</p>
+            </div>
+
+            <div className="bg-purple-950 text-purple-300 p-4 rounded-2xl">
+              <p className="text-sm">Oxygen Support</p>
+              <h3 className="text-xl font-bold">Available</h3>
+              <p className="text-xs mt-1">Ambulance: Ready</p>
+            </div>
+          </div>
+        </div>
+
         {editingId && (
           <div className="mb-6 bg-purple-950 border border-purple-700 text-purple-200 p-4 rounded-2xl">
             ✏️ Edit mode is active. Update the details and click book/update.
