@@ -12,6 +12,45 @@ function generateToken(count) {
   return `TOKEN-${String(count + 1).padStart(3, "0")}`;
 }
 
+function getSymptomSuggestion(symptoms) {
+  const text = symptoms.toLowerCase();
+
+  if (!text.trim()) return null;
+
+  if (text.includes("chest") || text.includes("heart")) {
+    return {
+      level: "High Priority",
+      advice: "Chest-related symptoms may need quick attention. Recommended doctor: Cardiologist.",
+    };
+  }
+
+  if (text.includes("headache") || text.includes("migraine") || text.includes("brain")) {
+    return {
+      level: "Medium Priority",
+      advice: "Headache-related symptoms may need neurological checkup. Recommended doctor: Neurologist.",
+    };
+  }
+
+  if (text.includes("bone") || text.includes("fracture") || text.includes("leg") || text.includes("joint")) {
+    return {
+      level: "Medium Priority",
+      advice: "Bone or joint-related symptoms may need orthopedic care. Recommended doctor: Orthopedic.",
+    };
+  }
+
+  if (text.includes("fever") || text.includes("cold") || text.includes("cough")) {
+    return {
+      level: "Normal Priority",
+      advice: "These symptoms may need general consultation and monitoring.",
+    };
+  }
+
+  return {
+    level: "General Checkup",
+    advice: "Please consult an available doctor for proper medical guidance.",
+  };
+}
+
 function Toast({ toasts, removeToast }) {
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 w-full max-w-sm px-4">
@@ -80,11 +119,14 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const addToast = useCallback((title, message = "") => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, title, message }]);
-    setTimeout(() => removeToast(id), 3500);
-  }, [removeToast]);
+  const addToast = useCallback(
+    (title, message = "") => {
+      const id = Date.now() + Math.random();
+      setToasts((prev) => [...prev, { id, title, message }]);
+      setTimeout(() => removeToast(id), 3500);
+    },
+    [removeToast]
+  );
 
   const resetForm = () => {
     setFormData({ patient: "", age: "", symptoms: "", date: "", time: "" });
@@ -196,6 +238,17 @@ export default function App() {
     return matchesSearch && matchesSpec;
   });
 
+  const pendingCount = appointments.filter((a) => a.status === "Pending").length;
+  const confirmedCount = appointments.filter((a) => a.status === "Confirmed").length;
+  const completedCount = appointments.filter((a) => a.status === "Completed").length;
+
+  const doctorWorkload = DOCTORS.map((doctor) => ({
+    name: doctor.name,
+    count: appointments.filter((a) => a.doctor === doctor.name).length,
+  }));
+
+  const symptomSuggestion = getSymptomSuggestion(formData.symptoms);
+
   return (
     <>
       <Toast toasts={toasts} removeToast={removeToast} />
@@ -234,17 +287,60 @@ export default function App() {
             <p className={subTextClass}>Total Appointments</p>
             <h2 className="text-3xl font-bold">{appointments.length}</h2>
           </div>
+
           <div className={`${cardClass} p-5 rounded-2xl border`}>
             <p className={subTextClass}>Available Doctors</p>
             <h2 className="text-3xl font-bold">
               {DOCTORS.filter((d) => d.status === "Available").length}
             </h2>
           </div>
+
           <div className={`${cardClass} p-5 rounded-2xl border`}>
             <p className={subTextClass}>Pending Cases</p>
-            <h2 className="text-3xl font-bold">
-              {appointments.filter((a) => a.status === "Pending").length}
-            </h2>
+            <h2 className="text-3xl font-bold">{pendingCount}</h2>
+          </div>
+        </div>
+
+        <div className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
+          <h2 className="text-2xl font-bold mb-5">📊 Analytics Dashboard</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-yellow-950 text-yellow-300 p-4 rounded-2xl">
+              <p className="text-sm">Pending</p>
+              <h3 className="text-3xl font-bold">{pendingCount}</h3>
+            </div>
+
+            <div className="bg-cyan-950 text-cyan-300 p-4 rounded-2xl">
+              <p className="text-sm">Confirmed</p>
+              <h3 className="text-3xl font-bold">{confirmedCount}</h3>
+            </div>
+
+            <div className="bg-emerald-950 text-emerald-300 p-4 rounded-2xl">
+              <p className="text-sm">Completed</p>
+              <h3 className="text-3xl font-bold">{completedCount}</h3>
+            </div>
+          </div>
+
+          <h3 className="font-bold mb-3">Doctor Workload</h3>
+
+          <div className="space-y-3">
+            {doctorWorkload.map((doctor) => (
+              <div key={doctor.name}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>{doctor.name}</span>
+                  <span>{doctor.count} appointments</span>
+                </div>
+
+                <div className="w-full bg-slate-700 rounded-full h-3">
+                  <div
+                    className="bg-cyan-500 h-3 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${appointments.length ? (doctor.count / appointments.length) * 100 : 0}%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -282,6 +378,25 @@ export default function App() {
             />
           ))}
         </div>
+
+        {symptomSuggestion && selectedDoctor && (
+          <div className={`${cardClass} border rounded-2xl p-5 mb-6 shadow-xl`}>
+            <h2 className="text-xl font-bold mb-2">🤖 AI Symptom Suggestion</h2>
+
+            <p className="text-sm mb-2">
+              Priority:{" "}
+              <span className="font-bold text-cyan-400">
+                {symptomSuggestion.level}
+              </span>
+            </p>
+
+            <p className={subTextClass}>{symptomSuggestion.advice}</p>
+
+            <p className="text-xs mt-3 text-red-400">
+              Note: This is only a demo suggestion, not a medical diagnosis.
+            </p>
+          </div>
+        )}
 
         {selectedDoctor && (
           <BookingForm
