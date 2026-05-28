@@ -49,59 +49,129 @@ export default function App() {
   });
 
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
   const [specialization, setSpecialization] = useState("All");
   const [toasts, setToasts] = useState([]);
+
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem("theme") !== "light";
+  });
 
   useEffect(() => {
     localStorage.setItem("appointments", JSON.stringify(appointments));
   }, [appointments]);
 
-  const addToast = useCallback((title, message = "") => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, title, message }]);
-    setTimeout(() => removeToast(id), 3500);
-  }, []);
+  useEffect(() => {
+    localStorage.setItem("theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
+
+  const cardClass = darkMode
+    ? "bg-slate-900 border-slate-800 text-white"
+    : "bg-white border-slate-200 text-slate-950";
+
+  const inputClass = darkMode
+    ? "bg-slate-900 border-slate-700 text-white"
+    : "bg-white border-slate-300 text-slate-950";
+
+  const subTextClass = darkMode ? "text-slate-400" : "text-slate-600";
 
   const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const addToast = useCallback((title, message = "") => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, title, message }]);
+    setTimeout(() => removeToast(id), 3500);
+  }, [removeToast]);
+
+  const resetForm = () => {
+    setFormData({ patient: "", age: "", symptoms: "", date: "", time: "" });
+    setSelectedDoctor(null);
+    setEditingId(null);
+  };
+
+  const validateForm = (doctor) => {
+    const { patient, age, symptoms, date, time } = formData;
+
+    if (!patient.trim()) return "Missing patient name";
+    if (!age || Number(age) < 1 || Number(age) > 120) return "Invalid age";
+    if (!symptoms.trim()) return "Missing symptoms";
+    if (!date || !time) return "Select date and time";
+    if (doctor.status === "Unavailable") return `${doctor.name} is not available`;
+
+    const appointmentDate = new Date(`${date}T${time}`);
+    if (appointmentDate < new Date()) return "Please select a future date/time";
+
+    return null;
+  };
+
   const handleBooking = useCallback(
     (doctor) => {
-      const { patient, age, symptoms, date, time } = formData;
+      const error = validateForm(doctor);
+      if (error) return addToast("Check details", error);
 
-      if (!patient.trim()) return addToast("Missing patient name");
-      if (!age || Number(age) < 1 || Number(age) > 120) return addToast("Invalid age", "Age must be between 1 and 120");
-      if (!symptoms.trim()) return addToast("Missing symptoms");
-      if (!date || !time) return addToast("Select date and time");
-      if (doctor.status === "Unavailable") return addToast("Doctor unavailable", `${doctor.name} is not available`);
+      if (editingId) {
+        setAppointments((prev) =>
+          prev.map((a) =>
+            a.id === editingId
+              ? {
+                  ...a,
+                  doctor: doctor.name,
+                  spec: doctor.spec,
+                  patient: formData.patient.trim(),
+                  age: Number(formData.age),
+                  symptoms: formData.symptoms.trim(),
+                  date: formData.date,
+                  time: formData.time,
+                }
+              : a
+          )
+        );
 
-      const appointmentDate = new Date(`${date}T${time}`);
-      if (appointmentDate < new Date()) return addToast("Invalid time", "Please select a future date/time");
+        addToast("Appointment updated ✅", "Changes saved successfully");
+        resetForm();
+        return;
+      }
 
       const newAppointment = {
         id: Date.now(),
         token: generateToken(appointments.length),
         doctor: doctor.name,
         spec: doctor.spec,
-        patient: patient.trim(),
-        age: Number(age),
-        symptoms: symptoms.trim(),
-        date,
-        time,
+        patient: formData.patient.trim(),
+        age: Number(formData.age),
+        symptoms: formData.symptoms.trim(),
+        date: formData.date,
+        time: formData.time,
         status: "Pending",
         bookedAt: new Date().toISOString(),
       };
 
       setAppointments((prev) => [newAppointment, ...prev]);
       addToast("Appointment booked 🎉", `${newAppointment.token} created successfully`);
-
-      setFormData({ patient: "", age: "", symptoms: "", date: "", time: "" });
-      setSelectedDoctor(null);
+      resetForm();
     },
-    [formData, appointments.length, addToast]
+    [formData, appointments.length, editingId, addToast]
   );
+
+  const startEdit = (appointment) => {
+    const doctor = DOCTORS.find((d) => d.name === appointment.doctor);
+    setEditingId(appointment.id);
+    setSelectedDoctor(doctor || DOCTORS[0]);
+
+    setFormData({
+      patient: appointment.patient,
+      age: appointment.age,
+      symptoms: appointment.symptoms,
+      date: appointment.date,
+      time: appointment.time,
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    addToast("Editing appointment", `${appointment.token} is ready to edit`);
+  };
 
   const deleteAppointment = (id) => {
     setAppointments((prev) => prev.filter((a) => a.id !== id));
@@ -123,7 +193,6 @@ export default function App() {
       doc.spec.toLowerCase().includes(search.toLowerCase());
 
     const matchesSpec = specialization === "All" || doc.spec === specialization;
-
     return matchesSearch && matchesSpec;
   });
 
@@ -131,27 +200,48 @@ export default function App() {
     <>
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      <div className="min-h-screen bg-slate-950 text-white px-4 py-6 sm:px-6 lg:px-10">
-        <div className="bg-gradient-to-r from-cyan-500 to-blue-700 p-6 rounded-3xl shadow-2xl mb-8">
+      <div
+        className={`min-h-screen px-4 py-6 sm:px-6 lg:px-10 transition-all duration-300 ${
+          darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-950"
+        }`}
+      >
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className={`px-5 py-2 rounded-xl font-semibold shadow ${
+              darkMode ? "bg-white text-slate-900" : "bg-slate-900 text-white"
+            }`}
+          >
+            {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+          </button>
+        </div>
+
+        <div className="bg-gradient-to-r from-cyan-500 to-blue-700 p-6 rounded-3xl shadow-2xl mb-8 text-white">
           <h1 className="text-2xl sm:text-4xl font-bold">🏥 Smart Healthcare Dashboard</h1>
           <p className="mt-2 text-sm sm:text-lg text-blue-100">
             Smart Appointment Management System
           </p>
         </div>
 
+        {editingId && (
+          <div className="mb-6 bg-purple-950 border border-purple-700 text-purple-200 p-4 rounded-2xl">
+            ✏️ Edit mode is active. Update the details and click book/update.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Total Appointments</p>
+          <div className={`${cardClass} p-5 rounded-2xl border`}>
+            <p className={subTextClass}>Total Appointments</p>
             <h2 className="text-3xl font-bold">{appointments.length}</h2>
           </div>
-          <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Available Doctors</p>
+          <div className={`${cardClass} p-5 rounded-2xl border`}>
+            <p className={subTextClass}>Available Doctors</p>
             <h2 className="text-3xl font-bold">
               {DOCTORS.filter((d) => d.status === "Available").length}
             </h2>
           </div>
-          <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
-            <p className="text-slate-400">Pending Cases</p>
+          <div className={`${cardClass} p-5 rounded-2xl border`}>
+            <p className={subTextClass}>Pending Cases</p>
             <h2 className="text-3xl font-bold">
               {appointments.filter((a) => a.status === "Pending").length}
             </h2>
@@ -164,13 +254,13 @@ export default function App() {
             placeholder="🔍 Search doctors..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl outline-none text-white focus:border-cyan-500"
+            className={`w-full border p-4 rounded-2xl outline-none focus:border-cyan-500 ${inputClass}`}
           />
 
           <select
             value={specialization}
             onChange={(e) => setSpecialization(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl outline-none text-white focus:border-cyan-500"
+            className={`w-full border p-4 rounded-2xl outline-none focus:border-cyan-500 ${inputClass}`}
           >
             {specializations.map((spec) => (
               <option key={spec} value={spec}>
@@ -199,25 +289,25 @@ export default function App() {
             setFormData={setFormData}
             handleBooking={handleBooking}
             selectedDoctor={selectedDoctor}
-            onCancel={() => setSelectedDoctor(null)}
+            onCancel={resetForm}
           />
         )}
 
         <h2 className="text-2xl sm:text-3xl font-bold mb-6">📋 Appointment Queue</h2>
 
         {appointments.length === 0 ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
+          <div className={`${cardClass} border rounded-2xl p-8 text-center ${subTextClass}`}>
             No appointments booked yet.
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {appointments.map((a) => (
-              <div key={a.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+              <div key={a.id} className={`${cardClass} border rounded-2xl p-5 shadow-xl`}>
                 <div className="flex justify-between gap-4 mb-3">
                   <div>
                     <p className="text-cyan-400 font-bold">{a.token}</p>
                     <h3 className="text-xl font-bold">{a.patient}</h3>
-                    <p className="text-slate-400 text-sm">
+                    <p className={`${subTextClass} text-sm`}>
                       Age: {a.age} • {a.symptoms}
                     </p>
                   </div>
@@ -235,35 +325,16 @@ export default function App() {
                   </span>
                 </div>
 
-                <p className="text-sm text-slate-300">👨‍⚕️ {a.doctor}</p>
-                <p className="text-sm text-slate-300">🏥 {a.spec}</p>
-                <p className="text-sm text-slate-300">📅 {a.date} at {a.time}</p>
+                <p className="text-sm">👨‍⚕️ {a.doctor}</p>
+                <p className="text-sm">🏥 {a.spec}</p>
+                <p className="text-sm">📅 {a.date} at {a.time}</p>
 
                 <div className="flex flex-wrap gap-2 mt-5">
-                  <button
-                    onClick={() => updateStatus(a.id, "Pending")}
-                    className="px-3 py-2 rounded-xl bg-yellow-950 text-yellow-300 text-sm"
-                  >
-                    Pending
-                  </button>
-                  <button
-                    onClick={() => updateStatus(a.id, "Confirmed")}
-                    className="px-3 py-2 rounded-xl bg-cyan-950 text-cyan-300 text-sm"
-                  >
-                    Confirm
-                  </button>
-                  <button
-                    onClick={() => updateStatus(a.id, "Completed")}
-                    className="px-3 py-2 rounded-xl bg-emerald-950 text-emerald-300 text-sm"
-                  >
-                    Complete
-                  </button>
-                  <button
-                    onClick={() => deleteAppointment(a.id)}
-                    className="px-3 py-2 rounded-xl bg-red-950 text-red-300 text-sm"
-                  >
-                    Delete
-                  </button>
+                  <button onClick={() => updateStatus(a.id, "Pending")} className="px-3 py-2 rounded-xl bg-yellow-950 text-yellow-300 text-sm">Pending</button>
+                  <button onClick={() => updateStatus(a.id, "Confirmed")} className="px-3 py-2 rounded-xl bg-cyan-950 text-cyan-300 text-sm">Confirm</button>
+                  <button onClick={() => updateStatus(a.id, "Completed")} className="px-3 py-2 rounded-xl bg-emerald-950 text-emerald-300 text-sm">Complete</button>
+                  <button onClick={() => startEdit(a)} className="px-3 py-2 rounded-xl bg-purple-950 text-purple-300 text-sm">Edit</button>
+                  <button onClick={() => deleteAppointment(a.id)} className="px-3 py-2 rounded-xl bg-red-950 text-red-300 text-sm">Delete</button>
                 </div>
               </div>
             ))}
