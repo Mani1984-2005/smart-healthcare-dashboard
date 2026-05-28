@@ -8,57 +8,61 @@ const DOCTORS = [
   { id: 3, name: "Dr. Vikram Patel", spec: "Orthopedic", exp: "11 Years", status: "Unavailable" },
 ];
 
-function generateToken() {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `APT-${date}-${rand}`;
+function generateToken(count) {
+  return `TOKEN-${String(count + 1).padStart(3, "0")}`;
 }
 
 function getSymptomSuggestion(symptoms) {
   const text = symptoms.toLowerCase();
+
   if (!text.trim()) return null;
 
   if (text.includes("chest") || text.includes("heart")) {
-    return { level: "High Priority", advice: "Chest-related symptoms may need quick attention. Recommended doctor: Cardiologist." };
+    return {
+      level: "High Priority",
+      advice: "Chest-related symptoms may need quick attention. Recommended doctor: Cardiologist.",
+    };
   }
 
   if (text.includes("headache") || text.includes("migraine") || text.includes("brain")) {
-    return { level: "Medium Priority", advice: "Headache-related symptoms may need neurological checkup. Recommended doctor: Neurologist." };
+    return {
+      level: "Medium Priority",
+      advice: "Headache-related symptoms may need neurological checkup. Recommended doctor: Neurologist.",
+    };
   }
 
   if (text.includes("bone") || text.includes("fracture") || text.includes("leg") || text.includes("joint")) {
-    return { level: "Medium Priority", advice: "Bone or joint-related symptoms may need orthopedic care. Recommended doctor: Orthopedic." };
+    return {
+      level: "Medium Priority",
+      advice: "Bone or joint-related symptoms may need orthopedic care. Recommended doctor: Orthopedic.",
+    };
   }
 
   if (text.includes("fever") || text.includes("cold") || text.includes("cough")) {
-    return { level: "Normal Priority", advice: "These symptoms may need general consultation and monitoring." };
+    return {
+      level: "Normal Priority",
+      advice: "These symptoms may need general consultation and monitoring.",
+    };
   }
 
-  return { level: "General Checkup", advice: "Please consult an available doctor for proper medical guidance." };
+  return {
+    level: "General Checkup",
+    advice: "Please consult an available doctor for proper medical guidance.",
+  };
 }
 
 function Toast({ toasts, removeToast }) {
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-full px-4 sm:px-0">
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 w-full max-w-sm px-4">
       {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`flex items-start gap-3 p-4 rounded-2xl shadow-2xl border animate-[slideIn_0.3s_ease_both]
-          ${
-            t.type === "success"
-              ? "bg-emerald-950 border-emerald-700 text-emerald-200"
-              : t.type === "error"
-              ? "bg-red-950 border-red-700 text-red-200"
-              : "bg-slate-800 border-slate-600 text-slate-200"
-          }`}
-        >
-          <span className="text-xl">{t.type === "success" ? "✅" : t.type === "error" ? "🚫" : "ℹ️"}</span>
-          <div className="flex-1">
-            <p className="font-semibold text-sm">{t.title}</p>
-            {t.message && <p className="text-xs mt-0.5 opacity-80">{t.message}</p>}
+        <div key={t.id} className="p-4 rounded-2xl shadow-2xl border bg-slate-900 border-slate-700 text-white">
+          <div className="flex justify-between gap-3">
+            <div>
+              <p className="font-semibold">{t.title}</p>
+              <p className="text-sm text-slate-300">{t.message}</p>
+            </div>
+            <button onClick={() => removeToast(t.id)}>✕</button>
           </div>
-          <button onClick={() => removeToast(t.id)} className="text-xs opacity-50 hover:opacity-100">✕</button>
         </div>
       ))}
     </div>
@@ -88,7 +92,6 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [specialization, setSpecialization] = useState("All");
   const [toasts, setToasts] = useState([]);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem("theme") !== "light";
@@ -107,8 +110,8 @@ export default function App() {
     : "bg-white border-slate-200 text-slate-950";
 
   const inputClass = darkMode
-    ? "bg-slate-900 border-slate-700 text-white placeholder-slate-500"
-    : "bg-white border-slate-300 text-slate-950 placeholder-slate-500";
+    ? "bg-slate-900 border-slate-700 text-white"
+    : "bg-white border-slate-300 text-slate-950";
 
   const subTextClass = darkMode ? "text-slate-400" : "text-slate-600";
 
@@ -117,10 +120,10 @@ export default function App() {
   }, []);
 
   const addToast = useCallback(
-    (title, message = "", type = "info", duration = 4500) => {
+    (title, message = "") => {
       const id = Date.now() + Math.random();
-      setToasts((prev) => [...prev, { id, title, message, type }]);
-      setTimeout(() => removeToast(id), duration);
+      setToasts((prev) => [...prev, { id, title, message }]);
+      setTimeout(() => removeToast(id), 3500);
     },
     [removeToast]
   );
@@ -134,15 +137,14 @@ export default function App() {
   const validateForm = (doctor) => {
     const { patient, age, symptoms, date, time } = formData;
 
-    if (!patient.trim()) return "Please enter the patient name.";
-    if (!age || isNaN(age) || Number(age) < 1 || Number(age) > 120) return "Age must be between 1 and 120.";
-    if (!symptoms.trim()) return "Please describe the symptoms.";
-    if (!date) return "Please select an appointment date.";
-    if (!time) return "Please select an appointment time.";
-    if (doctor.status === "Unavailable") return `${doctor.name} is not available right now.`;
+    if (!patient.trim()) return "Missing patient name";
+    if (!age || Number(age) < 1 || Number(age) > 120) return "Invalid age";
+    if (!symptoms.trim()) return "Missing symptoms";
+    if (!date || !time) return "Select date and time";
+    if (doctor.status === "Unavailable") return `${doctor.name} is not available`;
 
-    const chosenDateTime = new Date(`${date}T${time}`);
-    if (chosenDateTime < new Date()) return "Appointment must be in the future.";
+    const appointmentDate = new Date(`${date}T${time}`);
+    if (appointmentDate < new Date()) return "Please select a future date/time";
 
     return null;
   };
@@ -150,25 +152,7 @@ export default function App() {
   const handleBooking = useCallback(
     (doctor) => {
       const error = validateForm(doctor);
-      if (error) return addToast("Check details", error, "error");
-
-      const { patient, age, symptoms, date, time } = formData;
-
-      const duplicate = appointments.some(
-        (a) =>
-          a.id !== editingId &&
-          a.doctor.toLowerCase() === doctor.name.toLowerCase() &&
-          a.patient.toLowerCase() === patient.trim().toLowerCase() &&
-          a.date === date
-      );
-
-      if (duplicate) {
-        return addToast(
-          "Duplicate booking",
-          `${patient.trim()} already has an appointment with ${doctor.name} on this date.`,
-          "error"
-        );
-      }
+      if (error) return addToast("Check details", error);
 
       if (editingId) {
         setAppointments((prev) =>
@@ -178,50 +162,40 @@ export default function App() {
                   ...a,
                   doctor: doctor.name,
                   spec: doctor.spec,
-                  patient: patient.trim(),
-                  age: Number(age),
-                  symptoms: symptoms.trim(),
-                  date,
-                  time,
+                  patient: formData.patient.trim(),
+                  age: Number(formData.age),
+                  symptoms: formData.symptoms.trim(),
+                  date: formData.date,
+                  time: formData.time,
                 }
               : a
           )
         );
 
-        addToast("Appointment updated ✅", "Changes saved successfully.", "success");
+        addToast("Appointment updated ✅", "Changes saved successfully");
         resetForm();
         return;
       }
 
-      const token = generateToken();
-      const bookedAt = new Date().toISOString();
-
       const newAppointment = {
-        id: bookedAt + Math.random(),
-        token,
+        id: Date.now(),
+        token: generateToken(appointments.length),
         doctor: doctor.name,
         spec: doctor.spec,
-        patient: patient.trim(),
-        age: Number(age),
-        symptoms: symptoms.trim(),
-        date,
-        time,
+        patient: formData.patient.trim(),
+        age: Number(formData.age),
+        symptoms: formData.symptoms.trim(),
+        date: formData.date,
+        time: formData.time,
         status: "Pending",
-        bookedAt,
+        bookedAt: new Date().toISOString(),
       };
 
       setAppointments((prev) => [newAppointment, ...prev]);
-
-      addToast(
-        "Appointment confirmed! 🎉",
-        `Token: ${token} · ${doctor.name} · ${date} at ${time}`,
-        "success",
-        6000
-      );
-
+      addToast("Appointment booked 🎉", `${newAppointment.token} created successfully`);
       resetForm();
     },
-    [formData, appointments, editingId, addToast]
+    [formData, appointments.length, editingId, addToast]
   );
 
   const startEdit = (appointment) => {
@@ -238,25 +212,19 @@ export default function App() {
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
-    addToast("Editing appointment", `${appointment.token} is ready to edit.`, "info");
+    addToast("Editing appointment", `${appointment.token} is ready to edit`);
   };
 
   const deleteAppointment = (id) => {
     setAppointments((prev) => prev.filter((a) => a.id !== id));
-    addToast("Appointment deleted", "The appointment was removed.", "info");
+    addToast("Appointment deleted");
   };
 
   const updateStatus = (id, status) => {
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status } : a))
     );
-    addToast("Status updated", `Appointment marked as ${status}.`, "success");
-  };
-
-  const handleClearAll = () => {
-    setAppointments([]);
-    setShowClearConfirm(false);
-    addToast("Cleared", "All appointments have been removed.", "info");
+    addToast("Status updated", `Appointment marked as ${status}`);
   };
 
   const specializations = ["All", ...new Set(DOCTORS.map((d) => d.spec))];
@@ -283,13 +251,6 @@ export default function App() {
 
   return (
     <>
-      <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(40px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
-
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <div
@@ -308,12 +269,10 @@ export default function App() {
           </button>
         </div>
 
-        <div className="bg-gradient-to-r from-cyan-500 to-blue-700 p-5 sm:p-8 rounded-3xl shadow-2xl mb-8 text-white">
-          <h1 className="text-2xl sm:text-4xl font-bold leading-tight">
-            🏥 Smart Healthcare Dashboard
-          </h1>
+        <div className="bg-gradient-to-r from-cyan-500 to-blue-700 p-6 rounded-3xl shadow-2xl mb-8 text-white">
+          <h1 className="text-2xl sm:text-4xl font-bold">🏥 Smart Healthcare Dashboard</h1>
           <p className="mt-2 text-sm sm:text-lg text-blue-100">
-            AI Powered Hospital Management System
+            Smart Appointment Management System
           </p>
         </div>
 
@@ -349,7 +308,7 @@ export default function App() {
 
         {editingId && (
           <div className="mb-6 bg-purple-950 border border-purple-700 text-purple-200 p-4 rounded-2xl">
-            ✏️ Edit mode is active. Update the details and submit again.
+            ✏️ Edit mode is active. Update the details and click book/update.
           </div>
         )}
 
@@ -439,31 +398,30 @@ export default function App() {
 
         <h2 className="text-2xl sm:text-3xl font-bold mb-6">👨‍⚕️ Our Doctors</h2>
 
-        {filteredDoctors.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {filteredDoctors.map((doc) => (
-              <DoctorCard
-                key={doc.id}
-                doc={doc}
-                setSelectedDoctor={setSelectedDoctor}
-                isSelected={selectedDoctor?.id === doc.id}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-slate-500 mb-10">
-            <p className="text-4xl mb-3">🔍</p>
-            <p className="text-lg">No doctors found for "{search}"</p>
-          </div>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+          {filteredDoctors.map((doc) => (
+            <DoctorCard
+              key={doc.id}
+              doc={doc}
+              setSelectedDoctor={setSelectedDoctor}
+              isSelected={selectedDoctor?.id === doc.id}
+            />
+          ))}
+        </div>
 
         {symptomSuggestion && selectedDoctor && (
           <div className={`${cardClass} border rounded-2xl p-5 mb-6 shadow-xl`}>
             <h2 className="text-xl font-bold mb-2">🤖 AI Symptom Suggestion</h2>
+
             <p className="text-sm mb-2">
-              Priority: <span className="font-bold text-cyan-400">{symptomSuggestion.level}</span>
+              Priority:{" "}
+              <span className="font-bold text-cyan-400">
+                {symptomSuggestion.level}
+              </span>
             </p>
+
             <p className={subTextClass}>{symptomSuggestion.advice}</p>
+
             <p className="text-xs mt-3 text-red-400">
               Note: This is only a demo suggestion, not a medical diagnosis.
             </p>
@@ -480,41 +438,7 @@ export default function App() {
           />
         )}
 
-        {appointments.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-10 mb-4">
-            <h2 className="text-2xl sm:text-3xl font-bold">
-              📋 Appointments
-              <span className="ml-3 text-base font-semibold text-cyan-400 bg-cyan-950 px-3 py-1 rounded-full">
-                {appointments.length}
-              </span>
-            </h2>
-
-            {!showClearConfirm ? (
-              <button
-                onClick={() => setShowClearConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-red-950 border border-red-800 text-red-400 hover:bg-red-900 hover:text-red-200 transition-colors duration-200"
-              >
-                🗑️ Clear All
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className={subTextClass}>Are you sure?</span>
-                <button
-                  onClick={handleClearAll}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 text-white"
-                >
-                  Yes, clear
-                </button>
-                <button
-                  onClick={() => setShowClearConfirm(false)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-700 hover:bg-slate-600 text-white"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6">📋 Appointment Queue</h2>
 
         {appointments.length === 0 ? (
           <div className={`${cardClass} border rounded-2xl p-8 text-center ${subTextClass}`}>
@@ -542,7 +466,7 @@ export default function App() {
                         : "bg-emerald-950 text-emerald-300"
                     }`}
                   >
-                    {a.status || "Pending"}
+                    {a.status}
                   </span>
                 </div>
 
