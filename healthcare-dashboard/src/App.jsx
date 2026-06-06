@@ -1,12 +1,33 @@
-import React, { useEffect, useMemo, useState } from "react";
-import Login from "./Login";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
+import { signInWithPopup, signOut } from "firebase/auth";
+import { auth, googleProvider } from "./firebase";
 
 const DOCTORS = [
-  { id: 1, name: "Dr. Arjun Raza", spec: "Cardiologist", exp: "18 Years", status: "Available" },
-  { id: 2, name: "Dr. Sunita Sharma", spec: "Neurologist", exp: "14 Years", status: "Available" },
-  { id: 3, name: "Dr. Vikram Patel", spec: "Orthopedic", exp: "11 Years", status: "Unavailable" },
-  { id: 4, name: "Dr. Kavitha Rao", spec: "Dermatologist", exp: "9 Years", status: "Available" },
+  { id: 1, name: "Dr. Arjun Raza", spec: "Cardiologist", exp: "18 Years", status: "Available", rating: 4.9, slots: ["09:00", "11:00", "14:00"] },
+  { id: 2, name: "Dr. Sunita Sharma", spec: "Neurologist", exp: "14 Years", status: "Available", rating: 4.8, slots: ["10:00", "13:00", "16:00"] },
+  { id: 3, name: "Dr. Vikram Patel", spec: "Orthopedic", exp: "11 Years", status: "Unavailable", rating: 4.7, slots: [] },
+  { id: 4, name: "Dr. Kavitha Rao", spec: "Dermatologist", exp: "9 Years", status: "Available", rating: 4.6, slots: ["09:30", "14:30"] },
+  { id: 5, name: "Dr. Ananya Sharma", spec: "Pediatrics", exp: "12 Years", status: "Available", rating: 4.8, slots: ["08:30", "12:30", "15:30"] },
+  { id: 6, name: "Dr. Arun Kumar", spec: "ENT", exp: "10 Years", status: "Available", rating: 4.7, slots: ["10:30", "12:00", "17:00"] },
+];
+
+const STAFF = [
+  { id: 1, name: "Meena Rani", role: "Head Nurse", dept: "ICU", attendance: "Present", salary: "Paid", exp: "8 yrs", shift: "Morning" },
+  { id: 2, name: "Ravi Shankar", role: "Lab Technician", dept: "Pathology", attendance: "Present", salary: "Paid", exp: "5 yrs", shift: "Morning" },
+  { id: 3, name: "Sita Devi", role: "Nurse", dept: "General Ward", attendance: "Absent", salary: "Paid", exp: "3 yrs", shift: "Night" },
+  { id: 4, name: "Ajay Singh", role: "Pharmacist", dept: "Pharmacy", attendance: "Present", salary: "Pending", exp: "6 yrs", shift: "Evening" },
+  { id: 5, name: "Lakshmi V", role: "Receptionist", dept: "OPD", attendance: "Present", salary: "Paid", exp: "4 yrs", shift: "Morning" },
+  { id: 6, name: "Deepak Joshi", role: "Ambulance Driver", dept: "Emergency", attendance: "Present", salary: "Paid", exp: "7 yrs", shift: "24/7" },
+];
+
+const MEDICINES = [
+  { id: 1, name: "Paracetamol 500mg", category: "Analgesic", mrp: 25, price: 18, stock: "Available", uses: "Fever, mild pain relief", warning: "Max 4 doses/day" },
+  { id: 2, name: "Amoxicillin 500mg", category: "Antibiotic", mrp: 120, price: 95, stock: "Available", uses: "Bacterial infections", warning: "Complete full course" },
+  { id: 3, name: "Omeprazole 20mg", category: "Antacid", mrp: 85, price: 60, stock: "Low Stock", uses: "Acidity, GERD", warning: "Take before meals" },
+  { id: 4, name: "Metformin 500mg", category: "Diabetes", mrp: 45, price: 32, stock: "Available", uses: "Type 2 diabetes", warning: "Monitor blood sugar" },
+  { id: 5, name: "Cetirizine 10mg", category: "Antihistamine", mrp: 30, price: 22, stock: "Available", uses: "Allergies, cold", warning: "May cause drowsiness" },
+  { id: 6, name: "Ibuprofen 400mg", category: "NSAID", mrp: 40, price: 28, stock: "Out of Stock", uses: "Pain, inflammation", warning: "Take with food" },
 ];
 
 const emptyForm = {
@@ -22,6 +43,19 @@ function generateToken() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const random = Math.floor(1000 + Math.random() * 9000);
   return `APT-${date}-${random}`;
+}
+
+function getLS(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function setLS(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
 function getSymptomSuggestion(symptoms) {
@@ -96,7 +130,7 @@ function Toast({ toasts, removeToast }) {
               {toast.message && <p className="text-xs mt-1 opacity-80">{toast.message}</p>}
             </div>
             <button onClick={() => removeToast(toast.id)} className="opacity-60 hover:opacity-100">
-              ✕
+              x
             </button>
           </div>
         </div>
@@ -105,19 +139,752 @@ function Toast({ toasts, removeToast }) {
   );
 }
 
-export default function App() {
-  // Force login screen first. After Google login succeeds, dashboard opens.
-  const [user, setUser] = useState(null);
+function LoginScreen({ darkMode, role, setRole, onLogin, addToast }) {
+  const cardClass = darkMode
+    ? "bg-slate-900 border-slate-800 text-white"
+    : "bg-white border-slate-200 text-slate-950";
 
-  const [appointments, setAppointments] = useState(() => {
+  const handleGoogleLogin = async () => {
     try {
-      const saved = localStorage.getItem("appointments");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+      const result = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = result.user;
+
+      onLogin({
+        uid: firebaseUser.uid,
+        name: firebaseUser.displayName || "User",
+        email: firebaseUser.email || "",
+        photo: firebaseUser.photoURL || "",
+        role,
+      });
+
+      addToast("Login successful", `${firebaseUser.displayName || "User"} logged in as ${role}.`, "success");
+    } catch (error) {
+      addToast("Login failed", error.message || "Unable to sign in with Google.", "error");
     }
+  };
+
+  return (
+    <div className={`min-h-screen flex items-center justify-center px-4 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-950"}`}>
+      <div className={`w-full max-w-xl border rounded-3xl shadow-2xl p-8 ${cardClass}`}>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold">Smart Healthcare System</h1>
+          <p className={`mt-3 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+            Sign in with Google and choose your role to continue.
+          </p>
+        </div>
+
+        <div className="mb-6">
+          <p className="font-semibold mb-3">Select Role</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {["Patient", "Hospital", "Admin"].map((item) => (
+              <button
+                key={item}
+                onClick={() => setRole(item)}
+                className={`px-4 py-3 rounded-2xl border font-semibold transition-all ${
+                  role === item
+                    ? "bg-cyan-600 text-white border-cyan-500"
+                    : darkMode
+                    ? "bg-slate-950 border-slate-700 text-slate-300 hover:border-cyan-500"
+                    : "bg-white border-slate-300 text-slate-700 hover:border-cyan-500"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={handleGoogleLogin}
+          className="w-full px-6 py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg"
+        >
+          Continue with Google
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Navbar({ page, setPage, darkMode, setDarkMode, user, onLogout, canManage }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const navLinks = [
+    "Home",
+    "Dashboard",
+    "Doctors",
+    "Medicines",
+    "Staff",
+    "Complaints",
+    "Contact",
+  ].filter((item) => {
+    if (["Medicines", "Staff", "Complaints"].includes(item) && !canManage) return false;
+    return true;
   });
 
+  return (
+    <nav className={`sticky top-0 z-40 shadow-lg border-b ${darkMode ? "bg-slate-950 border-slate-800" : "bg-white border-slate-200"}`}>
+      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage("Home")}>
+          <div className="text-2xl">🏥</div>
+          <div>
+            <div className={`font-bold text-lg leading-tight ${darkMode ? "text-white" : "text-slate-900"}`}>MediCare Pro</div>
+            <div className="text-xs text-cyan-500 leading-tight">Smart Hospital Management</div>
+          </div>
+        </div>
+
+        <div className="hidden md:flex items-center gap-2">
+          {navLinks.map((item) => (
+            <button
+              key={item}
+              onClick={() => setPage(item)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                page === item
+                  ? "bg-cyan-600 text-white"
+                  : darkMode
+                  ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setDarkMode((prev) => !prev)}
+            className={`ml-2 px-3 py-2 rounded-lg transition-all ${darkMode ? "bg-slate-800 text-yellow-300" : "bg-slate-100 text-slate-700"}`}
+          >
+            {darkMode ? "Light" : "Dark"}
+          </button>
+
+          <div className={`ml-2 px-3 py-2 rounded-lg text-sm ${darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}>
+            {user?.name} ({user?.role})
+          </div>
+
+          <button
+            onClick={onLogout}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold"
+          >
+            Logout
+          </button>
+        </div>
+
+        <div className="md:hidden flex items-center gap-2">
+          <button
+            onClick={() => setDarkMode((prev) => !prev)}
+            className={`p-2 rounded-lg ${darkMode ? "bg-slate-800 text-yellow-300" : "bg-slate-100 text-slate-700"}`}
+          >
+            {darkMode ? "☀" : "🌙"}
+          </button>
+
+          <button
+            onClick={() => setMenuOpen((prev) => !prev)}
+            className={`p-2 rounded-lg ${darkMode ? "text-white" : "text-slate-900"}`}
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
+        </div>
+      </div>
+
+      {menuOpen && (
+        <div className={`md:hidden px-4 pb-4 flex flex-col gap-2 ${darkMode ? "bg-slate-950" : "bg-white"}`}>
+          {navLinks.map((item) => (
+            <button
+              key={item}
+              onClick={() => {
+                setPage(item);
+                setMenuOpen(false);
+              }}
+              className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all ${
+                page === item ? "bg-cyan-600 text-white" : darkMode ? "text-slate-300" : "text-slate-700"
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+
+          <div className={`px-3 py-2 rounded-lg text-sm ${darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}>
+            {user?.name} ({user?.role})
+          </div>
+
+          <button
+            onClick={onLogout}
+            className="px-3 py-2 rounded-lg text-sm font-medium text-left bg-red-600 text-white"
+          >
+            Logout
+          </button>
+        </div>
+      )}
+    </nav>
+  );
+}
+
+function HomePage({ darkMode, setPage }) {
+  const services = [
+    { icon: "❤️", title: "Cardiology", desc: "Advanced heart care with 24/7 monitoring" },
+    { icon: "🧠", title: "Neurology", desc: "Expert neurological diagnosis and treatment" },
+    { icon: "🦴", title: "Orthopedics", desc: "Bone, joint and spine care specialists" },
+    { icon: "🧒", title: "Pediatrics", desc: "Dedicated child health and wellness" },
+    { icon: "🧪", title: "Pathology", desc: "Accurate diagnostic lab services" },
+    { icon: "🚑", title: "Emergency", desc: "24/7 emergency and trauma care" },
+  ];
+
+  const stats = [
+    { label: "Patients Served", val: "50,000+" },
+    { label: "Expert Doctors", val: "120+" },
+    { label: "Departments", val: "18" },
+    { label: "Beds Available", val: "500+" },
+  ];
+
+  return (
+    <div>
+      <div className={`relative overflow-hidden ${darkMode ? "bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950" : "bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-800"} py-20 px-4`}>
+        <div className="max-w-4xl mx-auto text-center text-white relative z-10">
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+            Ranked #1 Hospital in the Region
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
+            Your Health,
+            <br />
+            <span className="text-yellow-300">Our Priority</span>
+          </h1>
+          <p className="text-blue-100 text-lg mb-8 max-w-2xl mx-auto">
+            MediCare Pro delivers world-class healthcare with smart technology, compassionate doctors, and a patient-first approach.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button
+              onClick={() => setPage("Dashboard")}
+              className="bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold px-6 py-3 rounded-xl transition-all shadow-lg"
+            >
+              Book Appointment
+            </button>
+            <button
+              onClick={() => setPage("Doctors")}
+              className="bg-white/20 hover:bg-white/30 backdrop-blur text-white font-semibold px-6 py-3 rounded-xl transition-all border border-white/30"
+            >
+              Our Doctors
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className={`${darkMode ? "bg-slate-800" : "bg-blue-600"} py-8`}>
+        <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6">
+          {stats.map((item) => (
+            <div key={item.label} className="text-center text-white">
+              <div className="text-3xl font-black">{item.val}</div>
+              <div className="text-blue-200 text-sm mt-1">{item.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={`py-16 px-4 ${darkMode ? "bg-slate-900" : "bg-slate-50"}`}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className={`text-3xl font-black mb-2 ${darkMode ? "text-white" : "text-slate-900"}`}>Our Specializations</h2>
+            <p className={`${darkMode ? "text-slate-400" : "text-slate-500"}`}>Comprehensive healthcare services under one roof</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {services.map((item) => (
+              <div
+                key={item.title}
+                className={`p-6 rounded-2xl border transition-all hover:-translate-y-1 hover:shadow-lg ${
+                  darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
+                }`}
+              >
+                <div className="text-4xl mb-3">{item.icon}</div>
+                <h3 className={`font-bold text-lg mb-1 ${darkMode ? "text-white" : "text-slate-900"}`}>{item.title}</h3>
+                <p className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DoctorsPage({ darkMode, setPage, setSelectedDoctorFromPage }) {
+  const [search, setSearch] = useState("");
+  const [spec, setSpec] = useState("All");
+
+  const specs = ["All", ...new Set(DOCTORS.map((doctor) => doctor.spec))];
+
+  const filtered = DOCTORS.filter(
+    (doctor) =>
+      (spec === "All" || doctor.spec === spec) &&
+      (doctor.name.toLowerCase().includes(search.toLowerCase()) ||
+        doctor.spec.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  return (
+    <div className={`min-h-screen ${darkMode ? "bg-slate-950" : "bg-slate-100"} py-8 px-4`}>
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-6">
+          <h1 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Our Doctors</h1>
+          <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+            Expert healthcare professionals ready to help you.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3 mb-6">
+          <input
+            placeholder="Search by name or specialization..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className={`flex-1 min-w-48 px-4 py-2.5 rounded-xl border text-sm outline-none ${
+              darkMode ? "bg-slate-900 border-slate-700 text-white placeholder-slate-400" : "bg-white border-slate-300"
+            }`}
+          />
+
+          <select
+            value={spec}
+            onChange={(event) => setSpec(event.target.value)}
+            className={`px-4 py-2.5 rounded-xl border text-sm outline-none ${
+              darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300"
+            }`}
+          >
+            {specs.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((doctor) => (
+            <div
+              key={doctor.id}
+              className={`p-5 rounded-2xl border transition-all hover:-translate-y-1 hover:shadow-lg ${
+                darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-3xl ${darkMode ? "bg-slate-800" : "bg-cyan-50"}`}>
+                  👨‍⚕️
+                </div>
+
+                <div>
+                  <p className={`font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>{doctor.name}</p>
+                  <p className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{doctor.spec}</p>
+                  <p className="text-xs text-yellow-500">⭐ {doctor.rating}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
+                  {doctor.exp} experience
+                </span>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    doctor.status === "Available" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+                  }`}
+                >
+                  {doctor.status}
+                </span>
+              </div>
+
+              {doctor.status === "Available" && doctor.slots.length > 0 && (
+                <div className="mb-3">
+                  <p className={`text-xs font-medium mb-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Available Slots:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {doctor.slots.map((slot) => (
+                      <span key={slot} className={`text-xs px-2 py-1 rounded-lg ${darkMode ? "bg-cyan-950 text-cyan-300" : "bg-cyan-50 text-cyan-700"}`}>
+                        {slot}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {doctor.status === "Available" ? (
+                <button
+                  onClick={() => {
+                    setSelectedDoctorFromPage(doctor);
+                    setPage("Dashboard");
+                  }}
+                  className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 rounded-xl text-sm transition-all"
+                >
+                  Book Appointment
+                </button>
+              ) : (
+                <button disabled className="w-full bg-slate-200 text-slate-400 font-semibold py-2.5 rounded-xl text-sm cursor-not-allowed">
+                  Currently Unavailable
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StaffPage({ darkMode }) {
+  const [filter, setFilter] = useState("All");
+  const departments = ["All", ...new Set(STAFF.map((item) => item.dept))];
+  const filtered = filter === "All" ? STAFF : STAFF.filter((item) => item.dept === filter);
+
+  return (
+    <div className={`min-h-screen ${darkMode ? "bg-slate-950" : "bg-slate-100"} py-8 px-4`}>
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-6">
+          <h1 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Staff Management</h1>
+          <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Hospital staff directory and attendance overview</p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: "Total Staff", val: STAFF.length },
+            { label: "Present Today", val: STAFF.filter((item) => item.attendance === "Present").length },
+            { label: "Absent", val: STAFF.filter((item) => item.attendance === "Absent").length },
+            { label: "Salary Pending", val: STAFF.filter((item) => item.salary === "Pending").length },
+          ].map((item) => (
+            <div key={item.label} className={`p-4 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
+              <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{item.label}</p>
+              <p className={`text-2xl font-black mt-1 ${darkMode ? "text-white" : "text-slate-900"}`}>{item.val}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2 flex-wrap mb-4">
+          {departments.map((dept) => (
+            <button
+              key={dept}
+              onClick={() => setFilter(dept)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                filter === dept
+                  ? "bg-cyan-600 text-white"
+                  : darkMode
+                  ? "bg-slate-900 text-slate-300 border border-slate-700"
+                  : "bg-white text-slate-600 border border-slate-200"
+              }`}
+            >
+              {dept}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filtered.map((item) => (
+            <div key={item.id} className={`p-4 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold ${darkMode ? "bg-cyan-950 text-cyan-300" : "bg-cyan-100 text-cyan-700"}`}>
+                  {item.name[0]}
+                </div>
+
+                <div className="flex-1">
+                  <p className={`font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>{item.name}</p>
+                  <p className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                    {item.role} - {item.dept}
+                  </p>
+                  <p className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                    {item.exp} experience - {item.shift} shift
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.attendance === "Present" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                    {item.attendance}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.salary === "Paid" ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"}`}>
+                    Salary: {item.salary}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MedicinesPage({ darkMode }) {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
+  const categories = ["All", ...new Set(MEDICINES.map((item) => item.category))];
+
+  const filtered = MEDICINES.filter(
+    (item) =>
+      (category === "All" || item.category === category) &&
+      item.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className={`min-h-screen ${darkMode ? "bg-slate-950" : "bg-slate-100"} py-8 px-4`}>
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-4">
+          <h1 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Medicine Comparator</h1>
+          <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+            Availability, pricing, and basic usage information.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 mb-6">
+          <p className="text-red-700 font-semibold text-sm">Important Safety Notice</p>
+          <p className="text-red-600 text-xs mt-0.5">
+            This information is for reference only. Always consult a qualified doctor or pharmacist before taking any medicine.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3 mb-6">
+          <input
+            placeholder="Search medicine..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className={`flex-1 min-w-48 px-4 py-2.5 rounded-xl border text-sm outline-none ${
+              darkMode ? "bg-slate-900 border-slate-700 text-white placeholder-slate-400" : "bg-white border-slate-300"
+            }`}
+          />
+
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className={`px-4 py-2.5 rounded-xl border text-sm outline-none ${
+              darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300"
+            }`}
+          >
+            {categories.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filtered.map((item) => (
+            <div key={item.id} className={`p-5 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className={`font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>{item.name}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${darkMode ? "bg-cyan-950 text-cyan-300" : "bg-cyan-100 text-cyan-700"}`}>
+                    {item.category}
+                  </span>
+                </div>
+
+                <span
+                  className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    item.stock === "Available"
+                      ? "bg-green-100 text-green-700"
+                      : item.stock === "Low Stock"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : "bg-red-100 text-red-600"
+                  }`}
+                >
+                  {item.stock}
+                </span>
+              </div>
+
+              <div className={`flex gap-4 my-3 p-3 rounded-xl ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}>
+                <div>
+                  <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>MRP</p>
+                  <p className={`font-bold line-through ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Rs {item.mrp}</p>
+                </div>
+                <div>
+                  <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Our Price</p>
+                  <p className="font-bold text-green-600">Rs {item.price}</p>
+                </div>
+                <div>
+                  <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Savings</p>
+                  <p className="font-bold text-cyan-600">Rs {item.mrp - item.price}</p>
+                </div>
+              </div>
+
+              <p className={`text-xs mb-1 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                <span className="font-medium">Uses:</span> {item.uses}
+              </p>
+              <p className="text-xs text-yellow-600">
+                <span className="font-medium">Warning:</span> {item.warning}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComplaintsPage({ darkMode, addToast }) {
+  const [complaints, setComplaints] = useState(() => getLS("complaints", []));
+  const [form, setForm] = useState({ name: "", dept: "", subject: "", desc: "" });
+
+  useEffect(() => {
+    setLS("complaints", complaints);
+  }, [complaints]);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!form.name || !form.subject || !form.desc) {
+      addToast("Check details", "Fill all required complaint fields.", "error");
+      return;
+    }
+
+    const newComplaint = {
+      ...form,
+      id: Date.now(),
+      status: "Pending",
+      date: new Date().toLocaleDateString(),
+      ref: `CMP-${Date.now().toString().slice(-6)}`,
+    };
+
+    setComplaints((prev) => [newComplaint, ...prev]);
+    setForm({ name: "", dept: "", subject: "", desc: "" });
+    addToast("Complaint registered", `Reference: ${newComplaint.ref}`, "success");
+  }
+
+  return (
+    <div className={`min-h-screen ${darkMode ? "bg-slate-950" : "bg-slate-100"} py-8 px-4`}>
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-6">
+          <h1 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Complaints & Feedback</h1>
+          <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>We take every complaint seriously and respond as quickly as possible.</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className={`p-6 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
+            <h2 className={`font-bold text-lg mb-4 ${darkMode ? "text-white" : "text-slate-900"}`}>Register Complaint</h2>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Your Name *</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(event) => setForm({ ...form, name: event.target.value })}
+                  placeholder="Full name"
+                  className={`w-full px-3 py-2.5 rounded-xl border text-sm outline-none ${
+                    darkMode ? "bg-slate-800 border-slate-700 text-white placeholder-slate-400" : "bg-white border-slate-300"
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Department</label>
+                <input
+                  type="text"
+                  value={form.dept}
+                  onChange={(event) => setForm({ ...form, dept: event.target.value })}
+                  placeholder="e.g. OPD, ICU, Pharmacy"
+                  className={`w-full px-3 py-2.5 rounded-xl border text-sm outline-none ${
+                    darkMode ? "bg-slate-800 border-slate-700 text-white placeholder-slate-400" : "bg-white border-slate-300"
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Subject *</label>
+                <input
+                  type="text"
+                  value={form.subject}
+                  onChange={(event) => setForm({ ...form, subject: event.target.value })}
+                  placeholder="Brief subject"
+                  className={`w-full px-3 py-2.5 rounded-xl border text-sm outline-none ${
+                    darkMode ? "bg-slate-800 border-slate-700 text-white placeholder-slate-400" : "bg-white border-slate-300"
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Description *</label>
+                <textarea
+                  rows={4}
+                  value={form.desc}
+                  onChange={(event) => setForm({ ...form, desc: event.target.value })}
+                  placeholder="Describe your complaint..."
+                  className={`w-full px-3 py-2.5 rounded-xl border text-sm outline-none resize-none ${
+                    darkMode ? "bg-slate-800 border-slate-700 text-white placeholder-slate-400" : "bg-white border-slate-300"
+                  }`}
+                />
+              </div>
+
+              <button type="submit" className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 rounded-xl transition-all">
+                Submit Complaint
+              </button>
+            </form>
+          </div>
+
+          <div>
+            <h2 className={`font-bold text-lg mb-4 ${darkMode ? "text-white" : "text-slate-900"}`}>
+              Complaint History ({complaints.length})
+            </h2>
+
+            {complaints.length === 0 ? (
+              <div className={`text-center py-12 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500"}`}>
+                <p>No complaints registered</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto">
+                {complaints.map((item) => (
+                  <div key={item.id} className={`p-4 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
+                    <div className="flex justify-between items-start mb-1">
+                      <p className={`font-semibold text-sm ${darkMode ? "text-white" : "text-slate-900"}`}>{item.subject}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${item.status === "Resolved" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                      By {item.name} {item.dept ? `- ${item.dept}` : ""}
+                    </p>
+                    <p className={`text-xs mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{item.desc}</p>
+                    <p className={`text-xs mt-2 font-mono ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                      Ref: {item.ref} - {item.date}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContactPage({ darkMode }) {
+  return (
+    <div className={`min-h-screen ${darkMode ? "bg-slate-950" : "bg-slate-100"} py-8 px-4`}>
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-6">
+          <h1 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Contact Us</h1>
+          <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>We are here to help, 24 hours a day, 7 days a week.</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
+          {[
+            { label: "Address", val: "123 MediCare Road, Health Nagar, Mumbai 400001, Maharashtra, India" },
+            { label: "Phone", val: "+91 22 1234 5678" },
+            { label: "Emergency (24/7)", val: "+91 22 9999 0000" },
+            { label: "Email", val: "care@medicarepro.in" },
+            { label: "Website", val: "www.medicarepro.in" },
+            { label: "OPD Hours", val: "Mon-Sat: 8:00 AM - 8:00 PM" },
+          ].map((item) => (
+            <div key={item.label} className={`p-5 rounded-2xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
+              <p className={`font-bold text-sm ${darkMode ? "text-white" : "text-slate-900"}`}>{item.label}</p>
+              <p className={`text-sm mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>{item.val}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="p-5 rounded-2xl bg-red-600 text-white text-center mb-8">
+          <p className="font-black text-xl">Medical Emergency?</p>
+          <p className="text-red-100 mb-2">Call our emergency hotline immediately</p>
+          <p className="font-black text-3xl">+91 22 9999 0000</p>
+          <p className="text-red-200 text-sm mt-1">Available 24 hours a day, 365 days a year</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardPage({
+  darkMode,
+  appointments,
+  setAppointments,
+  addToast,
+  preselectedDoctor,
+  clearPreselectedDoctor,
+}) {
   const [formData, setFormData] = useState(emptyForm);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -128,16 +895,12 @@ export default function App() {
   const [historySearch, setHistorySearch] = useState("");
   const [historyStatus, setHistoryStatus] = useState("All");
 
-  const [toasts, setToasts] = useState([]);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("theme") !== "light");
-
   useEffect(() => {
-    localStorage.setItem("appointments", JSON.stringify(appointments));
-  }, [appointments]);
-
-  useEffect(() => {
-    localStorage.setItem("theme", darkMode ? "dark" : "light");
-  }, [darkMode]);
+    if (preselectedDoctor) {
+      setSelectedDoctor(preselectedDoctor);
+      clearPreselectedDoctor();
+    }
+  }, [preselectedDoctor, clearPreselectedDoctor]);
 
   const cardClass = darkMode
     ? "bg-slate-900 border-slate-800 text-white"
@@ -148,18 +911,6 @@ export default function App() {
     : "bg-white border-slate-300 text-slate-950 placeholder-slate-500";
 
   const subTextClass = darkMode ? "text-slate-400" : "text-slate-600";
-
-  const addToast = (title, message = "", type = "info") => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, title, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 3500);
-  };
-
-  const removeToast = (id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
 
   const updateForm = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -177,6 +928,7 @@ export default function App() {
     if (!formData.patient.trim()) return "Please enter patient name.";
     if (!formData.age || Number(formData.age) < 1 || Number(formData.age) > 120) return "Age must be between 1 and 120.";
     if (!formData.phone.trim()) return "Please enter phone number.";
+    if (!/^\d{10}$/.test(formData.phone.trim())) return "Phone number must be exactly 10 digits.";
     if (!formData.symptoms.trim()) return "Please enter symptoms.";
     if (!formData.date) return "Please select date.";
     if (!formData.time) return "Please select time.";
@@ -189,6 +941,7 @@ export default function App() {
 
   const handleBooking = () => {
     const error = validateForm();
+
     if (error) {
       addToast("Check details", error, "error");
       return;
@@ -197,13 +950,13 @@ export default function App() {
     const duplicate = appointments.some(
       (item) =>
         item.id !== editingId &&
-        item.patient.toLowerCase() === formData.patient.trim().toLowerCase() &&
         item.doctor.toLowerCase() === selectedDoctor.name.toLowerCase() &&
-        item.date === formData.date
+        item.date === formData.date &&
+        item.time === formData.time
     );
 
     if (duplicate) {
-      addToast("Duplicate booking", "This patient already has an appointment with this doctor on the same date.", "error");
+      addToast("Duplicate booking", "This slot is already booked for this doctor.", "error");
       return;
     }
 
@@ -232,6 +985,7 @@ export default function App() {
     }
 
     const token = generateToken();
+
     const newAppointment = {
       id: `${Date.now()}-${Math.random()}`,
       token,
@@ -288,11 +1042,13 @@ export default function App() {
     addToast("Cleared", "All appointments removed.", "info");
   };
 
-  const specializations = useMemo(() => ["All", ...new Set(DOCTORS.map((doc) => doc.spec))], []);
+  const specializations = useMemo(() => ["All", ...new Set(DOCTORS.map((doctor) => doctor.spec))], []);
 
   const filteredDoctors = DOCTORS.filter((doctor) => {
     const searchText = doctorSearch.toLowerCase();
-    const matchesSearch = doctor.name.toLowerCase().includes(searchText) || doctor.spec.toLowerCase().includes(searchText);
+    const matchesSearch =
+      doctor.name.toLowerCase().includes(searchText) ||
+      doctor.spec.toLowerCase().includes(searchText);
     const matchesSpec = specialization === "All" || doctor.spec === specialization;
     return matchesSearch && matchesSpec;
   });
@@ -303,6 +1059,7 @@ export default function App() {
 
   const filteredHistory = appointments.filter((item) => {
     const searchText = historySearch.toLowerCase();
+
     const matchesSearch =
       item.patient.toLowerCase().includes(searchText) ||
       item.token.toLowerCase().includes(searchText) ||
@@ -316,38 +1073,16 @@ export default function App() {
 
   const symptomSuggestion = getSymptomSuggestion(formData.symptoms);
 
-  if (!user) {
-    return <Login onLogin={setUser} />;
-  }
-
   return (
     <div className={`min-h-screen px-4 py-6 sm:px-8 transition-all ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-950"}`}>
-      <Toast toasts={toasts} removeToast={removeToast} />
-
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-end gap-3 mb-4">
-          <button
-            onClick={() => setUser(null)}
-            className="px-5 py-2 rounded-xl font-semibold shadow bg-red-600 text-white"
-          >
-            Logout
-          </button>
-
-          <button
-            onClick={() => setDarkMode((prev) => !prev)}
-            className={`px-5 py-2 rounded-xl font-semibold shadow ${darkMode ? "bg-white text-slate-900" : "bg-slate-900 text-white"}`}
-          >
-            {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
-          </button>
-        </div>
-
         <section className="bg-gradient-to-r from-cyan-500 to-blue-700 p-6 sm:p-8 rounded-3xl shadow-2xl mb-8 text-white">
-          <h1 className="text-3xl sm:text-5xl font-bold">🏥 Smart Healthcare Dashboard</h1>
+          <h1 className="text-3xl sm:text-5xl font-bold">Smart Healthcare Dashboard</h1>
           <p className="mt-2 text-blue-100">AI powered hospital appointment, queue, and patient history system</p>
         </section>
 
         <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
-          <h2 className="text-2xl font-bold mb-5">🚑 Emergency & Bed Availability</h2>
+          <h2 className="text-2xl font-bold mb-5">Emergency & Bed Availability</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-emerald-950 text-emerald-300 p-4 rounded-2xl">
@@ -399,14 +1134,14 @@ export default function App() {
         </section>
 
         <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
-          <h2 className="text-2xl font-bold mb-5">👨‍⚕️ Select Doctor</h2>
+          <h2 className="text-2xl font-bold mb-5">Select Doctor</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <input
               type="text"
               value={doctorSearch}
               onChange={(event) => setDoctorSearch(event.target.value)}
-              placeholder="🔍 Search doctor or specialization..."
+              placeholder="Search doctor or specialization..."
               className={`border p-4 rounded-2xl outline-none focus:border-cyan-500 ${inputClass}`}
             />
 
@@ -442,7 +1177,9 @@ export default function App() {
                   <span>{doctor.status === "Available" ? "✅" : "🚫"}</span>
                 </div>
 
-                <p className={`text-sm mt-3 ${selectedDoctor?.id === doctor.id ? "text-cyan-100" : subTextClass}`}>Experience: {doctor.exp}</p>
+                <p className={`text-sm mt-3 ${selectedDoctor?.id === doctor.id ? "text-cyan-100" : subTextClass}`}>
+                  Experience: {doctor.exp}
+                </p>
 
                 <span
                   className={`inline-block mt-3 px-3 py-1 text-xs rounded-full ${
@@ -458,12 +1195,14 @@ export default function App() {
 
         <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
-            <h2 className="text-2xl font-bold">📝 Book Appointment</h2>
+            <h2 className="text-2xl font-bold">Book Appointment</h2>
             {editingId && <span className="px-4 py-2 rounded-xl bg-purple-950 text-purple-300 text-sm font-bold">Edit Mode Active</span>}
           </div>
 
           {selectedDoctor ? (
-            <p className="mb-4 text-cyan-400 font-semibold">Selected: {selectedDoctor.name} - {selectedDoctor.spec}</p>
+            <p className="mb-4 text-cyan-400 font-semibold">
+              Selected: {selectedDoctor.name} - {selectedDoctor.spec}
+            </p>
           ) : (
             <p className={`mb-4 ${subTextClass}`}>Select a doctor above before booking.</p>
           )}
@@ -479,7 +1218,7 @@ export default function App() {
 
           {symptomSuggestion && (
             <div className="mt-5 rounded-2xl border border-cyan-700 bg-cyan-950 p-4 text-cyan-100">
-              <h3 className="font-bold">🤖 AI Symptom Suggestion</h3>
+              <h3 className="font-bold">AI Symptom Suggestion</h3>
               <p className="text-sm mt-1">Priority: {symptomSuggestion.level}</p>
               <p className="text-sm">Recommended: {symptomSuggestion.doctor}</p>
               <p className="text-xs mt-2 text-cyan-200">{symptomSuggestion.advice}</p>
@@ -500,11 +1239,11 @@ export default function App() {
 
         <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-            <h2 className="text-2xl font-bold">📋 Appointment Queue</h2>
+            <h2 className="text-2xl font-bold">Appointment Queue</h2>
 
             {appointments.length > 0 && (
               <button onClick={clearAll} className="px-4 py-2 rounded-xl bg-red-950 text-red-300 text-sm font-bold">
-                🗑️ Clear All
+                Clear All
               </button>
             )}
           </div>
@@ -519,7 +1258,7 @@ export default function App() {
                     <div>
                       <p className="text-cyan-400 font-bold">{appointment.token}</p>
                       <h3 className="text-xl font-bold">{appointment.patient}</h3>
-                      <p className={`text-sm ${subTextClass}`}>Age: {appointment.age} • Phone: {appointment.phone || "N/A"}</p>
+                      <p className={`text-sm ${subTextClass}`}>Age: {appointment.age} | Phone: {appointment.phone || "N/A"}</p>
                     </div>
 
                     <span
@@ -536,10 +1275,10 @@ export default function App() {
                   </div>
 
                   <div className="mt-4 space-y-1 text-sm">
-                    <p>👨‍⚕️ {appointment.doctor}</p>
-                    <p>🏥 {appointment.spec}</p>
-                    <p>📅 {appointment.date} at {appointment.time}</p>
-                    <p>📝 {appointment.symptoms}</p>
+                    <p>Doctor: {appointment.doctor}</p>
+                    <p>Specialization: {appointment.spec}</p>
+                    <p>Date: {appointment.date} at {appointment.time}</p>
+                    <p>Symptoms: {appointment.symptoms}</p>
                   </div>
 
                   <div className="flex flex-wrap gap-2 mt-5">
@@ -558,7 +1297,7 @@ export default function App() {
         <section className={`${cardClass} border rounded-2xl p-6 shadow-xl`}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
             <div>
-              <h2 className="text-2xl font-bold">📚 Patient History</h2>
+              <h2 className="text-2xl font-bold">Patient History</h2>
               <p className={`${subTextClass} text-sm mt-1`}>Search records by patient, token, doctor, or symptoms.</p>
             </div>
 
@@ -571,7 +1310,7 @@ export default function App() {
             <input
               value={historySearch}
               onChange={(event) => setHistorySearch(event.target.value)}
-              placeholder="🔍 Search patient history..."
+              placeholder="Search patient history..."
               className={`border p-4 rounded-2xl outline-none focus:border-cyan-500 ${inputClass}`}
             />
 
@@ -636,6 +1375,130 @@ export default function App() {
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [user, setUser] = useState(() => getLS("healthcare_user", null));
+  const [role, setRole] = useState("Patient");
+  const [page, setPage] = useState("Home");
+  const [toasts, setToasts] = useState([]);
+  const [selectedDoctorFromPage, setSelectedDoctorFromPage] = useState(null);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("theme") !== "light");
+  const [appointments, setAppointments] = useState(() => getLS("appointments", []));
+  const toastTimers = useRef([]);
+
+  useEffect(() => {
+    setLS("appointments", appointments);
+  }, [appointments]);
+
+  useEffect(() => {
+    setLS("healthcare_user", user);
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem("theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
+
+  useEffect(() => {
+    return () => {
+      toastTimers.current.forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
+
+  const addToast = (title, message = "", type = "info") => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, title, message, type }]);
+
+    const timer = setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 3500);
+
+    toastTimers.current.push(timer);
+  };
+
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
+  const navigateTo = (nextPage) => {
+    setPage(nextPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch {
+      // ignore firebase signout error and still clear local session
+    }
+
+    setUser(null);
+    setPage("Home");
+    addToast("Logged out", "You have been signed out.", "info");
+  };
+
+  const clearPreselectedDoctor = () => {
+    setSelectedDoctorFromPage(null);
+  };
+
+  const canManage = user?.role === "Admin" || user?.role === "Hospital";
+
+  if (!user) {
+    return (
+      <>
+        <Toast toasts={toasts} removeToast={removeToast} />
+        <LoginScreen
+          darkMode={darkMode}
+          role={role}
+          setRole={setRole}
+          onLogin={setUser}
+          addToast={addToast}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${darkMode ? "bg-slate-950" : "bg-slate-100"}`}>
+      <Toast toasts={toasts} removeToast={removeToast} />
+
+      <Navbar
+        page={page}
+        setPage={navigateTo}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        user={user}
+        onLogout={handleLogout}
+        canManage={canManage}
+      />
+
+      {page === "Home" && <HomePage darkMode={darkMode} setPage={navigateTo} />}
+
+      {page === "Dashboard" && (
+        <DashboardPage
+          darkMode={darkMode}
+          appointments={appointments}
+          setAppointments={setAppointments}
+          addToast={addToast}
+          preselectedDoctor={selectedDoctorFromPage}
+          clearPreselectedDoctor={clearPreselectedDoctor}
+        />
+      )}
+
+      {page === "Doctors" && (
+        <DoctorsPage
+          darkMode={darkMode}
+          setPage={navigateTo}
+          setSelectedDoctorFromPage={setSelectedDoctorFromPage}
+        />
+      )}
+
+      {page === "Medicines" && canManage && <MedicinesPage darkMode={darkMode} />}
+      {page === "Staff" && canManage && <StaffPage darkMode={darkMode} />}
+      {page === "Complaints" && canManage && <ComplaintsPage darkMode={darkMode} addToast={addToast} />}
+      {page === "Contact" && <ContactPage darkMode={darkMode} />}
     </div>
   );
 }
