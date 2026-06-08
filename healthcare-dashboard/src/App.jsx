@@ -7,32 +7,9 @@ import { generateToken } from "./utils/tokenGenerator";
 import { getLS, setLS } from "./utils/localStorage";
 import { getSymptomSuggestion } from "./utils/symptomSuggestion";
 import DoctorCard from "./components/DoctorCard";
-
-const STAFF = [
-  { id: 1, name: "Meena Rani", role: "Head Nurse", dept: "ICU", attendance: "Present", salary: "Paid", exp: "8 yrs", shift: "Morning" },
-  { id: 2, name: "Ravi Shankar", role: "Lab Technician", dept: "Pathology", attendance: "Present", salary: "Paid", exp: "5 yrs", shift: "Morning" },
-  { id: 3, name: "Sita Devi", role: "Nurse", dept: "General Ward", attendance: "Absent", salary: "Paid", exp: "3 yrs", shift: "Night" },
-  { id: 4, name: "Ajay Singh", role: "Pharmacist", dept: "Pharmacy", attendance: "Present", salary: "Pending", exp: "6 yrs", shift: "Evening" },
-  { id: 5, name: "Lakshmi V", role: "Receptionist", dept: "OPD", attendance: "Present", salary: "Paid", exp: "4 yrs", shift: "Morning" },
-  { id: 6, name: "Deepak Joshi", role: "Ambulance Driver", dept: "Emergency", attendance: "Present", salary: "Paid", exp: "7 yrs", shift: "24/7" },
-];
-
-const MEDICINES = [
-  { id: 1, name: "Paracetamol 500mg", category: "Analgesic", mrp: 25, price: 18, stock: "Available", uses: "Fever, mild pain relief", warning: "Max 4 doses/day" },
-  { id: 2, name: "Amoxicillin 500mg", category: "Antibiotic", mrp: 120, price: 95, stock: "Available", uses: "Bacterial infections", warning: "Complete full course" },
-  { id: 3, name: "Omeprazole 20mg", category: "Antacid", mrp: 85, price: 60, stock: "Low Stock", uses: "Acidity, GERD", warning: "Take before meals" },
-  { id: 4, name: "Metformin 500mg", category: "Diabetes", mrp: 45, price: 32, stock: "Available", uses: "Type 2 diabetes", warning: "Monitor blood sugar" },
-  { id: 5, name: "Cetirizine 10mg", category: "Antihistamine", mrp: 30, price: 22, stock: "Available", uses: "Allergies, cold", warning: "May cause drowsiness" },
-  { id: 6, name: "Ibuprofen 400mg", category: "NSAID", mrp: 40, price: 28, stock: "Out of Stock", uses: "Pain, inflammation", warning: "Take with food" },
-];
-
-const ANNOUNCEMENTS = [
-  { id: 1, icon: "🩸", title: "Blood Donation Camp", desc: "Join our blood donation camp on June 15th, 10 AM – 4 PM in the hospital auditorium. All donors receive a free health checkup.", tag: "Community", color: "red" },
-  { id: 2, icon: "🏥", title: "Free Health Checkup Week", desc: "Free consultations, BP checks, sugar tests, and BMI assessments for all citizens from June 20–26. Register at the OPD counter.", tag: "Free Event", color: "green" },
-  { id: 3, icon: "📋", title: "OPD Closed on Sundays", desc: "Please note that the Outpatient Department (OPD) remains closed every Sunday. Emergency services are available 24/7.", tag: "Notice", color: "yellow" },
-  { id: 4, icon: "💉", title: "Vaccination Drive", desc: "Flu, Hepatitis B, and COVID booster vaccines available every Tuesday and Thursday, 9 AM – 1 PM. Bring your vaccination card.", tag: "Health Drive", color: "cyan" },
-];
-
+import { STAFF } from "./data/staff";
+import { MEDICINES } from "./data/medicines";
+import { ANNOUNCEMENTS } from "./data/announcements";
 const emptyForm = {
   patient: "",
   age: "",
