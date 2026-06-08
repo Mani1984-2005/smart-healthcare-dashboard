@@ -2,15 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { signInWithPopup, signOut } from "firebase/auth";
 import { auth, googleProvider } from "./firebase";
-
-const DOCTORS = [
-  { id: 1, name: "Dr. Arjun Raza", spec: "Cardiologist", exp: "18 Years", status: "Available", rating: 4.9, reviews: 312, slots: ["09:00", "11:00", "14:00"] },
-  { id: 2, name: "Dr. Sunita Sharma", spec: "Neurologist", exp: "14 Years", status: "Available", rating: 4.8, reviews: 278, slots: ["10:00", "13:00", "16:00"] },
-  { id: 3, name: "Dr. Vikram Patel", spec: "Orthopedic", exp: "11 Years", status: "Unavailable", rating: 4.7, reviews: 195, slots: [] },
-  { id: 4, name: "Dr. Kavitha Rao", spec: "Dermatologist", exp: "9 Years", status: "Available", rating: 4.6, reviews: 154, slots: ["09:30", "14:30"] },
-  { id: 5, name: "Dr. Ananya Sharma", spec: "Pediatrics", exp: "12 Years", status: "Available", rating: 4.8, reviews: 241, slots: ["08:30", "12:30", "15:30"] },
-  { id: 6, name: "Dr. Arun Kumar", spec: "ENT", exp: "10 Years", status: "Available", rating: 4.7, reviews: 183, slots: ["10:30", "12:00", "17:00"] },
-];
+import { DOCTORS } from "./data/doctors";
+import { generateToken } from "./utils/tokenGenerator";
+import { getLS, setLS } from "./utils/localStorage";
+import { getSymptomSuggestion } from "./utils/symptomSuggestion";
+import DoctorCard from "./components/DoctorCard";
 
 const STAFF = [
   { id: 1, name: "Meena Rani", role: "Head Nurse", dept: "ICU", attendance: "Present", salary: "Paid", exp: "8 yrs", shift: "Morning" },
@@ -45,46 +41,6 @@ const emptyForm = {
   date: "",
   time: "",
 };
-
-function generateToken() {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const random = Math.floor(1000 + Math.random() * 9000);
-  return `APT-${date}-${random}`;
-}
-
-function getLS(key, fallback) {
-  try {
-    const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function setLS(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function getSymptomSuggestion(symptoms) {
-  const text = symptoms.toLowerCase();
-  if (!text.trim()) return null;
-  if (text.includes("chest") || text.includes("heart")) {
-    return { level: "High Priority", doctor: "Cardiologist", advice: "Chest or heart-related symptoms may need quick medical attention." };
-  }
-  if (text.includes("skin") || text.includes("allergy") || text.includes("rash")) {
-    return { level: "Normal Priority", doctor: "Dermatologist", advice: "Skin or allergy symptoms can be checked by a dermatologist." };
-  }
-  if (text.includes("headache") || text.includes("migraine") || text.includes("brain")) {
-    return { level: "Medium Priority", doctor: "Neurologist", advice: "Headache or migraine symptoms may need neurological consultation." };
-  }
-  if (text.includes("bone") || text.includes("fracture") || text.includes("joint") || text.includes("leg")) {
-    return { level: "Medium Priority", doctor: "Orthopedic", advice: "Bone or joint-related symptoms may need orthopedic care." };
-  }
-  if (text.includes("fever") || text.includes("cold") || text.includes("cough")) {
-    return { level: "Normal Priority", doctor: "General Doctor", advice: "Fever, cold, or cough may need general consultation and monitoring." };
-  }
-  return { level: "General Checkup", doctor: "Available Doctor", advice: "Please consult an available doctor for proper medical guidance." };
-}
 
 function useLiveClock() {
   const [now, setNow] = useState(new Date());
