@@ -175,6 +175,32 @@ export default function PatientsPage({ darkMode }) {
                   <button onClick={() => handleEdit(patient)} className="bg-yellow-500 text-white px-3 py-1 rounded-lg">
                     Edit
                   </button>
+                  <button
+  onClick={() =>
+  alert(
+    `Patient ID: ${patient.id}
+
+Name: ${patient.name}
+
+Age: ${patient.age}
+
+Gender: ${patient.gender}
+
+Blood Group: ${patient.bloodGroup}
+
+Phone: ${patient.phone}
+
+Disease: ${patient.disease}
+
+Address: ${patient.address}
+
+Registered: ${patient.registeredDate}`
+  )
+}
+  className="bg-cyan-600 text-white px-3 py-1 rounded-lg"
+>
+  View
+</button>
                   <button onClick={() => handleDelete(patient.id)} className="bg-red-600 text-white px-3 py-1 rounded-lg">
                     Delete
                   </button>
