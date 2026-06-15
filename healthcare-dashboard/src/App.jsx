@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 import { getLS, setLS } from "./utils/localStorage";
@@ -12,6 +12,7 @@ import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
 import DoctorsPage from "./pages/DoctorsPage";
+import PatientsPage from "./pages/PatientsPage";
 import StaffPage from "./pages/StaffPage";
 import MedicinesPage from "./pages/MedicinesPage";
 import ComplaintsPage from "./pages/ComplaintsPage";
@@ -27,7 +28,6 @@ export default function App() {
 
   const { toasts, addToast, removeToast } = useToast();
 
-  // Persist state to localStorage
   useEffect(() => { setLS("appointments", appointments); }, [appointments]);
   useEffect(() => { setLS("healthcare_user", user); }, [user]);
   useEffect(() => { localStorage.setItem("theme", darkMode ? "dark" : "light"); }, [darkMode]);
@@ -47,7 +47,6 @@ export default function App() {
   const clearPreselectedDoctor = () => setSelectedDoctorFromPage(null);
   const canManage = user?.role === "Admin" || user?.role === "Hospital";
 
-  // Show login if not authenticated
   if (!user) {
     return (
       <>
@@ -66,6 +65,7 @@ export default function App() {
   return (
     <div className={`min-h-screen ${darkMode ? "bg-slate-950" : "bg-slate-100"}`}>
       <Toast toasts={toasts} removeToast={removeToast} />
+
       <Navbar
         page={page}
         setPage={navigateTo}
@@ -79,6 +79,7 @@ export default function App() {
       {page === "Home" && (
         <HomePage darkMode={darkMode} setPage={navigateTo} />
       )}
+
       {page === "Dashboard" && (
         <DashboardPage
           darkMode={darkMode}
@@ -89,6 +90,7 @@ export default function App() {
           clearPreselectedDoctor={clearPreselectedDoctor}
         />
       )}
+
       {page === "Doctors" && (
         <DoctorsPage
           darkMode={darkMode}
@@ -96,24 +98,26 @@ export default function App() {
           setSelectedDoctorFromPage={setSelectedDoctorFromPage}
         />
       )}
+
+      {page === "Patients" && (
+        <PatientsPage darkMode={darkMode} />
+      )}
+
       {page === "Medicines" && canManage && (
         <MedicinesPage darkMode={darkMode} />
       )}
+
       {page === "Staff" && canManage && (
         <StaffPage darkMode={darkMode} />
       )}
+
       {page === "Complaints" && canManage && (
         <ComplaintsPage darkMode={darkMode} addToast={addToast} />
       )}
+
       {page === "Contact" && (
         <ContactPage darkMode={darkMode} />
       )}
     </div>
   );
 }
-
-
-
-
-
-
