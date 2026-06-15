@@ -13,6 +13,7 @@ export default function MedicinesPage({ darkMode }) {
       item.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  
   return (
     <div className={`min-h-screen ${darkMode ? "bg-slate-950" : "bg-slate-100"} py-8 px-4`}>
       <div className="max-w-6xl mx-auto">
