@@ -18,6 +18,7 @@ export default function PatientsPage({ darkMode }) {
   const [patients, setPatients] = useState(initialPatients);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const [medicalRecords, setMedicalRecords] = useState([]);
 
   const [form, setForm] = useState({
     name: "",
@@ -28,6 +29,38 @@ export default function PatientsPage({ darkMode }) {
     disease: "",
     address: "",
   });
+  const [recordForm, setRecordForm] = useState({
+  patientId: "",
+  diagnosis: "",
+  prescription: "",
+  doctorNotes: "",
+  followUpDate: "",
+});const addMedicalRecord = () => {
+  if (
+    !recordForm.patientId ||
+    !recordForm.diagnosis ||
+    !recordForm.prescription
+  ) {
+    alert("Please fill Patient ID, Diagnosis and Prescription");
+    return;
+  }
+
+  const newRecord = {
+    id: `EMR-${Date.now()}`,
+    ...recordForm,
+    visitDate: new Date().toISOString().split("T")[0],
+  };
+
+  setMedicalRecords([newRecord, ...medicalRecords]);
+
+  setRecordForm({
+    patientId: "",
+    diagnosis: "",
+    prescription: "",
+    doctorNotes: "",
+    followUpDate: "",
+  });
+};
 
   const inputClass = "border p-3 rounded-lg text-slate-900";
 
@@ -217,6 +250,92 @@ Registered: ${patient.registeredDate}`
             )}
           </tbody>
         </table>
+        <div className={`mt-6 p-5 rounded-xl shadow ${darkMode ? "bg-slate-900" : "bg-white"}`}>
+        <h2 className="text-xl font-bold mb-4">Medical Records / EMR</h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <input className={inputClass} placeholder="Patient ID" value={recordForm.patientId} onChange={(e) => setRecordForm({ ...recordForm, patientId: e.target.value })} />
+          <input className={inputClass} placeholder="Diagnosis" value={recordForm.diagnosis} onChange={(e) => setRecordForm({ ...recordForm, diagnosis: e.target.value })} />
+          <input className={inputClass} placeholder="Prescription" value={recordForm.prescription} onChange={(e) => setRecordForm({ ...recordForm, prescription: e.target.value })} />
+          <input className={inputClass} placeholder="Doctor Notes" value={recordForm.doctorNotes} onChange={(e) => setRecordForm({ ...recordForm, doctorNotes: e.target.value })} />
+          <input type="date" className={inputClass} value={recordForm.followUpDate} onChange={(e) => setRecordForm({ ...recordForm, followUpDate: e.target.value })} />
+        </div>
+
+        <button onClick={addMedicalRecord} className="mt-4 bg-cyan-600 text-white px-5 py-2 rounded-lg font-semibold">
+          Add Medical Record
+        </button>
+        <div className="mt-6 overflow-x-auto">
+  <table className="w-full text-sm">
+    <thead className="bg-cyan-600 text-white">
+      <tr>
+        <th className="p-3 text-left">Patient ID</th>
+        <th className="p-3 text-left">Diagnosis</th>
+        <th className="p-3 text-left">Prescription</th>
+        <th className="p-3 text-left">Doctor Notes</th>
+        <th className="p-3 text-left">Visit Date</th>
+        <th className="p-3 text-left">Follow Up</th>
+        <th className="p-3 text-left">Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {medicalRecords.map((record) => (
+        <tr key={record.id} className="border-b">
+          <td className="p-3">{record.patientId}</td>
+          <td className="p-3">{record.diagnosis}</td>
+          <td className="p-3">{record.prescription}</td>
+          <td className="p-3">{record.doctorNotes}</td>
+          <td className="p-3">{record.visitDate}</td>
+          <td className="p-3">{record.followUpDate}</td>
+          <td className="p-3">
+  <div className="flex gap-2">
+    <button
+      onClick={() =>
+        alert(
+          `Patient ID: ${record.patientId}
+
+Diagnosis: ${record.diagnosis}
+
+Prescription: ${record.prescription}
+
+Doctor Notes: ${record.doctorNotes}
+
+Visit Date: ${record.visitDate}
+
+Follow Up: ${record.followUpDate}`
+        )
+      }
+      className="bg-cyan-600 text-white px-3 py-1 rounded-lg"
+    >
+      View
+    </button>
+
+    <button
+      onClick={() =>
+        setMedicalRecords(
+          medicalRecords.filter((r) => r.id !== record.id)
+        )
+      }
+      className="bg-red-600 text-white px-3 py-1 rounded-lg"
+    >
+      Delete
+    </button>
+  </div>
+</td>
+        </tr>
+      ))}
+
+      {medicalRecords.length === 0 && (
+        <tr>
+          <td colSpan="6" className="p-5 text-center text-slate-500">
+            No medical records available.
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
+      </div>
       </div>
     </div>
   );
