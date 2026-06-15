@@ -15,6 +15,7 @@ import StatCards from "./components/StatCards";
 import AnnouncementsPanel from "./components/AnnouncementsPanel";
 import BookingForm from "./components/BookingForm";
 import Toast from "./components/Toast";
+import PatientsPage from "./pages/PatientsPage";
 const emptyForm = {
   patient: "",
   age: "",
@@ -89,12 +90,19 @@ function LoginScreen({ darkMode, role, setRole, onLogin, addToast }) {
 function Navbar({ page, setPage, darkMode, setDarkMode, user, onLogout, canManage }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const navLinks = [
-    "Home", "Dashboard", "Doctors", "Medicines", "Staff", "Complaints", "Contact",
-  ].filter((item) => {
-    if (["Medicines", "Staff", "Complaints"].includes(item) && !canManage) return false;
-    return true;
-  });
+ const navLinks = [
+  "Home",
+  "Dashboard",
+  "Patients",
+  "Doctors",
+  "Medicines",
+  "Staff",
+  "Complaints",
+  "Contact",
+].filter((item) => {
+  if (["Medicines", "Staff", "Complaints"].includes(item) && !canManage) return false;
+  return true;
+});
 
   return (
     <nav className={`sticky top-0 z-40 shadow-lg border-b ${darkMode ? "bg-slate-950 border-slate-800" : "bg-white border-slate-200"}`}>
@@ -1113,6 +1121,7 @@ export default function App() {
           clearPreselectedDoctor={clearPreselectedDoctor}
         />
       )}
+      {page === "Patients" && <PatientsPage />}
       {page === "Doctors" && <DoctorsPage darkMode={darkMode} setPage={navigateTo} setSelectedDoctorFromPage={setSelectedDoctorFromPage} />}
       {page === "Medicines" && canManage && <MedicinesPage darkMode={darkMode} />}
       {page === "Staff" && canManage && <StaffPage darkMode={darkMode} />}
