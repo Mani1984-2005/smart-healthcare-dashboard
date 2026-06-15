@@ -7,7 +7,7 @@ import { useToast } from "./hooks/useToast";
 
 import Navbar from "./components/Navbar";
 import Toast from "./components/Toast";
-
+import ReportsPage from "./pages/ReportsPage";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
@@ -102,7 +102,12 @@ export default function App() {
       {page === "Patients" && (
         <PatientsPage darkMode={darkMode} />
       )}
-
+        {page === "Reports" && (
+  <ReportsPage
+    darkMode={darkMode}
+    appointments={appointments}
+  />
+)}
       {page === "Medicines" && canManage && (
         <MedicinesPage darkMode={darkMode} />
       )}
