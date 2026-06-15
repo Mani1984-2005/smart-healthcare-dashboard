@@ -4,12 +4,18 @@ import { useState } from "react";
 export default function Navbar({ page, setPage, darkMode, setDarkMode, user, onLogout, canManage }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const navLinks = [
-   "Home", "Dashboard", "Patients", "Doctors", "Medicines", "Pharmacy", "Laboratory", "Staff", "Reports", "Billing", "Complaints", "Settings", "Contact",
-  ].filter((item) => {
-   if (["Medicines", "Pharmacy", "Laboratory", "Staff", "Reports", "Billing", "Complaints"].includes(item) && !canManage) return false;
-    return true;
-  });
+ const role = user?.role;
+
+const roleLinks = {
+  Patient: ["Home", "Dashboard", "Doctors", "Contact"],
+  Admin: ["Home", "Dashboard", "Patients", "Doctors", "Medicines", "Pharmacy", "Laboratory", "Staff", "Reports", "Billing", "Complaints", "Settings", "Contact"],
+  Hospital: ["Home", "Dashboard", "Patients", "Doctors", "Medicines", "Pharmacy", "Laboratory", "Staff", "Reports", "Billing", "Complaints", "Settings", "Contact"],
+  Receptionist: ["Home", "Dashboard", "Patients", "Doctors", "Billing", "Contact"],
+  Pharmacy: ["Home", "Dashboard", "Pharmacy", "Contact"],
+  Laboratory: ["Home", "Dashboard", "Laboratory", "Contact"],
+};
+
+const navLinks = roleLinks[role] || roleLinks.Patient;
 
   return (
     <nav className={`sticky top-0 z-40 shadow-lg border-b ${darkMode ? "bg-slate-950 border-slate-800" : "bg-white border-slate-200"}`}>
