@@ -363,6 +363,12 @@ export default function DashboardPage({
                     <button onClick={() => updateStatus(appt.id, "Pending")} className="px-3 py-1.5 rounded-xl bg-yellow-950 text-yellow-300 text-xs font-semibold hover:bg-yellow-900 transition-all">Pending</button>
                     <button onClick={() => updateStatus(appt.id, "Confirmed")} className="px-3 py-1.5 rounded-xl bg-cyan-950 text-cyan-300 text-xs font-semibold hover:bg-cyan-900 transition-all">Confirm</button>
                     <button onClick={() => updateStatus(appt.id, "Completed")} className="px-3 py-1.5 rounded-xl bg-emerald-950 text-emerald-300 text-xs font-semibold hover:bg-emerald-900 transition-all">Complete</button>
+                   <button
+  onClick={() => updateStatus(appt.id, "Cancelled")}
+  className="px-3 py-1.5 rounded-xl bg-red-950 text-red-300 text-xs font-semibold hover:bg-red-900 transition-all"
+>
+  Cancel
+</button>
                     <button onClick={() => startEdit(appt)} className="px-3 py-1.5 rounded-xl bg-purple-950 text-purple-300 text-xs font-semibold hover:bg-purple-900 transition-all">Edit</button>
                     <button onClick={() => deleteAppointment(appt.id)} className="px-3 py-1.5 rounded-xl bg-red-950 text-red-300 text-xs font-semibold hover:bg-red-900 transition-all">Delete</button>
                   </div>
@@ -399,6 +405,7 @@ export default function DashboardPage({
               <option value="Pending">Pending</option>
               <option value="Confirmed">Confirmed</option>
               <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
           {filteredHistory.length === 0 ? (
