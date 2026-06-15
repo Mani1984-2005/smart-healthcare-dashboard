@@ -5,7 +5,7 @@ export default function Navbar({ page, setPage, darkMode, setDarkMode, user, onL
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks = [
-    "Home", "Dashboard", "Patients", "Doctors", "Medicines", "Staff", "Reports", "Complaints", "Contact",
+    "Home", "Dashboard", "Patients", "Doctors", "Medicines", "Staff", "Reports", "Complaints", "Settings", "Contact",
   ].filter((item) => {
     if (["Medicines", "Staff", "Reports", "Complaints"].includes(item) && !canManage) return false;
     return true;

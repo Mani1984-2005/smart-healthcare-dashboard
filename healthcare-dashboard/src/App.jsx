@@ -4,7 +4,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 import { getLS, setLS } from "./utils/localStorage";
 import { useToast } from "./hooks/useToast";
-
+import SettingsPage from "./pages/SettingsPage";
 import Navbar from "./components/Navbar";
 import Toast from "./components/Toast";
 import ReportsPage from "./pages/ReportsPage";
@@ -111,6 +111,9 @@ export default function App() {
       {page === "Medicines" && canManage && (
         <MedicinesPage darkMode={darkMode} />
       )}
+      {page === "Settings" && (
+  <SettingsPage darkMode={darkMode} />
+)}
 
       {page === "Staff" && canManage && (
         <StaffPage darkMode={darkMode} />
