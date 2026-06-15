@@ -19,6 +19,8 @@ import ComplaintsPage from "./pages/ComplaintsPage";
 import ContactPage from "./pages/ContactPage";
 import BillingPage from "./pages/BillingPage";
 import LaboratoryPage from "./pages/LaboratoryPage";
+import PharmacyPage from "./pages/PharmacyPage";
+
 export default function App() {
   const [user, setUser] = useState(() => getLS("healthcare_user", null));
   const [role, setRole] = useState("Patient");
@@ -99,6 +101,9 @@ export default function App() {
           setSelectedDoctorFromPage={setSelectedDoctorFromPage}
         />
       )}
+      {page === "Pharmacy" && (
+  <PharmacyPage darkMode={darkMode} />
+)}
       {page === "Laboratory" && (
   <LaboratoryPage darkMode={darkMode} />
 )}
