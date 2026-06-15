@@ -123,7 +123,16 @@ export default function DashboardPage({
   const pendingCount = appointments.filter((a) => a.status === "Pending").length;
   const confirmedCount = appointments.filter((a) => a.status === "Confirmed").length;
   const completedCount = appointments.filter((a) => a.status === "Completed").length;
+   const todayAppointments = appointments.filter(
+  (a) => a.date === new Date().toISOString().split("T")[0]
+).length;
 
+const totalPatients = appointments.length;
+
+const completionRate =
+  appointments.length > 0
+    ? Math.round((completedCount / appointments.length) * 100)
+    : 0;
   const filteredHistory = appointments.filter((a) => {
     const s = historySearch.toLowerCase();
     return (
@@ -189,7 +198,19 @@ export default function DashboardPage({
               <p className={subTextClass}>{item.label}</p>
               <h2 className={`text-3xl font-bold mt-1 ${item.color}`}>{item.val}</h2>
             </div>
-          ))}
+          ))}<div className={`${cardClass} border rounded-2xl p-5 shadow`}>
+  <p className={subTextClass}>Today's Appointments</p>
+  <h2 className="text-3xl font-bold text-purple-400">
+    {todayAppointments}
+  </h2>
+</div>
+
+<div className={`${cardClass} border rounded-2xl p-5 shadow`}>
+  <p className={subTextClass}>Completion Rate</p>
+  <h2 className="text-3xl font-bold text-green-400">
+    {completionRate}%
+  </h2>
+</div>
         </section>
 
         {/* Doctor Selection */}

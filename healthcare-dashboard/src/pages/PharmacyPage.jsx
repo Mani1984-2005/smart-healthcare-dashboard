@@ -21,11 +21,36 @@ export default function PharmacyPage({ darkMode }) {
     setMedicines([{ id: Date.now(), ...form }, ...medicines]);
     setForm({ name: "", stock: "", price: "", expiry: "" });
   };
+   const totalMedicines = medicines.length;
 
+const lowStockCount = medicines.filter(
+  (med) => Number(med.stock) < 10
+).length;
+
+const inventoryValue = medicines.reduce(
+  (sum, med) => sum + Number(med.stock) * Number(med.price),
+  0
+);
   return (
     <div className={`p-6 min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
       <h1 className="text-2xl font-bold">Pharmacy</h1>
       <p className="text-slate-500 mt-2">Manage medicine stock and expiry.</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+  <div className={`${darkMode ? "bg-slate-900" : "bg-white"} p-5 rounded-xl shadow`}>
+    <p className="text-sm text-slate-500">Total Medicines</p>
+    <h2 className="text-3xl font-bold">{totalMedicines}</h2>
+  </div>
+
+  <div className={`${darkMode ? "bg-slate-900" : "bg-white"} p-5 rounded-xl shadow`}>
+    <p className="text-sm text-slate-500">Low Stock</p>
+    <h2 className="text-3xl font-bold text-yellow-500">{lowStockCount}</h2>
+  </div>
+
+  <div className={`${darkMode ? "bg-slate-900" : "bg-white"} p-5 rounded-xl shadow`}>
+    <p className="text-sm text-slate-500">Inventory Value</p>
+    <h2 className="text-3xl font-bold text-cyan-500">₹{inventoryValue}</h2>
+  </div>
+</div>
 
       <form onSubmit={addMedicine}  className={`mt-6 p-5 rounded-xl shadow grid grid-cols-1 md:grid-cols-5 gap-3 ${darkMode ? "bg-slate-900" : "bg-white"}`}>
         <input className="border p-3 rounded-lg text-slate-900" placeholder="Medicine Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
