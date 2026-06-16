@@ -273,7 +273,7 @@ Registered: ${patient.registeredDate}`
         <th className="p-3 text-left">Prescription</th>
         <th className="p-3 text-left">Doctor Notes</th>
         <th className="p-3 text-left">Visit Date</th>
-        <th className="p-3 text-left">Follow Up</th>
+        <th className="p-3 text-left">Follow Up</th>  
         <th className="p-3 text-left">Actions</th>
       </tr>
     </thead>
