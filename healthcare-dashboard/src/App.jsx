@@ -23,7 +23,7 @@ import PharmacyPage from "./pages/PharmacyPage";
 
 export default function App() {
   const [user, setUser] = useState(() => getLS("healthcare_user", null));
-  const [role, setRole] = useState("Patient");
+  const [role, setRole] = useState("Hospital");
   const [page, setPage] = useState("Home");
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("theme") !== "light");
   const [appointments, setAppointments] = useState(() => getLS("appointments", []));
