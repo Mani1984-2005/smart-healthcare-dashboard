@@ -22,16 +22,6 @@ export default function PatientsPage({ darkMode }) {
   const [medicalRecords, setMedicalRecords] = useState(() => {
     return JSON.parse(localStorage.getItem("medicalRecords")) || [];
   });
-  useEffect(() => {
-  localStorage.setItem("patients", JSON.stringify(patients));
-}, [patients]);
-
-useEffect(() => {
-  localStorage.setItem(
-    "medicalRecords",
-    JSON.stringify(medicalRecords)
-  );
-}, [medicalRecords]);
 
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -155,7 +145,11 @@ useEffect(() => {
   };
 
   return (
-    <div className={`p-6 min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
+    <div
+      className={`p-6 min-h-screen ${
+        darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"
+      }`}
+    >
       <h1 className="text-2xl font-bold">Patients</h1>
       <p className="text-slate-500 mt-2">
         Register, search, edit and manage patient records.
@@ -189,18 +183,39 @@ useEffect(() => {
 
       <form
         onSubmit={handleSubmit}
-        className={`mt-6 p-5 rounded-xl shadow grid grid-cols-1 md:grid-cols-4 gap-3 ${darkMode ? "bg-slate-900" : "bg-white"}`}
+        className={`mt-6 p-5 rounded-xl shadow grid grid-cols-1 md:grid-cols-4 gap-3 ${
+          darkMode ? "bg-slate-900" : "bg-white"
+        }`}
       >
-        <input className={inputClass} placeholder="Patient Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input className={inputClass} placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+        <input
+          className={inputClass}
+          placeholder="Patient Name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
 
-        <select className={inputClass} value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+        <input
+          className={inputClass}
+          placeholder="Age"
+          value={form.age}
+          onChange={(e) => setForm({ ...form, age: e.target.value })}
+        />
+
+        <select
+          className={inputClass}
+          value={form.gender}
+          onChange={(e) => setForm({ ...form, gender: e.target.value })}
+        >
           <option>Male</option>
           <option>Female</option>
           <option>Other</option>
         </select>
 
-        <select className={inputClass} value={form.bloodGroup} onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })}>
+        <select
+          className={inputClass}
+          value={form.bloodGroup}
+          onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })}
+        >
           <option>O+</option>
           <option>O-</option>
           <option>A+</option>
@@ -211,16 +226,37 @@ useEffect(() => {
           <option>AB-</option>
         </select>
 
-        <input className={inputClass} placeholder="Phone Number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        <input className={inputClass} placeholder="Disease / Condition" value={form.disease} onChange={(e) => setForm({ ...form, disease: e.target.value })} />
-        <input className={inputClass} placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        <input
+          className={inputClass}
+          placeholder="Phone Number"
+          value={form.phone}
+          onChange={(e) => setForm({ ...form, phone: e.target.value })}
+        />
+
+        <input
+          className={inputClass}
+          placeholder="Disease / Condition"
+          value={form.disease}
+          onChange={(e) => setForm({ ...form, disease: e.target.value })}
+        />
+
+        <input
+          className={inputClass}
+          placeholder="Address"
+          value={form.address}
+          onChange={(e) => setForm({ ...form, address: e.target.value })}
+        />
 
         <button className="bg-cyan-600 text-white rounded-lg font-semibold hover:bg-cyan-700">
           {editingId ? "Update Patient" : "Register Patient"}
         </button>
 
         {editingId && (
-          <button type="button" onClick={resetForm} className="bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-600">
+          <button
+            type="button"
+            onClick={resetForm}
+            className="bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-600"
+          >
             Cancel Edit
           </button>
         )}
@@ -233,7 +269,11 @@ useEffect(() => {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      <div className={`mt-6 rounded-xl shadow overflow-x-auto ${darkMode ? "bg-slate-900" : "bg-white"}`}>
+      <div
+        className={`mt-6 rounded-xl shadow overflow-x-auto ${
+          darkMode ? "bg-slate-900" : "bg-white"
+        }`}
+      >
         <table className="w-full text-sm min-w-[1000px]">
           <thead className="bg-cyan-600 text-white">
             <tr>
@@ -252,7 +292,12 @@ useEffect(() => {
 
           <tbody>
             {filteredPatients.map((patient) => (
-              <tr key={patient.id} className={`border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
+              <tr
+                key={patient.id}
+                className={`border-b ${
+                  darkMode ? "border-slate-700" : "border-slate-200"
+                }`}
+              >
                 <td className="p-3 font-bold text-cyan-500">{patient.id}</td>
                 <td className="p-3 font-medium">{patient.name}</td>
                 <td className="p-3">{patient.age}</td>
@@ -263,13 +308,24 @@ useEffect(() => {
                 <td className="p-3">{patient.address}</td>
                 <td className="p-3">{patient.registeredDate}</td>
                 <td className="p-3 flex gap-2">
-                  <button onClick={() => handleEdit(patient)} className="bg-yellow-500 text-white px-3 py-1 rounded-lg">
+                  <button
+                    onClick={() => handleEdit(patient)}
+                    className="bg-yellow-500 text-white px-3 py-1 rounded-lg"
+                  >
                     Edit
                   </button>
-                  <button onClick={() => alert(JSON.stringify(patient, null, 2))} className="bg-cyan-600 text-white px-3 py-1 rounded-lg">
+
+                  <button
+                    onClick={() => alert(JSON.stringify(patient, null, 2))}
+                    className="bg-cyan-600 text-white px-3 py-1 rounded-lg"
+                  >
                     View
                   </button>
-                  <button onClick={() => handleDelete(patient.id)} className="bg-red-600 text-white px-3 py-1 rounded-lg">
+
+                  <button
+                    onClick={() => handleDelete(patient.id)}
+                    className="bg-red-600 text-white px-3 py-1 rounded-lg"
+                  >
                     Delete
                   </button>
                 </td>
@@ -287,18 +343,64 @@ useEffect(() => {
         </table>
       </div>
 
-      <div className={`mt-6 p-5 rounded-xl shadow ${darkMode ? "bg-slate-900" : "bg-white"}`}>
+      <div
+        className={`mt-6 p-5 rounded-xl shadow ${
+          darkMode ? "bg-slate-900" : "bg-white"
+        }`}
+      >
         <h2 className="text-xl font-bold mb-4">Medical Records / EMR</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          <input className={inputClass} placeholder="Patient ID" value={recordForm.patientId} onChange={(e) => setRecordForm({ ...recordForm, patientId: e.target.value })} />
-          <input className={inputClass} placeholder="Diagnosis" value={recordForm.diagnosis} onChange={(e) => setRecordForm({ ...recordForm, diagnosis: e.target.value })} />
-          <input className={inputClass} placeholder="Prescription" value={recordForm.prescription} onChange={(e) => setRecordForm({ ...recordForm, prescription: e.target.value })} />
-          <input className={inputClass} placeholder="Doctor Notes" value={recordForm.doctorNotes} onChange={(e) => setRecordForm({ ...recordForm, doctorNotes: e.target.value })} />
-          <input type="date" className={inputClass} value={recordForm.followUpDate} onChange={(e) => setRecordForm({ ...recordForm, followUpDate: e.target.value })} />
+          <input
+            className={inputClass}
+            placeholder="Patient ID"
+            value={recordForm.patientId}
+            onChange={(e) =>
+              setRecordForm({ ...recordForm, patientId: e.target.value })
+            }
+          />
+
+          <input
+            className={inputClass}
+            placeholder="Diagnosis"
+            value={recordForm.diagnosis}
+            onChange={(e) =>
+              setRecordForm({ ...recordForm, diagnosis: e.target.value })
+            }
+          />
+
+          <input
+            className={inputClass}
+            placeholder="Prescription"
+            value={recordForm.prescription}
+            onChange={(e) =>
+              setRecordForm({ ...recordForm, prescription: e.target.value })
+            }
+          />
+
+          <input
+            className={inputClass}
+            placeholder="Doctor Notes"
+            value={recordForm.doctorNotes}
+            onChange={(e) =>
+              setRecordForm({ ...recordForm, doctorNotes: e.target.value })
+            }
+          />
+
+          <input
+            type="date"
+            className={inputClass}
+            value={recordForm.followUpDate}
+            onChange={(e) =>
+              setRecordForm({ ...recordForm, followUpDate: e.target.value })
+            }
+          />
         </div>
 
-        <button onClick={addMedicalRecord} className="mt-4 bg-cyan-600 text-white px-5 py-2 rounded-lg font-semibold">
+        <button
+          onClick={addMedicalRecord}
+          className="mt-4 bg-cyan-600 text-white px-5 py-2 rounded-lg font-semibold"
+        >
           Add Medical Record
         </button>
 
@@ -318,18 +420,35 @@ useEffect(() => {
 
             <tbody>
               {medicalRecords.map((record) => (
-                <tr key={record.id} className={`border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
+                <tr
+                  key={record.id}
+                  className={`border-b ${
+                    darkMode ? "border-slate-700" : "border-slate-200"
+                  }`}
+                >
                   <td className="p-3">{record.patientId}</td>
                   <td className="p-3">{record.diagnosis}</td>
                   <td className="p-3">{record.prescription}</td>
                   <td className="p-3">{record.doctorNotes}</td>
                   <td className="p-3">{record.visitDate}</td>
                   <td className="p-3">{record.followUpDate}</td>
+
                   <td className="p-3 flex gap-2">
-                    <button onClick={() => alert(JSON.stringify(record, null, 2))} className="bg-cyan-600 text-white px-3 py-1 rounded-lg">
+                    <button
+                      onClick={() => alert(JSON.stringify(record, null, 2))}
+                      className="bg-cyan-600 text-white px-3 py-1 rounded-lg"
+                    >
                       View
                     </button>
-                    <button onClick={() => setMedicalRecords(medicalRecords.filter((r) => r.id !== record.id))} className="bg-red-600 text-white px-3 py-1 rounded-lg">
+
+                    <button
+                      onClick={() =>
+                        setMedicalRecords(
+                          medicalRecords.filter((r) => r.id !== record.id)
+                        )
+                      }
+                      className="bg-red-600 text-white px-3 py-1 rounded-lg"
+                    >
                       Delete
                     </button>
                   </td>
