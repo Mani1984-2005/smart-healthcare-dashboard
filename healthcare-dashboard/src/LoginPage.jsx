@@ -1,6 +1,6 @@
 // src/pages/LoginPage.jsx
 import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../firebase";
+import { auth, googleProvider } from "./firebase";
 
 export default function LoginPage({ darkMode, role, setRole, onLogin, addToast }) {
   const cardClass = darkMode

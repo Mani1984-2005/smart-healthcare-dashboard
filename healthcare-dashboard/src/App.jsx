@@ -1,22 +1,22 @@
 // src/App.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
+
 import { auth } from "./firebase";
 import { getLS, setLS } from "./utils/localStorage";
-import { useToast } from "./hooks/useToast";
+import { useToast } from "./usetoast";
 
-import Navbar from "./components/Navbar";
+import Navbar from "./Navbar";
 import Toast from "./components/Toast";
 
-import LoginPage from "./pages/LoginPage";
-import HomePage from "./pages/HomePage";
-import DashboardPage from "./pages/DashboardPage";
-import DoctorsPage from "./pages/DoctorsPage";
-import StaffPage from "./pages/StaffPage";
-import MedicinesPage from "./pages/MedicinesPage";
-import ComplaintsPage from "./pages/ComplaintsPage";
-import ContactPage from "./pages/ContactPage";
-
+import LoginPage from "./LoginPage";
+import HomePage from "./HomePage";
+import DashboardPage from "./DashboardPage";
+import DoctorsPage from "./DoctorsPage";
+import StaffPage from "./StaffPage";
+import MedicinesPage from "./MedicinesPage";
+import ComplaintsPage from "./ComplaintsPage";
+import ContactPage from "./ContactPage";
 export default function App() {
   const [user, setUser] = useState(() => getLS("healthcare_user", null));
   const [role, setRole] = useState("Patient");

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import DoctorCard from "../components/DoctorCard";
-import BookingForm from "../components/BookingForm";
+import DoctorCard from "./components/DoctorCard";
+import BookingForm from "./components/BookingForm";
 
 const DOCTORS = [
   { id: 1, name: "Dr. Arjun Raza", spec: "Cardiologist", exp: "18 Years", status: "Available" },

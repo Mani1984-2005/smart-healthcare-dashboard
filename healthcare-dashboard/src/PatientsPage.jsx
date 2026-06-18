@@ -1,4 +1,4 @@
-import { PATIENTS } from "../data/patients";
+import { PATIENTS } from "./data/patients";
 
 export default function PatientsPage() {
   return (

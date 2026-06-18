@@ -1,7 +1,7 @@
 
 // src/pages/ComplaintsPage.jsx
 import { useState, useEffect } from "react";
-import { getLS, setLS } from "../utils/localStorage";
+import { getLS, setLS } from "./utils/localStorage";
 
 export default function ComplaintsPage({ darkMode, addToast }) {
   const [complaints, setComplaints] = useState(() => getLS("complaints", []));

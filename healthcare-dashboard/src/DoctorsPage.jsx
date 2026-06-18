@@ -1,6 +1,6 @@
 // src/pages/DoctorsPage.jsx
 import { useState } from "react";
-import { DOCTORS } from "../data/doctors";
+import { DOCTORS } from "./data/doctors";
 
 export default function DoctorsPage({ darkMode, setPage, setSelectedDoctorFromPage }) {
   const [search, setSearch] = useState("");

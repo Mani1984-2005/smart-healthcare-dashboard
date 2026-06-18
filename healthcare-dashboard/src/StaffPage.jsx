@@ -1,6 +1,6 @@
 // src/pages/StaffPage.jsx
 import { useState } from "react";
-import { STAFF } from "../data/staff";
+import { STAFF } from "./data/staff";
 
 export default function StaffPage({ darkMode }) {
   const [filter, setFilter] = useState("All");

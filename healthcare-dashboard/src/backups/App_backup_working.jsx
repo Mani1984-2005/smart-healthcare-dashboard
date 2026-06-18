@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { signInWithPopup, signOut } from "firebase/auth";
-import { auth, googleProvider } from "../firebase";
+import { auth, googleProvider } from "./firebase";
 
 const DOCTORS = [
   { id: 1, name: "Dr. Arjun Raza", spec: "Cardiologist", exp: "18 Years", status: "Available", rating: 4.9, reviews: 312, slots: ["09:00", "11:00", "14:00"] },
