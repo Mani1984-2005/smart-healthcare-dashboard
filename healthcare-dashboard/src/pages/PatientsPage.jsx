@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const initialPatients = [
   {
@@ -15,10 +15,16 @@ const initialPatients = [
 ];
 
 export default function PatientsPage({ darkMode }) {
-  const [patients, setPatients] = useState(initialPatients);
+  const [patients, setPatients] = useState(() => {
+    return JSON.parse(localStorage.getItem("patients")) || initialPatients;
+  });
+
+  const [medicalRecords, setMedicalRecords] = useState(() => {
+    return JSON.parse(localStorage.getItem("medicalRecords")) || [];
+  });
+
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [medicalRecords, setMedicalRecords] = useState([]);
 
   const [form, setForm] = useState({
     name: "",
@@ -29,45 +35,30 @@ export default function PatientsPage({ darkMode }) {
     disease: "",
     address: "",
   });
+
   const [recordForm, setRecordForm] = useState({
-  patientId: "",
-  diagnosis: "",
-  prescription: "",
-  doctorNotes: "",
-  followUpDate: "",
-});const addMedicalRecord = () => {
-  if (
-    !recordForm.patientId ||
-    !recordForm.diagnosis ||
-    !recordForm.prescription
-  ) {
-    alert("Please fill Patient ID, Diagnosis and Prescription");
-    return;
-  }
-
-  const newRecord = {
-    id: `EMR-${Date.now()}`,
-    ...recordForm,
-    visitDate: new Date().toISOString().split("T")[0],
-  };
-
-  setMedicalRecords([newRecord, ...medicalRecords]);
-
-  setRecordForm({
     patientId: "",
     diagnosis: "",
     prescription: "",
     doctorNotes: "",
     followUpDate: "",
   });
-};
+
+  useEffect(() => {
+    localStorage.setItem("patients", JSON.stringify(patients));
+  }, [patients]);
+
+  useEffect(() => {
+    localStorage.setItem("medicalRecords", JSON.stringify(medicalRecords));
+  }, [medicalRecords]);
 
   const inputClass = "border p-3 rounded-lg text-slate-900";
 
-  const filteredPatients = patients.filter((patient) =>
-    patient.name.toLowerCase().includes(search.toLowerCase()) ||
-    patient.id.toLowerCase().includes(search.toLowerCase()) ||
-    patient.phone.includes(search)
+  const filteredPatients = patients.filter(
+    (patient) =>
+      patient.name.toLowerCase().includes(search.toLowerCase()) ||
+      patient.id.toLowerCase().includes(search.toLowerCase()) ||
+      patient.phone.includes(search)
   );
 
   const resetForm = () => {
@@ -102,7 +93,7 @@ export default function PatientsPage({ darkMode }) {
     }
 
     const newPatient = {
-      id: `PAT-${1001 + patients.length}`,
+      id: `PAT-${Date.now()}`,
       ...form,
       registeredDate: new Date().toISOString().split("T")[0],
     };
@@ -130,19 +121,75 @@ export default function PatientsPage({ darkMode }) {
     setPatients(patients.filter((patient) => patient.id !== id));
   };
 
+  const addMedicalRecord = () => {
+    if (!recordForm.patientId || !recordForm.diagnosis || !recordForm.prescription) {
+      alert("Please fill Patient ID, Diagnosis and Prescription");
+      return;
+    }
+
+    const newRecord = {
+      id: `EMR-${Date.now()}`,
+      ...recordForm,
+      visitDate: new Date().toISOString().split("T")[0],
+    };
+
+    setMedicalRecords([newRecord, ...medicalRecords]);
+
+    setRecordForm({
+      patientId: "",
+      diagnosis: "",
+      prescription: "",
+      doctorNotes: "",
+      followUpDate: "",
+    });
+  };
+
   return (
     <div className={`p-6 min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
       <h1 className="text-2xl font-bold">Patients</h1>
-      <p className="text-slate-500 mt-2">Register, search, edit and manage patient records.</p>
+      <p className="text-slate-500 mt-2">
+        Register, search, edit and manage patient records.
+      </p>
 
-      <form onSubmit={handleSubmit} className={`mt-6 p-5 rounded-xl shadow grid grid-cols-1 md:grid-cols-4 gap-3 ${darkMode ? "bg-slate-900" : "bg-white"}`}>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+        <div className="bg-cyan-600 text-white p-4 rounded-xl">
+          <h3 className="text-sm">Total Patients</h3>
+          <p className="text-2xl font-bold">{patients.length}</p>
+        </div>
+
+        <div className="bg-green-600 text-white p-4 rounded-xl">
+          <h3 className="text-sm">Medical Records</h3>
+          <p className="text-2xl font-bold">{medicalRecords.length}</p>
+        </div>
+
+        <div className="bg-purple-600 text-white p-4 rounded-xl">
+          <h3 className="text-sm">Male Patients</h3>
+          <p className="text-2xl font-bold">
+            {patients.filter((p) => p.gender === "Male").length}
+          </p>
+        </div>
+
+        <div className="bg-pink-600 text-white p-4 rounded-xl">
+          <h3 className="text-sm">Female Patients</h3>
+          <p className="text-2xl font-bold">
+            {patients.filter((p) => p.gender === "Female").length}
+          </p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={handleSubmit}
+        className={`mt-6 p-5 rounded-xl shadow grid grid-cols-1 md:grid-cols-4 gap-3 ${darkMode ? "bg-slate-900" : "bg-white"}`}
+      >
         <input className={inputClass} placeholder="Patient Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input className={inputClass} placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+
         <select className={inputClass} value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
           <option>Male</option>
           <option>Female</option>
           <option>Other</option>
         </select>
+
         <select className={inputClass} value={form.bloodGroup} onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })}>
           <option>O+</option>
           <option>O-</option>
@@ -153,6 +200,7 @@ export default function PatientsPage({ darkMode }) {
           <option>AB+</option>
           <option>AB-</option>
         </select>
+
         <input className={inputClass} placeholder="Phone Number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         <input className={inputClass} placeholder="Disease / Condition" value={form.disease} onChange={(e) => setForm({ ...form, disease: e.target.value })} />
         <input className={inputClass} placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
@@ -208,32 +256,9 @@ export default function PatientsPage({ darkMode }) {
                   <button onClick={() => handleEdit(patient)} className="bg-yellow-500 text-white px-3 py-1 rounded-lg">
                     Edit
                   </button>
-                  <button
-  onClick={() =>
-  alert(
-    `Patient ID: ${patient.id}
-
-Name: ${patient.name}
-
-Age: ${patient.age}
-
-Gender: ${patient.gender}
-
-Blood Group: ${patient.bloodGroup}
-
-Phone: ${patient.phone}
-
-Disease: ${patient.disease}
-
-Address: ${patient.address}
-
-Registered: ${patient.registeredDate}`
-  )
-}
-  className="bg-cyan-600 text-white px-3 py-1 rounded-lg"
->
-  View
-</button>
+                  <button onClick={() => alert(JSON.stringify(patient, null, 2))} className="bg-cyan-600 text-white px-3 py-1 rounded-lg">
+                    View
+                  </button>
                   <button onClick={() => handleDelete(patient.id)} className="bg-red-600 text-white px-3 py-1 rounded-lg">
                     Delete
                   </button>
@@ -250,7 +275,9 @@ Registered: ${patient.registeredDate}`
             )}
           </tbody>
         </table>
-        <div className={`mt-6 p-5 rounded-xl shadow ${darkMode ? "bg-slate-900" : "bg-white"}`}>
+      </div>
+
+      <div className={`mt-6 p-5 rounded-xl shadow ${darkMode ? "bg-slate-900" : "bg-white"}`}>
         <h2 className="text-xl font-bold mb-4">Medical Records / EMR</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -264,78 +291,51 @@ Registered: ${patient.registeredDate}`
         <button onClick={addMedicalRecord} className="mt-4 bg-cyan-600 text-white px-5 py-2 rounded-lg font-semibold">
           Add Medical Record
         </button>
+
         <div className="mt-6 overflow-x-auto">
-  <table className="w-full text-sm">
-    <thead className="bg-cyan-600 text-white">
-      <tr>
-        <th className="p-3 text-left">Patient ID</th>
-        <th className="p-3 text-left">Diagnosis</th>
-        <th className="p-3 text-left">Prescription</th>
-        <th className="p-3 text-left">Doctor Notes</th>
-        <th className="p-3 text-left">Visit Date</th>
-        <th className="p-3 text-left">Follow Up</th>  
-        <th className="p-3 text-left">Actions</th>
-      </tr>
-    </thead>
+          <table className="w-full text-sm">
+            <thead className="bg-cyan-600 text-white">
+              <tr>
+                <th className="p-3 text-left">Patient ID</th>
+                <th className="p-3 text-left">Diagnosis</th>
+                <th className="p-3 text-left">Prescription</th>
+                <th className="p-3 text-left">Doctor Notes</th>
+                <th className="p-3 text-left">Visit Date</th>
+                <th className="p-3 text-left">Follow Up</th>
+                <th className="p-3 text-left">Actions</th>
+              </tr>
+            </thead>
 
-    <tbody>
-      {medicalRecords.map((record) => (
-        <tr key={record.id} className="border-b">
-          <td className="p-3">{record.patientId}</td>
-          <td className="p-3">{record.diagnosis}</td>
-          <td className="p-3">{record.prescription}</td>
-          <td className="p-3">{record.doctorNotes}</td>
-          <td className="p-3">{record.visitDate}</td>
-          <td className="p-3">{record.followUpDate}</td>
-          <td className="p-3">
-  <div className="flex gap-2">
-    <button
-      onClick={() =>
-        alert(
-          `Patient ID: ${record.patientId}
+            <tbody>
+              {medicalRecords.map((record) => (
+                <tr key={record.id} className={`border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
+                  <td className="p-3">{record.patientId}</td>
+                  <td className="p-3">{record.diagnosis}</td>
+                  <td className="p-3">{record.prescription}</td>
+                  <td className="p-3">{record.doctorNotes}</td>
+                  <td className="p-3">{record.visitDate}</td>
+                  <td className="p-3">{record.followUpDate}</td>
+                  <td className="p-3 flex gap-2">
+                    <button onClick={() => alert(JSON.stringify(record, null, 2))} className="bg-cyan-600 text-white px-3 py-1 rounded-lg">
+                      View
+                    </button>
+                    <button onClick={() => setMedicalRecords(medicalRecords.filter((r) => r.id !== record.id))} className="bg-red-600 text-white px-3 py-1 rounded-lg">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
 
-Diagnosis: ${record.diagnosis}
-
-Prescription: ${record.prescription}
-
-Doctor Notes: ${record.doctorNotes}
-
-Visit Date: ${record.visitDate}
-
-Follow Up: ${record.followUpDate}`
-        )
-      }
-      className="bg-cyan-600 text-white px-3 py-1 rounded-lg"
-    >
-      View
-    </button>
-
-    <button
-      onClick={() =>
-        setMedicalRecords(
-          medicalRecords.filter((r) => r.id !== record.id)
-        )
-      }
-      className="bg-red-600 text-white px-3 py-1 rounded-lg"
-    >
-      Delete
-    </button>
-  </div>
-</td>
-        </tr>
-      ))}
-
-      {medicalRecords.length === 0 && (
-        <tr>
-          <td colSpan="6" className="p-5 text-center text-slate-500">
-            No medical records available.
-          </td>
-        </tr>
-      )}
-    </tbody>
-  </table>
-</div>
-      </div>
+              {medicalRecords.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="p-5 text-center text-slate-500">
+                    No medical records available.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
