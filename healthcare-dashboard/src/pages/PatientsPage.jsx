@@ -22,6 +22,16 @@ export default function PatientsPage({ darkMode }) {
   const [medicalRecords, setMedicalRecords] = useState(() => {
     return JSON.parse(localStorage.getItem("medicalRecords")) || [];
   });
+  useEffect(() => {
+  localStorage.setItem("patients", JSON.stringify(patients));
+}, [patients]);
+
+useEffect(() => {
+  localStorage.setItem(
+    "medicalRecords",
+    JSON.stringify(medicalRecords)
+  );
+}, [medicalRecords]);
 
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);

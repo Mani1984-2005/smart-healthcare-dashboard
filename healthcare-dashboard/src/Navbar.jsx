@@ -1,37 +1,69 @@
-// src/components/Navbar.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-export default function Navbar({ page, setPage, darkMode, setDarkMode, user, onLogout, canManage }) {
+export default function Navbar({
+  page,
+  setPage,
+  darkMode,
+  setDarkMode,
+  user,
+  onLogout,
+  canManage,
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks = [
-    "Home", "Dashboard", "Doctors", "Medicines", "Staff", "Complaints", "Contact",
+    "Home",
+    "Dashboard",
+    "Patients",
+    "Doctors",
+    "Medicines",
+    "Staff",
+    "Complaints",
+    "Contact",
   ].filter((item) => {
-    if (["Medicines", "Staff", "Complaints"].includes(item) && !canManage) return false;
+    if (["Medicines", "Staff", "Complaints"].includes(item) && !canManage) {
+      return false;
+    }
     return true;
   });
 
-  return (
-    <nav className={`sticky top-0 z-40 shadow-lg border-b ${darkMode ? "bg-slate-950 border-slate-800" : "bg-white border-slate-200"}`}>
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+  const handleNavigate = (item) => {
+    setPage(item);
+    setMenuOpen(false);
+  };
 
-        {/* Logo */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage("Home")}>
+  return (
+    <nav
+      className={`sticky top-0 z-40 shadow-lg border-b ${
+        darkMode ? "bg-slate-950 border-slate-800" : "bg-white border-slate-200"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+        <div
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => handleNavigate("Home")}
+        >
           <div className="text-2xl">🏥</div>
+
           <div>
-            <div className={`font-bold text-lg leading-tight ${darkMode ? "text-white" : "text-slate-900"}`}>
+            <div
+              className={`font-bold text-lg leading-tight ${
+                darkMode ? "text-white" : "text-slate-900"
+              }`}
+            >
               MediCare Pro
             </div>
-            <div className="text-xs text-cyan-500 leading-tight">Smart Hospital Management</div>
+            <div className="text-xs text-cyan-500 leading-tight">
+              Smart Hospital Management
+            </div>
           </div>
         </div>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2">
           {navLinks.map((item) => (
             <button
               key={item}
-              onClick={() => setPage(item)}
+              onClick={() => handleNavigate(item)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                 page === item
                   ? "bg-cyan-600 text-white shadow"
@@ -44,7 +76,6 @@ export default function Navbar({ page, setPage, darkMode, setDarkMode, user, onL
             </button>
           ))}
 
-          {/* Dark mode toggle */}
           <button
             onClick={() => setDarkMode((prev) => !prev)}
             className={`ml-2 px-3 py-2 rounded-lg transition-all ${
@@ -56,12 +87,14 @@ export default function Navbar({ page, setPage, darkMode, setDarkMode, user, onL
             {darkMode ? "☀ Light" : "🌙 Dark"}
           </button>
 
-          {/* User info */}
-          <div className={`ml-2 px-3 py-2 rounded-lg text-sm ${darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}>
-            {user?.name} ({user?.role})
+          <div
+            className={`ml-2 px-3 py-2 rounded-lg text-sm ${
+              darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            {user?.name || "User"} ({user?.role || "Patient"})
           </div>
 
-          {/* Logout */}
           <button
             onClick={onLogout}
             className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-all"
@@ -70,14 +103,16 @@ export default function Navbar({ page, setPage, darkMode, setDarkMode, user, onL
           </button>
         </div>
 
-        {/* Mobile controls */}
-        <div className="md:hidden flex items-center gap-2">
+        <div className="lg:hidden flex items-center gap-2">
           <button
             onClick={() => setDarkMode((prev) => !prev)}
-            className={`p-2 rounded-lg ${darkMode ? "bg-slate-800 text-yellow-300" : "bg-slate-100 text-slate-700"}`}
+            className={`p-2 rounded-lg ${
+              darkMode ? "bg-slate-800 text-yellow-300" : "bg-slate-100 text-slate-700"
+            }`}
           >
             {darkMode ? "☀" : "🌙"}
           </button>
+
           <button
             onClick={() => setMenuOpen((prev) => !prev)}
             className={`p-2 rounded-lg ${darkMode ? "text-white" : "text-slate-900"}`}
@@ -87,29 +122,36 @@ export default function Navbar({ page, setPage, darkMode, setDarkMode, user, onL
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {menuOpen && (
-        <div className={`md:hidden px-4 pb-4 flex flex-col gap-2 ${darkMode ? "bg-slate-950" : "bg-white"}`}>
+        <div
+          className={`lg:hidden px-4 pb-4 flex flex-col gap-2 ${
+            darkMode ? "bg-slate-950" : "bg-white"
+          }`}
+        >
           {navLinks.map((item) => (
             <button
               key={item}
-              onClick={() => { setPage(item); setMenuOpen(false); }}
+              onClick={() => handleNavigate(item)}
               className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all ${
                 page === item
                   ? "bg-cyan-600 text-white"
-                  : darkMode ? "text-slate-300" : "text-slate-700"
+                  : darkMode
+                  ? "text-slate-300 hover:bg-slate-800"
+                  : "text-slate-700 hover:bg-slate-100"
               }`}
             >
               {item}
             </button>
           ))}
 
-          {/* User info */}
-          <div className={`px-3 py-2 rounded-lg text-sm ${darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}>
-            {user?.name} ({user?.role})
+          <div
+            className={`px-3 py-2 rounded-lg text-sm ${
+              darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            {user?.name || "User"} ({user?.role || "Patient"})
           </div>
 
-          {/* Logout */}
           <button
             onClick={onLogout}
             className="px-3 py-2 rounded-lg text-sm font-medium text-left bg-red-600 text-white"

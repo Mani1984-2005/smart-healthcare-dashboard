@@ -5,7 +5,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 import { getLS, setLS } from "./utils/localStorage";
 import { useToast } from "./usetoast";
-
+import PatientsPage from "./pages/PatientsPage";
 import Navbar from "./Navbar";
 import Toast from "./components/Toast";
 
@@ -79,6 +79,9 @@ export default function App() {
       {page === "Home" && (
         <HomePage darkMode={darkMode} setPage={navigateTo} />
       )}
+      {page === "Patients" && (
+  <PatientsPage darkMode={darkMode} />
+)}
       {page === "Dashboard" && (
         <DashboardPage
           darkMode={darkMode}
