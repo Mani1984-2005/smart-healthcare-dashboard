@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-
+const [selectedPatient, setSelectedPatient] = useState(null);
 const initialPatients = [
   {
     id: "PAT-1001",
@@ -316,7 +316,7 @@ export default function PatientsPage({ darkMode }) {
                   </button>
 
                   <button
-                    onClick={() => alert(JSON.stringify(patient, null, 2))}
+                   onClick={() => setSelectedPatient(patient)}
                     className="bg-cyan-600 text-white px-3 py-1 rounded-lg"
                   >
                     View
@@ -466,6 +466,31 @@ export default function PatientsPage({ darkMode }) {
           </table>
         </div>
       </div>
+      {selectedPatient && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white text-black p-6 rounded-xl w-[500px]">
+      <h2 className="text-2xl font-bold mb-4">
+        Patient Profile
+      </h2>
+
+      <p><strong>ID:</strong> {selectedPatient.id}</p>
+      <p><strong>Name:</strong> {selectedPatient.name}</p>
+      <p><strong>Age:</strong> {selectedPatient.age}</p>
+      <p><strong>Gender:</strong> {selectedPatient.gender}</p>
+      <p><strong>Blood Group:</strong> {selectedPatient.bloodGroup}</p>
+      <p><strong>Phone:</strong> {selectedPatient.phone}</p>
+      <p><strong>Disease:</strong> {selectedPatient.disease}</p>
+      <p><strong>Address:</strong> {selectedPatient.address}</p>
+
+      <button
+        onClick={() => setSelectedPatient(null)}
+        className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }
