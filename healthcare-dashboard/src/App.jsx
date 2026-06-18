@@ -8,7 +8,7 @@ import StaffPage from "./pages/StaffPage";
 import MedicinesPage from "./pages/MedicinesPage";
 import ComplaintsPage from "./pages/ComplaintsPage";
 import ContactPage from "./pages/ContactPage";
-import { useToast } from "./hooks/useToast";
+import { useToast } from "./hooks/usetoast";
 import Toast from "./components/Toast";
 
 export default function App() {
