@@ -14,26 +14,28 @@ export default function Navbar({
 
   const roleLinks = {
     Patient: ["Home", "Dashboard", "Patients", "Doctors", "Contact"],
-    Admin: [
-      "Home",
-      "Dashboard",
-      "Patients",
-      "Doctors",
-      "Medicines",
-      "Staff",
-      "Complaints",
-      "Contact",
-    ],
-    Hospital: [
-      "Home",
-      "Dashboard",
-      "Patients",
-      "Doctors",
-      "Medicines",
-      "Staff",
-      "Complaints",
-      "Contact",
-    ],
+   Admin: [
+  "Home",
+  "Dashboard",
+  "Patients",
+  "Doctors",
+  "Medicines",
+  "Pharmacy",
+  "Staff",
+  "Complaints",
+  "Contact","Billing","Laboratory",
+],
+   Hospital: [
+  "Home",
+  "Dashboard",
+  "Patients",
+  "Doctors",
+  "Medicines",
+  "Pharmacy",
+  "Staff",
+  "Complaints",
+  "Contact","Billing","Laboratory",
+],
     Receptionist: ["Home", "Dashboard", "Patients", "Doctors", "Contact"],
   };
 
