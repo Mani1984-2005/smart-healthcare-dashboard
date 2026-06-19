@@ -3,7 +3,7 @@
 // Features: Create invoices, line items, payment status, totals, search/filter, LocalStorage
 
 import { useState, useEffect } from "react";
-
+import { jsPDF } from "jspdf";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "billing_invoices";
