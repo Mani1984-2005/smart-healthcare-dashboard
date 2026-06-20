@@ -193,7 +193,7 @@ function printInvoice(invoice) {
   doc.text(`Balance Due: Rs. ${balance.toFixed(2)}`, 120, y);
 
   y += 15;
-  doc.setDrawColor(150);s
+  doc.setDrawColor(150);
   doc.rect(20, y, 35, 25);
   doc.setFontSize(8);
   doc.text("QR Placeholder", 24, y + 14);
@@ -224,15 +224,25 @@ export default function BillingPage() {
   const [toast, setToast] = useState(null);
 
   // Load
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) { try { setInvoices(JSON.parse(saved)); } catch { setInvoices([]); } }
-  }, []);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Save
-  useEffect(() => {
+useEffect(() => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      setInvoices(JSON.parse(saved));
+    } catch {
+      setInvoices([]);
+    }
+  }
+  setIsLoaded(true);
+}, []);
+
+useEffect(() => {
+  if (isLoaded) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
-  }, [invoices]);
+  }
+}, [invoices, isLoaded]);
 
   function showToast(msg, type = "success") { setToast({ message: msg, type }); }
 

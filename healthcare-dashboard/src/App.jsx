@@ -14,6 +14,7 @@ import PharmacyPage from "./pages/PharmacyPage";
 import { useToast } from "./hooks/usetoast";
 import Toast from "./components/Toast";
 
+
 export default function App() {
   const { toasts, addToast, removeToast } = useToast();
   const [page, setPage] = useState("Home");
