@@ -10,14 +10,15 @@ export default function Navbar({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const role = user?.role || "Doctor";
+  const role = user?.role || "Admin";
 
   const roleLinks = {
-  Patient: [
-    "Home",
-    "Doctors",
-    "Contact"
-  ],
+ Patient: [
+  "Home",
+  "Dashboard",
+  "Doctors",
+  "Contact"
+],
 
   Receptionist: [
     "Home",
@@ -130,15 +131,15 @@ export default function Navbar({
             {darkMode ? "☀ Light" : "🌙 Dark"}
           </button>
 
-          <div
-            className={`ml-2 px-3 py-2 rounded-lg text-sm ${
-              darkMode
-                ? "bg-slate-800 text-slate-200"
-                : "bg-slate-100 text-slate-700"
-            }`}
-          >
-            {user?.name || "Mani"} ({role})
-          </div>
+       <div
+  className={`ml-2 px-3 py-2 rounded-lg text-sm ${
+    darkMode
+      ? "bg-slate-800 text-slate-200"
+      : "bg-slate-100 text-slate-700"
+  }`}
+>
+  {user?.name || "Mani"} ({role})
+</div>
 
           <button
             onClick={onLogout}

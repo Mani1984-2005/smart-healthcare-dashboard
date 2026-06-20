@@ -21,45 +21,58 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem("theme") !== "light"
   );
+   const [userRole, setUserRole] = useState("Admin");
   const [appointments, setAppointments] = useState([]);
   const [selectedDoctorFromPage, setSelectedDoctorFromPage] = useState(null);
-   const [isLoggedIn, setIsLoggedIn] = useState(true);
+   const [isLoggedIn, setIsLoggedIn] = useState(false);
   useEffect(() => {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
-  if (!isLoggedIn) {
-  return (
-    <HomePage
-      darkMode={darkMode}
-      setPage={() => {
-        setIsLoggedIn(true);
-        setPage("Dashboard");
-      }}
-    />
-  );
-}
+if (!isLoggedIn) {
+  const roles = ["Patient", "Doctor", "Receptionist", "Admin", "Hospital"];
 
   return (
+    <div className={darkMode ? "bg-slate-950 text-white min-h-screen" : "bg-slate-100 text-slate-900 min-h-screen"}>
+      <div className="p-10 text-center">
+        <h1 className="text-3xl font-bold">🏥 MediCare Pro</h1>
+        <p className="mt-3 text-slate-500">Choose your login role</p>
+
+        <div className="mt-8 flex flex-col gap-3 max-w-sm mx-auto">
+          {roles.map((role) => (
+            <button
+              key={role}
+              onClick={() => {
+                setUserRole(role);
+                setIsLoggedIn(true);
+                setPage(role === "Patient" ? "Home" : "Dashboard");
+              }}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg font-semibold"
+            >
+              Login as {role}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}return (
     <div>
       <div style={{ padding: "10px", background: "yellow" }}>
         Current Page: {page}
       </div>
-
-      <Navbar
+        <Navbar
   page={page}
   setPage={setPage}
   darkMode={darkMode}
   setDarkMode={setDarkMode}
-  user={{ name: "Mani", role: "Admin" }}
- onLogout={() => {
-  localStorage.removeItem("user");
-  localStorage.removeItem("role");
-  setIsLoggedIn(false);
-  setPage("Home");
-}}
-  canManage={true}
+  user={{ name: "Mani", role: userRole }}
+  onLogout={() => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    setIsLoggedIn(false);
+    setPage("Home");
+  }}
 />
-
 <Toast
   toasts={toasts}
   removeToast={removeToast}
@@ -68,8 +81,9 @@ export default function App() {
       {page === "Home" && <HomePage darkMode={darkMode} setPage={setPage} />}
 
       {page === "Dashboard" && (
-        <DashboardPage
-          darkMode={darkMode}
+       <DashboardPage
+  darkMode={darkMode}
+  userRole={userRole}
           appointments={appointments}
           setAppointments={setAppointments}
           addToast={addToast}
@@ -96,7 +110,6 @@ export default function App() {
 
       {page === "Laboratory" && (
   <div>
-    <h1>APP REACHED LAB PAGE</h1>
     <LaboratoryPage />
   </div>
 )}

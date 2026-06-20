@@ -11,6 +11,7 @@ const emptyForm = { patient: "", age: "", phone: "", symptoms: "", date: "", tim
 
 export default function DashboardPage({
   darkMode,
+  userRole,
   appointments,
   setAppointments,
   addToast,
@@ -160,23 +161,30 @@ const completionRate =
         </section>
 
         {/* Stat Cards */}
-        <StatCards darkMode={darkMode} />
+        {userRole !== "Patient" && <StatCards darkMode={darkMode} />}
 
         {/* Announcements */}
-        <div className="mb-8">
-          <AnnouncementsPanel darkMode={darkMode} />
-        </div>
+        {userRole !== "Patient" && (
+  <div className="mb-8">
+    <AnnouncementsPanel darkMode={darkMode} />
+  </div>
+)}
 
         {/* Emergency & Bed Availability */}
         <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
           <h2 className="text-2xl font-bold mb-5">Emergency & Bed Availability</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-              { label: "General Beds", val: "42 / 120", sub: "Available now", cls: "bg-emerald-950 text-emerald-300" },
-              { label: "ICU Beds", val: "8 / 20", sub: "Critical care ready", cls: "bg-cyan-950 text-cyan-300" },
-              { label: "Emergency", val: "24/7", sub: "Call: 108", cls: "bg-red-950 text-red-300" },
-              { label: "Oxygen Support", val: "Available", sub: "Ambulance ready", cls: "bg-purple-950 text-purple-300" },
-            ].map((item) => (
+            {(userRole === "Patient"
+  ? [
+      { label: "Oxygen Support", val: "Available", sub: "Ambulance ready", cls: "bg-purple-950 text-purple-300" },
+    ]
+  : [
+      { label: "General Beds", val: "42 / 120", sub: "Available now", cls: "bg-emerald-950 text-emerald-300" },
+      { label: "ICU Beds", val: "8 / 20", sub: "Critical care ready", cls: "bg-cyan-950 text-cyan-300" },
+      { label: "Emergency", val: "24/7", sub: "Call: 108", cls: "bg-red-950 text-red-300" },
+      { label: "Oxygen Support", val: "Available", sub: "Ambulance ready", cls: "bg-purple-950 text-purple-300" },
+    ]
+).map((item) => (
               <div key={item.label} className={`${item.cls} p-4 rounded-2xl shadow transition-all hover:-translate-y-0.5 hover:shadow-lg`}>
                 <p className="text-sm opacity-80">{item.label}</p>
                 <h3 className="text-3xl font-bold mt-1">{item.val}</h3>
@@ -187,34 +195,18 @@ const completionRate =
         </section>
 
         {/* Appointment Summary */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: "Total Appointments", val: appointments.length, color: "text-white" },
-            { label: "Pending", val: pendingCount, color: "text-yellow-400" },
-            { label: "Confirmed", val: confirmedCount, color: "text-cyan-400" },
-            { label: "Completed", val: completedCount, color: "text-emerald-400" },
-          ].map((item) => (
-            <div key={item.label} className={`${cardClass} border rounded-2xl p-5 shadow hover:-translate-y-0.5 transition-all hover:shadow-lg`}>
-              <p className={subTextClass}>{item.label}</p>
-              <h2 className={`text-3xl font-bold mt-1 ${item.color}`}>{item.val}</h2>
-            </div>
-          ))}<div className={`${cardClass} border rounded-2xl p-5 shadow`}>
-  <p className={subTextClass}>Today's Appointments</p>
-  <h2 className="text-3xl font-bold text-purple-400">
-    {todayAppointments}
-  </h2>
-</div>
-
-<div className={`${cardClass} border rounded-2xl p-5 shadow`}>
-  <p className={subTextClass}>Completion Rate</p>
-  <h2 className="text-3xl font-bold text-green-400">
-    {completionRate}%
-  </h2>
-</div>
-        </section>
+       {userRole !== "Patient" && (
+  <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    ...
+  </section>
+)}
 
         {/* Doctor Selection */}
-        <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
+        {userRole !== "Patient" && (
+  <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
+    ...
+  </section>
+)}
           <h2 className="text-2xl font-bold mb-5">Select Doctor</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <input
@@ -265,10 +257,14 @@ const completionRate =
               </button>
             ))}
           </div>
-        </section>
+        
 
         {/* Booking Form */}
-        <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
+        {userRole !== "Patient" && (
+  <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
+    ...
+  </section>
+)}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
             <h2 className="text-2xl font-bold">Book Appointment</h2>
             {editingId && (
@@ -337,7 +333,7 @@ const completionRate =
               Cancel
             </button>
           </div>
-        </section>
+       
 
         {/* Appointment Queue */}
         <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
