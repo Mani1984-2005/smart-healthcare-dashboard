@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { jsPDF } from "jspdf";
 
 export default function ReportsPage({ darkMode, appointments = [] }) {
   const [patients, setPatients] = useState([]);
@@ -36,12 +37,39 @@ const reports = [
   { title: "Lab Tests", value: labTests.length, icon: "🔬" },
   { title: "Medicines", value: medicines.length, icon: "💊" },
 ];
+    function downloadReportPDF() {
+  const doc = new jsPDF();
 
+  doc.setFontSize(20);
+  doc.text("MediCare Pro - Hospital Report", 20, 20);
+
+  doc.text(`Patients: ${patients.length}`, 20, 50);
+  doc.text(`Doctors: ${doctors.length}`, 20, 60);
+  doc.text(`Staff: ${staff.length}`, 20, 70);
+  doc.text(`Invoices: ${billing.length}`, 20, 80);
+  doc.text(`Lab Tests: ${labTests.length}`, 20, 90);
+  doc.text(`Medicines: ${medicines.length}`, 20, 100);
+  doc.text(`Appointments: ${appointments.length}`, 20, 110);
+
+  doc.save("hospital_report.pdf");
+}
   return (
     <div className={`p-6 min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
-      <h1 className="text-2xl font-bold">Reports</h1>
-      <p className="text-slate-500 mt-2">Hospital performance and live module analytics.</p>
+      <div className="flex justify-between items-center">
+  <div>
+    <h1 className="text-2xl font-bold">Reports</h1>
+    <p className="text-slate-500 mt-2">
+      Hospital performance and appointment analytics.
+    </p>
+  </div>
 
+  <button
+    onClick={downloadReportPDF}
+    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+  >
+    📄 Export Report PDF
+  </button>
+</div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
         {reports.map((item) => (
           <div key={item.title} className={`p-5 rounded-xl shadow ${darkMode ? "bg-slate-900" : "bg-white"}`}>
