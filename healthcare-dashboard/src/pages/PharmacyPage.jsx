@@ -3,6 +3,7 @@
 // Handles: add, edit, delete, search, filter, low-stock & expiry warnings
 
 import { useState, useEffect } from "react";
+import BarcodeScanner from "../components/BarcodeScanner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -86,29 +87,16 @@ function Toast({ message, type, onClose }) {
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function PharmacyPage() {
-  // All medicines stored in state (synced with localStorage)
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedCode, setScannedCode] = useState("");
   const [medicines, setMedicines] = useState([]);
-
-  // Form state
   const [form, setForm] = useState(emptyForm);
-
-  // Are we editing an existing row? Holds the medicineId being edited.
   const [editingId, setEditingId] = useState(null);
-
-  // Show / hide the add-edit form panel
   const [showForm, setShowForm] = useState(false);
-
-  // Search text input
   const [search, setSearch] = useState("");
-
-  // Filter by category
   const [filterCategory, setFilterCategory] = useState("All");
-
-  // Filter by status
   const [filterStatus, setFilterStatus] = useState("All");
-
-  // Toast notification
-  const [toast, setToast] = useState(null); // { message, type }
+  const [toast, setToast] = useState(null);
 
   // ── Load from localStorage on first render ──────────────────────────────────
 
@@ -125,11 +113,12 @@ export default function PharmacyPage() {
 
   // ── Save to localStorage whenever medicines change ──────────────────────────
 
- useEffect(() => {
-  if (medicines.length > 0) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(medicines));
-  }
-}, [medicines]);
+  useEffect(() => {
+    if (medicines.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(medicines));
+    }
+  }, [medicines]);
+
   // ── Toast helper ────────────────────────────────────────────────────────────
 
   function showToast(message, type = "success") {
@@ -248,9 +237,9 @@ export default function PharmacyPage() {
     (m) => Number(m.quantity) === 0
   ).length;
   const inventoryValue = medicines.reduce(
-  (sum, m) => sum + Number(m.quantity) * Number(m.price),
-  0
-);
+    (sum, m) => sum + Number(m.quantity) * Number(m.price),
+    0
+  );
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -266,16 +255,25 @@ export default function PharmacyPage() {
             Manage medicines, stock levels, and expiry dates.
           </p>
         </div>
-        <button
-          onClick={openAddForm}
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors shadow"
-        >
-          + Add Medicine
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowScanner(true)}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg"
+          >
+            📷 Scan Barcode
+          </button>
+
+          <button
+            onClick={openAddForm}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors shadow"
+          >
+            + Add Medicine
+          </button>
+        </div>
       </div>
 
       {/* ── Summary Cards ─────────────────────────────────────────────────── */}
-     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <SummaryCard
           label="Total Medicines"
           value={totalMedicines}
@@ -301,11 +299,11 @@ export default function PharmacyPage() {
           icon="❌"
         />
         <SummaryCard
-  label="Inventory Value"
-  value={`₹${inventoryValue.toFixed(2)}`}
-  color="blue"
-  icon="💰"
-/>
+          label="Inventory Value"
+          value={`₹${inventoryValue.toFixed(2)}`}
+          color="blue"
+          icon="💰"
+        />
       </div>
 
       {/* ── Alerts ────────────────────────────────────────────────────────── */}
@@ -381,10 +379,7 @@ export default function PharmacyPage() {
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 ? (
               <tr>
-                <td
-                  colSpan={9}
-                  className="px-4 py-10 text-center text-gray-400"
-                >
+                <td colSpan={9} className="px-4 py-10 text-center text-gray-400">
                   No medicines found. Add one to get started.
                 </td>
               </tr>
@@ -426,6 +421,24 @@ export default function PharmacyPage() {
           message={toast.message}
           type={toast.type}
           onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* ── Barcode Scanner Modal ─────────────────────────────────────────── */}
+      {showScanner && (
+        <BarcodeScanner
+          onScan={(code) => {
+            setScannedCode(code);
+            setShowScanner(false);
+
+            setForm((prev) => ({
+              ...prev,
+              medicineId: code,
+            }));
+
+            showToast(`Barcode scanned: ${code}`, "success");
+          }}
+          onClose={() => setShowScanner(false)}
         />
       )}
     </div>
@@ -555,12 +568,10 @@ function TableRow({ medicine, onEdit, onDelete }) {
 // Add / Edit form inside a modal overlay
 function FormModal({ form, editingId, onChange, onSubmit, onClose }) {
   return (
-    // Dark overlay
     <div
       className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4"
-      onClick={onClose} // clicking outside closes
+      onClick={onClose}
     >
-      {/* Modal box — stop click from closing when inside */}
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -586,7 +597,7 @@ function FormModal({ form, editingId, onChange, onSubmit, onClose }) {
             value={form.medicineId}
             onChange={onChange}
             placeholder="e.g. MED-001"
-            disabled={!!editingId} // ID is read-only when editing
+            disabled={!!editingId}
           />
           <Field
             label="Medicine Name *"
@@ -598,9 +609,7 @@ function FormModal({ form, editingId, onChange, onSubmit, onClose }) {
 
           {/* Category dropdown */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">
-              Category *
-            </label>
+            <label className="text-sm font-medium text-gray-700">Category *</label>
             <select
               name="category"
               value={form.category}
