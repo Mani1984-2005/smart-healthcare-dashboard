@@ -1,4 +1,5 @@
-import { PATIENTS } from "./data/patients";
+import { PATIENTS } from "../data/patients";
+import { generatePatientReceipt } from "../utils/generateReceiptPdf";
 
 export default function PatientsPage() {
   return (
@@ -14,17 +15,39 @@ export default function PatientsPage() {
               <th className="p-3 text-left">Age</th>
               <th className="p-3 text-left">Phone</th>
               <th className="p-3 text-left">Disease</th>
+              <th className="p-3 text-left">Actions</th>
             </tr>
           </thead>
+
           <tbody>
-            {PATIENTS.map((patient) => (
-              <tr key={patient.id} className="border-b">
-                <td className="p-3">{patient.name}</td>
-                <td className="p-3">{patient.age}</td>
-                <td className="p-3">{patient.phone}</td>
-                <td className="p-3">{patient.disease}</td>
+            {PATIENTS && PATIENTS.length > 0 ? (
+              PATIENTS.map((patient) => (
+                <tr key={patient.id} className="border-b hover:bg-slate-50">
+                  <td className="p-3">{patient.name}</td>
+                  <td className="p-3">{patient.age}</td>
+                  <td className="p-3">{patient.phone}</td>
+                  <td className="p-3">{patient.disease}</td>
+
+                  <td className="p-3">
+                    <button
+                      onClick={() => generatePatientReceipt(patient)}
+                      className="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Receipt
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan="5"
+                  className="p-6 text-center text-slate-500"
+                >
+                  No patients found.
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
