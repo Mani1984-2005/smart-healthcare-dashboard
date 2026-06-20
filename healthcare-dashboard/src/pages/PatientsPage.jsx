@@ -22,6 +22,8 @@ export default function PatientsPage({ darkMode }) {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
 
+  const [selectedPatient, setSelectedPatient] = useState(null);
+
   const [form, setForm] = useState({
     name: "",
     age: "",
@@ -30,6 +32,10 @@ export default function PatientsPage({ darkMode }) {
     phone: "",
     disease: "",
     address: "",
+    emergencyContact: "",
+    allergies: "",
+    medicalHistory: "",
+    visitNotes: "",
   });
 
   useEffect(() => {
@@ -96,6 +102,10 @@ export default function PatientsPage({ darkMode }) {
       phone: patient.phone,
       disease: patient.disease,
       address: patient.address,
+      emergencyContact: patient.emergencyContact || "",
+      allergies: patient.allergies || "",
+      medicalHistory: patient.medicalHistory || "",
+      visitNotes: patient.visitNotes || "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -173,6 +183,13 @@ export default function PatientsPage({ darkMode }) {
         <input className={inputClass} placeholder="Phone Number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         <input className={inputClass} placeholder="Disease / Condition" value={form.disease} onChange={(e) => setForm({ ...form, disease: e.target.value })} />
         <input className={inputClass} placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        <input className={inputClass} placeholder="Emergency Contact" value={form.emergencyContact} onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })} />
+
+<input className={inputClass} placeholder="Allergies" value={form.allergies} onChange={(e) => setForm({ ...form, allergies: e.target.value })} />
+
+<input className={inputClass} placeholder="Medical History" value={form.medicalHistory} onChange={(e) => setForm({ ...form, medicalHistory: e.target.value })} />
+
+<input className={inputClass} placeholder="Visit Notes" value={form.visitNotes} onChange={(e) => setForm({ ...form, visitNotes: e.target.value })} />
 
         <button className="bg-cyan-600 text-white rounded-lg font-semibold hover:bg-cyan-700">
           {editingId ? "Update Patient" : "Register Patient"}
@@ -236,7 +253,7 @@ export default function PatientsPage({ darkMode }) {
                     Edit
                   </button>
 
-                  <button onClick={() => alert(JSON.stringify(patient, null, 2))} className="bg-cyan-600 text-white px-3 py-1 rounded-lg">
+                  <button onClick={() => setSelectedPatient(patient)} className="bg-cyan-600 text-white px-3 py-1 rounded-lg">
                     View
                   </button>
 
@@ -257,6 +274,48 @@ export default function PatientsPage({ darkMode }) {
           </tbody>
         </table>
       </div>
+      {selectedPatient && (
+  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div className={`w-full max-w-2xl rounded-2xl shadow-xl p-6 ${
+      darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900"
+    }`}>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">Patient Profile</h2>
+        <button
+          onClick={() => setSelectedPatient(null)}
+          className="text-2xl font-bold"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <p><b>ID:</b> {selectedPatient.id}</p>
+        <p><b>Name:</b> {selectedPatient.name}</p>
+        <p><b>Age:</b> {selectedPatient.age}</p>
+        <p><b>Gender:</b> {selectedPatient.gender}</p>
+        <p><b>Blood Group:</b> {selectedPatient.bloodGroup}</p>
+        <p><b>Phone:</b> {selectedPatient.phone}</p>
+        <p><b>Disease:</b> {selectedPatient.disease}</p>
+        <p><b>Address:</b> {selectedPatient.address}</p>
+        <p><b>Emergency Contact:</b> {selectedPatient.emergencyContact || "-"}</p>
+        <p><b>Allergies:</b> {selectedPatient.allergies || "-"}</p>
+        <p><b>Medical History:</b> {selectedPatient.medicalHistory || "-"}</p>
+        <p><b>Visit Notes:</b> {selectedPatient.visitNotes || "-"}</p>
+      </div>
+
+      <div className="mt-6 text-right">
+        <button
+          onClick={() => setSelectedPatient(null)}
+          className="bg-cyan-600 text-white px-4 py-2 rounded-lg"
+        >
+          Close
+        </button>
+      </div>
     </div>
+  </div>
+)}
+    </div>
+    
   );
 }

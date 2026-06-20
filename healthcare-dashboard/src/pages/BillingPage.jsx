@@ -139,42 +139,72 @@ function printInvoice(invoice) {
   const paid = Number(invoice.paidAmount || 0);
   const balance = total - paid;
 
-  doc.setFontSize(18);
-  doc.text("MediCare Pro - Patient Receipt", 20, 20);
+  doc.setFillColor(37, 99, 235);
+  doc.rect(0, 0, 210, 28, "F");
 
-  doc.setFontSize(11);
-  doc.text(`Invoice ID: ${invoice.invoiceId}`, 20, 35);
-  doc.text(`Date: ${invoice.invoiceDate}`, 20, 42);
-  doc.text(`Patient: ${invoice.patientName}`, 20, 49);
-  doc.text(`Patient ID: ${invoice.patientId || "-"}`, 20, 56);
-  doc.text(`Doctor: ${invoice.doctorName || "-"}`, 20, 63);
-  doc.text(`Payment Status: ${invoice.paymentStatus}`, 20, 70);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.text("MediCare Pro", 20, 13);
+  doc.setFontSize(10);
+  doc.text("Smart Hospital Management System", 20, 21);
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(16);
+  doc.text("PATIENT RECEIPT", 20, 40);
+
+  doc.setFontSize(10);
+  doc.text(`Invoice ID: ${invoice.invoiceId}`, 20, 50);
+  doc.text(`Date: ${invoice.invoiceDate}`, 130, 50);
+  doc.text(`Patient: ${invoice.patientName}`, 20, 58);
+  doc.text(`Patient ID: ${invoice.patientId || "-"}`, 20, 66);
+  doc.text(`Doctor: ${invoice.doctorName || "-"}`, 130, 58);
+  doc.text(`Status: ${invoice.paymentStatus}`, 130, 66);
+
+  doc.setDrawColor(200);
+  doc.line(20, 75, 190, 75);
 
   let y = 85;
+  doc.setFontSize(10);
   doc.text("Description", 20, y);
   doc.text("Qty", 95, y);
-  doc.text("Price", 115, y);
-  doc.text("Total", 150, y);
+  doc.text("Unit Price", 115, y);
+  doc.text("Total", 160, y);
+  doc.line(20, y + 3, 190, y + 3);
 
-  y += 8;
+  y += 10;
 
   invoice.items.forEach((item) => {
-    doc.text(String(item.description), 20, y);
+    doc.text(String(item.description).slice(0, 32), 20, y);
     doc.text(String(item.qty), 95, y);
     doc.text(`Rs. ${Number(item.unitPrice || 0).toFixed(2)}`, 115, y);
-    doc.text(`Rs. ${lineTotal(item).toFixed(2)}`, 150, y);
+    doc.text(`Rs. ${lineTotal(item).toFixed(2)}`, 160, y);
     y += 8;
   });
 
+  y += 6;
+  doc.line(20, y, 190, y);
+  y += 10;
+
+  doc.setFontSize(11);
+  doc.text(`Grand Total: Rs. ${total.toFixed(2)}`, 120, y);
   y += 8;
-  doc.text(`Grand Total: Rs. ${total.toFixed(2)}`, 20, y);
+  doc.text(`Paid: Rs. ${paid.toFixed(2)}`, 120, y);
   y += 8;
-  doc.text(`Paid: Rs. ${paid.toFixed(2)}`, 20, y);
-  y += 8;
-  doc.text(`Balance Due: Rs. ${balance.toFixed(2)}`, 20, y);
+  doc.text(`Balance Due: Rs. ${balance.toFixed(2)}`, 120, y);
+
+  y += 15;
+  doc.setDrawColor(150);
+  doc.rect(20, y, 35, 25);
+  doc.setFontSize(8);
+  doc.text("QR Placeholder", 24, y + 14);
+
+  doc.setFontSize(9);
+  doc.text("Thank you for choosing MediCare Pro.", 70, y + 8);
+  doc.text("This is a computer-generated receipt.", 70, y + 16);
 
   if (invoice.notes) {
-    y += 12;
+    y += 35;
+    doc.setFontSize(9);
     doc.text(`Notes: ${invoice.notes}`, 20, y);
   }
 
