@@ -23,10 +23,21 @@ export default function App() {
   );
   const [appointments, setAppointments] = useState([]);
   const [selectedDoctorFromPage, setSelectedDoctorFromPage] = useState(null);
-
+   const [isLoggedIn, setIsLoggedIn] = useState(true);
   useEffect(() => {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
+  if (!isLoggedIn) {
+  return (
+    <HomePage
+      darkMode={darkMode}
+      setPage={() => {
+        setIsLoggedIn(true);
+        setPage("Dashboard");
+      }}
+    />
+  );
+}
 
   return (
     <div>
@@ -40,7 +51,12 @@ export default function App() {
   darkMode={darkMode}
   setDarkMode={setDarkMode}
   user={{ name: "Mani", role: "Admin" }}
-  onLogout={() => {}}
+ onLogout={() => {
+  localStorage.removeItem("user");
+  localStorage.removeItem("role");
+  setIsLoggedIn(false);
+  setPage("Home");
+}}
   canManage={true}
 />
 

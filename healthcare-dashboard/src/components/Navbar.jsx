@@ -10,35 +10,62 @@ export default function Navbar({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const role = user?.role || "Admin";
+  const role = user?.role || "Doctor";
 
   const roleLinks = {
-    Patient: ["Home", "Dashboard", "Patients", "Doctors", "Contact"],
-   Admin: [
-  "Home",
-  "Dashboard",
-  "Patients",
-  "Doctors",
-  "Medicines",
-  "Pharmacy",
-  "Staff",
-  "Complaints",
-  "Contact", "Billing", "Laboratory", "Reports"
-],
-   Hospital: [
-  "Home",
-  "Dashboard",
-  "Patients",
-  "Doctors",
-  "Medicines",
-  "Pharmacy",
-  "Staff",
-  "Complaints",
-"Contact", "Billing", "Laboratory", "Reports"
-],
-    Receptionist: ["Home", "Dashboard", "Patients", "Doctors", "Contact"],
-  };
+  Patient: [
+    "Home",
+    "Doctors",
+    "Contact"
+  ],
 
+  Receptionist: [
+    "Home",
+    "Dashboard",
+    "Patients",
+    "Doctors",
+    "Billing",
+    "Contact"
+  ],
+
+  Doctor: [
+    "Home",
+    "Dashboard",
+    "Patients",
+    "Laboratory",
+    "Reports"
+  ],
+
+  Admin: [
+    "Home",
+    "Dashboard",
+    "Patients",
+    "Doctors",
+    "Medicines",
+    "Pharmacy",
+    "Billing",
+    "Laboratory",
+    "Staff",
+    "Reports",
+    "Complaints",
+    "Contact"
+  ],
+
+  Hospital: [
+    "Home",
+    "Dashboard",
+    "Patients",
+    "Doctors",
+    "Medicines",
+    "Pharmacy",
+    "Billing",
+    "Laboratory",
+    "Staff",
+    "Reports",
+    "Complaints",
+    "Contact"
+  ]
+};
   const navLinks = roleLinks[role] || roleLinks.Admin;
 
   const handleNavigate = (item) => {
