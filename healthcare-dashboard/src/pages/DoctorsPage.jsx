@@ -8,13 +8,14 @@ export default function DoctorsPage({ darkMode, setPage, setSelectedDoctorFromPa
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
-    name: "",
-    spec: "",
-    exp: "",
-    fee: "",
-    status: "Available",
-    slots: "",
-  });
+  name: "",
+  spec: "",
+  exp: "",
+  fee: "",
+  status: "Available",
+  slots: "",
+  photo: "",
+});
 
   const inputClass = "border p-3 rounded-lg text-slate-900";
 
@@ -26,6 +27,17 @@ export default function DoctorsPage({ darkMode, setPage, setSelectedDoctorFromPa
       (doctor.name.toLowerCase().includes(search.toLowerCase()) ||
         doctor.spec.toLowerCase().includes(search.toLowerCase()))
   );
+  const handleDoctorPhotoUpload = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    setForm({ ...form, photo: reader.result });
+  };
+
+  reader.readAsDataURL(file);
+};
 
   const resetForm = () => {
     setForm({
@@ -35,6 +47,7 @@ export default function DoctorsPage({ darkMode, setPage, setSelectedDoctorFromPa
       fee: "",
       status: "Available",
       slots: "",
+  photo: "",
     });
     setEditingId(null);
   };
@@ -48,15 +61,16 @@ export default function DoctorsPage({ darkMode, setPage, setSelectedDoctorFromPa
     }
 
     const doctorData = {
-      name: form.name,
-      spec: form.spec,
-      exp: form.exp,
-      fee: form.fee,
-      status: form.status,
-      slots: form.slots.split(",").map((slot) => slot.trim()),
-      rating: 4.5,
-      reviews: 20,
-    };
+  name: form.name,
+  spec: form.spec,
+  exp: form.exp,
+  fee: form.fee,
+  status: form.status,
+  slots: form.slots.split(",").map((slot) => slot.trim()),
+  rating: 4.5,
+  reviews: 20,
+  photo: form.photo,
+};
 
     if (editingId) {
       setDoctors((prev) =>
@@ -142,6 +156,12 @@ Slots: ${doctor.slots.join(", ")}`
           </select>
 
           <input className={inputClass} placeholder="Slots: 10:00 AM, 2:00 PM" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} />
+          <input
+  className={inputClass}
+  type="file"
+  accept="image/*"
+  onChange={handleDoctorPhotoUpload}
+/>
 
           <button className="bg-cyan-600 text-white rounded-lg font-semibold hover:bg-cyan-700">
             {editingId ? "Update Doctor" : "Add Doctor"}
@@ -187,9 +207,17 @@ Slots: ${doctor.slots.join(", ")}`
               }`}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow ${darkMode ? "bg-slate-800" : "bg-cyan-50"}`}>
-                  👨‍⚕️
-                </div>
+                {doctor.photo ? (
+  <img
+    src={doctor.photo}
+    alt={doctor.name}
+    className="w-14 h-14 rounded-full object-cover border shadow"
+  />
+) : (
+  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow ${darkMode ? "bg-slate-800" : "bg-cyan-50"}`}>
+    👨‍⚕️
+  </div>
+)}
                 <div>
                   <p className="font-bold">{doctor.name}</p>
                   <p className="text-sm text-slate-500">{doctor.spec}</p>

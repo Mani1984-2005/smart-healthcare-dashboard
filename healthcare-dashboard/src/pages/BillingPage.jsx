@@ -193,7 +193,7 @@ function printInvoice(invoice) {
   doc.text(`Balance Due: Rs. ${balance.toFixed(2)}`, 120, y);
 
   y += 15;
-  doc.setDrawColor(150);
+  doc.setDrawColor(150);s
   doc.rect(20, y, 35, 25);
   doc.setFontSize(8);
   doc.text("QR Placeholder", 24, y + 14);
