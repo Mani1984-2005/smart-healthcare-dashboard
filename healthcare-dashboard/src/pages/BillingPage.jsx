@@ -133,6 +133,52 @@ function printInvoice(invoice) {
   win.document.write(html);
   win.document.close();
   win.print();
+}function downloadInvoicePDF(invoice) {
+  const doc = new jsPDF();
+  const total = grandTotal(invoice.items);
+  const paid = Number(invoice.paidAmount || 0);
+  const balance = total - paid;
+
+  doc.setFontSize(18);
+  doc.text("MediCare Pro - Patient Receipt", 20, 20);
+
+  doc.setFontSize(11);
+  doc.text(`Invoice ID: ${invoice.invoiceId}`, 20, 35);
+  doc.text(`Date: ${invoice.invoiceDate}`, 20, 42);
+  doc.text(`Patient: ${invoice.patientName}`, 20, 49);
+  doc.text(`Patient ID: ${invoice.patientId || "-"}`, 20, 56);
+  doc.text(`Doctor: ${invoice.doctorName || "-"}`, 20, 63);
+  doc.text(`Payment Status: ${invoice.paymentStatus}`, 20, 70);
+
+  let y = 85;
+  doc.text("Description", 20, y);
+  doc.text("Qty", 95, y);
+  doc.text("Price", 115, y);
+  doc.text("Total", 150, y);
+
+  y += 8;
+
+  invoice.items.forEach((item) => {
+    doc.text(String(item.description), 20, y);
+    doc.text(String(item.qty), 95, y);
+    doc.text(`Rs. ${Number(item.unitPrice || 0).toFixed(2)}`, 115, y);
+    doc.text(`Rs. ${lineTotal(item).toFixed(2)}`, 150, y);
+    y += 8;
+  });
+
+  y += 8;
+  doc.text(`Grand Total: Rs. ${total.toFixed(2)}`, 20, y);
+  y += 8;
+  doc.text(`Paid: Rs. ${paid.toFixed(2)}`, 20, y);
+  y += 8;
+  doc.text(`Balance Due: Rs. ${balance.toFixed(2)}`, 20, y);
+
+  if (invoice.notes) {
+    y += 12;
+    doc.text(`Notes: ${invoice.notes}`, 20, y);
+  }
+
+  doc.save(`${invoice.invoiceId}_receipt.pdf`);
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -354,6 +400,13 @@ export default function BillingPage() {
                           className="text-emerald-600 hover:text-emerald-800 text-xs font-medium border border-emerald-200 px-2 py-1 rounded transition">View</button>
                         <button onClick={() => printInvoice(inv)}
                           className="text-purple-600 hover:text-purple-800 text-xs font-medium border border-purple-200 px-2 py-1 rounded transition">Print</button>
+                          <button
+                               onClick={() => downloadInvoicePDF(inv)}
+                                  className="text-green-600 hover:text-green-800 text-xs font-medium border border-green-200 px-2 py-1 rounded transition"
+                                        >
+                                           PDF
+                                            </button>
+                          
                         <button onClick={() => openEditForm(inv)}
                           className="text-blue-600 hover:text-blue-800 text-xs font-medium border border-blue-200 px-2 py-1 rounded transition">Edit</button>
                         <button onClick={() => handleDelete(inv.invoiceId)}
