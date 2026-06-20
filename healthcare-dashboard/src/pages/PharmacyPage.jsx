@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from "react";
 import BarcodeScanner from "../components/BarcodeScanner";
-
+import { jsPDF } from "jspdf";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "pharmacy_medicines";
@@ -85,7 +85,34 @@ function Toast({ message, type, onClose }) {
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
+function downloadMedicinePDF(medicine) {
+  const doc = new jsPDF();
 
+  doc.setFontSize(20);
+  doc.text("MediCare Pro", 20, 20);
+
+  doc.setFontSize(14);
+  doc.text("Pharmacy Medicine Report", 20, 35);
+
+  doc.line(20, 42, 190, 42);
+
+  doc.setFontSize(11);
+  doc.text(`Medicine ID: ${medicine.medicineId}`, 20, 58);
+  doc.text(`Name: ${medicine.name}`, 20, 70);
+  doc.text(`Category: ${medicine.category}`, 20, 82);
+  doc.text(`Stock Quantity: ${medicine.quantity}`, 20, 94);
+  doc.text(`Price: Rs. ${Number(medicine.price).toFixed(2)}`, 20, 106);
+  doc.text(`Supplier: ${medicine.supplier}`, 20, 118);
+  doc.text(`Expiry Date: ${medicine.expiryDate}`, 20, 130);
+  doc.text(`Status: ${medicine.status}`, 20, 142);
+
+  doc.line(20, 155, 190, 155);
+
+  doc.setFontSize(9);
+  doc.text("This is a computer-generated pharmacy inventory report.", 20, 170);
+
+  doc.save(`${medicine.medicineId}_medicine_report.pdf`);
+}
 export default function PharmacyPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [scannedCode, setScannedCode] = useState("");
@@ -97,7 +124,7 @@ export default function PharmacyPage() {
   const [filterCategory, setFilterCategory] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [toast, setToast] = useState(null);
-
+  const [viewingMedicine, setViewingMedicine] = useState(null);
   // ── Load from localStorage on first render ──────────────────────────────────
 
   useEffect(() => {
@@ -386,11 +413,13 @@ export default function PharmacyPage() {
             ) : (
               filtered.map((m) => (
                 <TableRow
-                  key={m.medicineId}
-                  medicine={m}
-                  onEdit={openEditForm}
-                  onDelete={handleDelete}
-                />
+  key={m.medicineId}
+  medicine={m}
+  onEdit={openEditForm}
+  onDelete={handleDelete}
+  onView={setViewingMedicine}
+  onPDF={downloadMedicinePDF}
+/>
               ))
             )}
           </tbody>
@@ -416,6 +445,54 @@ export default function PharmacyPage() {
       )}
 
       {/* ── Toast ─────────────────────────────────────────────────────────── */}
+      {viewingMedicine && (
+  <div
+    className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4"
+    onClick={() => setViewingMedicine(null)}
+  >
+    <div
+      className="bg-white rounded-2xl shadow-2xl w-full max-w-lg"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between px-6 py-4 border-b">
+        <h2 className="text-lg font-bold text-gray-800">💊 Medicine Details</h2>
+        <button
+          onClick={() => setViewingMedicine(null)}
+          className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="px-6 py-5 space-y-3 text-sm">
+        {[
+          ["Medicine ID", viewingMedicine.medicineId],
+          ["Name", viewingMedicine.name],
+          ["Category", viewingMedicine.category],
+          ["Stock", viewingMedicine.quantity],
+          ["Price", `₹${Number(viewingMedicine.price).toFixed(2)}`],
+          ["Supplier", viewingMedicine.supplier],
+          ["Expiry Date", viewingMedicine.expiryDate],
+          ["Status", viewingMedicine.status],
+        ].map(([k, v]) => (
+          <div key={k} className="flex justify-between border-b pb-2">
+            <span className="text-gray-500 font-medium">{k}</span>
+            <span className="text-gray-800 text-right">{v}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="px-6 py-4 border-t text-right">
+        <button
+          onClick={() => setViewingMedicine(null)}
+          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium transition"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       {toast && (
         <Toast
           message={toast.message}
@@ -484,7 +561,7 @@ function AlertBanner({ type, message }) {
 }
 
 // One row in the medicine table
-function TableRow({ medicine, onEdit, onDelete }) {
+function TableRow({ medicine, onEdit, onDelete, onView, onPDF }) {
   const expired = isExpired(medicine.expiryDate);
   const lowStock = isLowStock(medicine.quantity);
 
@@ -547,6 +624,19 @@ function TableRow({ medicine, onEdit, onDelete }) {
       {/* Edit / Delete buttons */}
       <td className="px-4 py-3">
         <div className="flex gap-2">
+          <button
+  onClick={() => onView(medicine)}
+  className="text-green-600 hover:text-green-800 text-xs font-medium border border-green-200 hover:border-green-400 px-2 py-1 rounded transition"
+>
+  View
+</button>
+
+<button
+  onClick={() => onPDF(medicine)}
+  className="text-purple-600 hover:text-purple-800 text-xs font-medium border border-purple-200 hover:border-purple-400 px-2 py-1 rounded transition"
+>
+  PDF
+</button>
           <button
             onClick={() => onEdit(medicine)}
             className="text-blue-600 hover:text-blue-800 text-xs font-medium border border-blue-200 hover:border-blue-400 px-2 py-1 rounded transition"

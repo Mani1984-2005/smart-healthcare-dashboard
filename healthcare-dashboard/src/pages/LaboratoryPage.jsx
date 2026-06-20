@@ -3,7 +3,7 @@
 // Features: Test requests, results entry, status tracking, search/filter, LocalStorage
 
 import { useState, useEffect } from "react";
-
+import { jsPDF } from "jspdf";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "lab_tests";
@@ -73,7 +73,44 @@ function Toast({ message, type, onClose }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+function downloadLabReportPDF(test) {
+  const doc = new jsPDF();
 
+  doc.setFontSize(20);
+  doc.text("MediCare Pro", 20, 20);
+
+  doc.setFontSize(14);
+  doc.text("Laboratory Report", 20, 35);
+
+  doc.line(20, 40, 190, 40);
+
+  doc.setFontSize(11);
+
+  doc.text(`Report ID: ${test.testId}`, 20, 55);
+  doc.text(`Patient Name: ${test.patientName}`, 20, 65);
+  doc.text(`Patient ID: ${test.patientId || "-"}`, 20, 75);
+  doc.text(`Test Name: ${test.testName}`, 20, 85);
+  doc.text(`Category: ${test.category}`, 20, 95);
+  doc.text(`Priority: ${test.priority}`, 20, 105);
+  doc.text(`Doctor: Dr. ${test.requestedBy}`, 20, 115);
+  doc.text(`Request Date: ${test.requestDate}`, 20, 125);
+  doc.text(`Result Date: ${test.resultDate || "-"}`, 20, 135);
+  doc.text(`Status: ${test.status}`, 20, 145);
+
+  doc.line(20, 155, 190, 155);
+
+  doc.setFontSize(12);
+  doc.text("Result", 20, 170);
+
+  doc.setFontSize(10);
+  doc.text(test.result || "No result entered.", 20, 182);
+
+  if (test.notes) {
+    doc.text(`Notes: ${test.notes}`, 20, 210);
+  }
+
+  doc.save(`${test.testId}_lab_report.pdf`);
+}
 export default function LaboratoryPage() {
   const [tests, setTests] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -328,6 +365,12 @@ useEffect(() => {
                         className="text-blue-600 hover:text-blue-800 text-xs font-medium border border-blue-200 px-2 py-1 rounded transition">
                         Edit
                       </button>
+                      <button
+  onClick={() => downloadLabReportPDF(t)}
+  className="text-green-600 hover:text-green-800 text-xs font-medium border border-green-200 px-2 py-1 rounded transition"
+>
+  PDF
+</button>
                       <button onClick={() => handleDelete(t.testId)}
                         className="text-red-500 hover:text-red-700 text-xs font-medium border border-red-200 px-2 py-1 rounded transition">
                         Delete
