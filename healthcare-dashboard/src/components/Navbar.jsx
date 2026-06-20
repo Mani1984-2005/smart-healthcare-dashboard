@@ -23,7 +23,7 @@ export default function Navbar({
   "Pharmacy",
   "Staff",
   "Complaints",
-  "Contact","Billing","Laboratory",
+  "Contact", "Billing", "Laboratory", "Reports"
 ],
    Hospital: [
   "Home",
@@ -34,7 +34,7 @@ export default function Navbar({
   "Pharmacy",
   "Staff",
   "Complaints",
-  "Contact","Billing","Laboratory",
+"Contact", "Billing", "Laboratory", "Reports"
 ],
     Receptionist: ["Home", "Dashboard", "Patients", "Doctors", "Contact"],
   };

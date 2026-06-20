@@ -13,7 +13,7 @@ import BillingPage from "./pages/BillingPage";
 import PharmacyPage from "./pages/PharmacyPage";
 import { useToast } from "./hooks/usetoast";
 import Toast from "./components/Toast";
-
+import ReportsPage from "./pages/ReportsPage";
 
 export default function App() {
   const { toasts, addToast, removeToast } = useToast();
@@ -92,6 +92,12 @@ export default function App() {
       )}
 
       {page === "Contact" && <ContactPage darkMode={darkMode} />}
+     {page === "Reports" && (
+  <ReportsPage
+    darkMode={darkMode}
+    appointments={appointments}
+  />
+)}
     </div>
   );
 }
