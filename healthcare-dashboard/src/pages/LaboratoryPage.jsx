@@ -84,21 +84,28 @@ export default function LaboratoryPage() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterPriority, setFilterPriority] = useState("All");
   const [toast, setToast] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   // View result detail
   const [viewingTest, setViewingTest] = useState(null);
 
   // Load
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try { setTests(JSON.parse(saved)); } catch { setTests([]); }
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      setTests(JSON.parse(saved));
+    } catch {
+      setTests([]);
     }
-  }, []);
+  }
+  setIsLoaded(true);
+}, []);
 
-  // Save
-  useEffect(() => {
+useEffect(() => {
+  if (isLoaded) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tests));
-  }, [tests]);
+  }
+}, [tests, isLoaded]);
 
   function showToast(message, type = "success") {
     setToast({ message, type });
