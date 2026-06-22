@@ -11,7 +11,7 @@ import ComplaintsPage from "./pages/ComplaintsPage";
 import ContactPage from "./pages/ContactPage";
 import BillingPage from "./pages/BillingPage";
 import PharmacyPage from "./pages/PharmacyPage";
-import { useToast } from "./hooks/usetoast";
+import { useToast } from "./hooks/useToast";
 import Toast from "./components/Toast";
 import ReportsPage from "./pages/ReportsPage";
 
@@ -106,7 +106,7 @@ if (!isLoggedIn) {
 
       {page === "Pharmacy" && <PharmacyPage darkMode={darkMode} />}
 
-      {page === "Billing" && <BillingPage darkMode={darkMode} />}
+    {page === "Billing" && <BillingPage darkMode={darkMode} />}
 
       {page === "Laboratory" && (
   <div>
@@ -128,5 +128,6 @@ if (!isLoggedIn) {
   />
 )}
     </div>
+    
   );
 }
