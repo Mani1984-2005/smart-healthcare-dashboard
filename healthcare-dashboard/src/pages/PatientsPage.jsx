@@ -42,6 +42,15 @@ const patientLabTests = selectedPatient
         test.patientName?.toLowerCase() === selectedPatient.name?.toLowerCase() ||
         test.patientId === selectedPatient.id
     )
+  : []; 
+    const appointments = JSON.parse(localStorage.getItem("appointments")) || [];
+
+const patientAppointments = selectedPatient
+  ? appointments.filter(
+      (apt) =>
+        apt.patient?.toLowerCase() === selectedPatient.name?.toLowerCase() ||
+        apt.phone === selectedPatient.phone
+    )
   : [];
   const [form, setForm] = useState({
     name: "",
@@ -375,7 +384,7 @@ const patientLabTests = selectedPatient
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="p-3 rounded-lg bg-cyan-100 text-center text-slate-900">
             <h4 className="font-bold">Appointments</h4>
-            <p>0</p>
+           <p>{patientAppointments.length}</p>
           </div>
              
           <div className="p-3 rounded-lg bg-green-100 text-center text-slate-900">
@@ -429,6 +438,21 @@ const patientLabTests = selectedPatient
         <button onClick={() => setSelectedPatient(null)} className="bg-cyan-600 text-white px-4 py-2 rounded-lg">
           Close
         </button>
+        <div className="mt-6">
+  <h3 className="font-bold text-blue-600 mb-2">
+    📅 Appointment History
+  </h3>
+
+  {patientAppointments.length > 0 ? (
+    patientAppointments.map((apt) => (
+      <div key={apt.id} className="border p-2 rounded mb-2">
+        {apt.token} - {apt.doctor} - {apt.date} {apt.time} - {apt.status}
+      </div>
+    ))
+  ) : (
+    <p>No appointment records found.</p>
+  )}
+</div>
       </div>
     </div>
   </div>
