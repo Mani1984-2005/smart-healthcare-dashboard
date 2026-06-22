@@ -24,7 +24,25 @@ export default function PatientsPage({ darkMode }) {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [selectedPatient, setSelectedPatient] = useState(null);
+   const bills = JSON.parse(localStorage.getItem("billing_v2")) || [];
 
+const patientBills = selectedPatient
+  ? bills.filter(
+      (bill) =>
+        bill.patientName?.toLowerCase() === selectedPatient.name?.toLowerCase() ||
+        bill.patientId === selectedPatient.id
+    )
+  : [];
+
+const labTests = JSON.parse(localStorage.getItem("lab_tests")) || [];
+
+const patientLabTests = selectedPatient
+  ? labTests.filter(
+      (test) =>
+        test.patientName?.toLowerCase() === selectedPatient.name?.toLowerCase() ||
+        test.patientId === selectedPatient.id
+    )
+  : [];
   const [form, setForm] = useState({
     name: "",
     age: "",
@@ -158,7 +176,7 @@ export default function PatientsPage({ darkMode }) {
     if (!window.confirm("Delete this patient?")) return;
     setPatients(patients.filter((patient) => patient.id !== id));
   };
-
+     
   return (
     <div className={`p-6 min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
       <h1 className="text-2xl font-bold">Patients</h1>
@@ -320,46 +338,101 @@ export default function PatientsPage({ darkMode }) {
           </tbody>
         </table>
       </div>
+{selectedPatient && (
+  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div className={`w-full max-w-3xl rounded-2xl shadow-xl p-6 max-h-[90vh] overflow-y-auto ${darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900"}`}>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">Patient Profile</h2>
+        <button onClick={() => setSelectedPatient(null)} className="text-2xl font-bold">×</button>
+      </div>
 
-      {selectedPatient && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className={`w-full max-w-2xl rounded-2xl shadow-xl p-6 ${darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900"}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Patient Profile</h2>
-              <button onClick={() => setSelectedPatient(null)} className="text-2xl font-bold">×</button>
-            </div>
+      <div className="flex justify-center mb-4">
+        {selectedPatient.photo ? (
+          <img src={selectedPatient.photo} alt={selectedPatient.name} className="w-28 h-28 rounded-full object-cover border" />
+        ) : (
+          <div className="w-28 h-28 rounded-full bg-slate-300 flex items-center justify-center text-4xl">👤</div>
+        )}
+      </div>
 
-            <div className="flex justify-center mb-4">
-              {selectedPatient.photo ? (
-                <img src={selectedPatient.photo} alt={selectedPatient.name} className="w-28 h-28 rounded-full object-cover border" />
-              ) : (
-                <div className="w-28 h-28 rounded-full bg-slate-300 flex items-center justify-center text-4xl">👤</div>
-              )}
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <p><b>ID:</b> {selectedPatient.id}</p>
+        <p><b>Name:</b> {selectedPatient.name}</p>
+        <p><b>Age:</b> {selectedPatient.age}</p>
+        <p><b>Gender:</b> {selectedPatient.gender}</p>
+        <p><b>Blood Group:</b> {selectedPatient.bloodGroup}</p>
+        <p><b>Phone:</b> {selectedPatient.phone}</p>
+        <p><b>Disease:</b> {selectedPatient.disease}</p>
+        <p><b>Address:</b> {selectedPatient.address}</p>
+        <p><b>Emergency Contact:</b> {selectedPatient.emergencyContact || "-"}</p>
+        <p><b>Allergies:</b> {selectedPatient.allergies || "-"}</p>
+        <p><b>Medical History:</b> {selectedPatient.medicalHistory || "-"}</p>
+        <p><b>Visit Notes:</b> {selectedPatient.visitNotes || "-"}</p>
+      </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <p><b>ID:</b> {selectedPatient.id}</p>
-              <p><b>Name:</b> {selectedPatient.name}</p>
-              <p><b>Age:</b> {selectedPatient.age}</p>
-              <p><b>Gender:</b> {selectedPatient.gender}</p>
-              <p><b>Blood Group:</b> {selectedPatient.bloodGroup}</p>
-              <p><b>Phone:</b> {selectedPatient.phone}</p>
-              <p><b>Disease:</b> {selectedPatient.disease}</p>
-              <p><b>Address:</b> {selectedPatient.address}</p>
-              <p><b>Emergency Contact:</b> {selectedPatient.emergencyContact || "-"}</p>
-              <p><b>Allergies:</b> {selectedPatient.allergies || "-"}</p>
-              <p><b>Medical History:</b> {selectedPatient.medicalHistory || "-"}</p>
-              <p><b>Visit Notes:</b> {selectedPatient.visitNotes || "-"}</p>
-            </div>
+      <div className="mt-5 border-t pt-4">
+        <h3 className="font-bold text-lg mb-3 text-cyan-600">📊 Patient Summary</h3>
 
-            <div className="mt-6 text-right">
-              <button onClick={() => setSelectedPatient(null)} className="bg-cyan-600 text-white px-4 py-2 rounded-lg">
-                Close
-              </button>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3 rounded-lg bg-cyan-100 text-center text-slate-900">
+            <h4 className="font-bold">Appointments</h4>
+            <p>0</p>
+          </div>
+             
+          <div className="p-3 rounded-lg bg-green-100 text-center text-slate-900">
+            <h4 className="font-bold">Bills</h4>
+            <p>{patientBills.length}</p>
+          </div>
+         
+          <div className="p-3 rounded-lg bg-yellow-100 text-center text-slate-900">
+            <h4 className="font-bold">Lab Tests</h4>
+            <p>{patientLabTests.length}</p>
+          </div>
+
+          <div className="p-3 rounded-lg bg-purple-100 text-center text-slate-900">
+            <h4 className="font-bold">Documents</h4>
+            <p>0</p>
           </div>
         </div>
-      )}
+      </div>
+          <div className="mt-6">
+  <h3 className="font-bold text-green-600 mb-2">
+    📄 Recent Bills
+  </h3>
+
+  {patientBills.length > 0 ? (
+    patientBills.map((bill) => (
+      <div key={bill.billId} className="border p-2 rounded mb-2">
+        {bill.billId} - ₹{bill.grandTotal} - {bill.paymentStatus}
+      </div>
+    ))
+  ) : (
+    <p>No billing records found.</p>
+  )}
+</div>
+
+<div className="mt-6">
+  <h3 className="font-bold text-yellow-600 mb-2">
+    🧪 Recent Lab Tests
+  </h3>
+
+  {patientLabTests.length > 0 ? (
+    patientLabTests.map((test) => (
+      <div key={test.testId} className="border p-2 rounded mb-2">
+        {test.testName} - {test.status}
+      </div>
+    ))
+  ) : (
+    <p>No lab records found.</p>
+  )}
+</div>
+      <div className="mt-6 text-right">
+        <button onClick={() => setSelectedPatient(null)} className="bg-cyan-600 text-white px-4 py-2 rounded-lg">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
