@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
-
+import { generatePatientReceipt } from "../utils/generatePatientReceipt";
 const initialPatients = [
   {
     id: "PAT-1001",
@@ -331,7 +331,7 @@ const patientAppointments = selectedPatient
                 <td className="p-3 flex gap-2 flex-wrap">
                   <button onClick={() => handleEdit(patient)} className="bg-yellow-500 text-white px-3 py-1 rounded-lg">Edit</button>
                   <button onClick={() => setSelectedPatient(patient)} className="bg-cyan-600 text-white px-3 py-1 rounded-lg">View</button>
-                  <button onClick={() => generatePatientPDF(patient)} className="bg-green-600 text-white px-3 py-1 rounded-lg">PDF</button>
+                  <button onClick={() => generatePatientReceipt(patient)} className="bg-green-600 text-white px-3 py-1 rounded-lg">PDF</button>
                   <button onClick={() => handleDelete(patient.id)} className="bg-red-600 text-white px-3 py-1 rounded-lg">Delete</button>
                 </td>
               </tr>
