@@ -11,7 +11,7 @@ import ComplaintsPage from "./pages/ComplaintsPage";
 import ContactPage from "./pages/ContactPage";
 import BillingPage from "./pages/BillingPage";
 import PharmacyPage from "./pages/PharmacyPage";
-import { useToast } from "./hooks/useToast";
+import { useToast } from "./hooks/usetoast.jsx";
 import Toast from "./components/Toast";
 import ReportsPage from "./pages/ReportsPage";
 import XRaySharingPage from "./pages/XRaySharingPage";
