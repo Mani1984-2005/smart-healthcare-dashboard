@@ -179,17 +179,46 @@ useEffect(() => {
     if (!form.requestDate) return "Request Date is required.";
     return null;
   }
+     function addLabEventToPatientTimeline(test) {
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
 
+  const updatedPatients = patients.map((patient) => {
+    const isSamePatient =
+      patient.id === test.patientId ||
+      patient.name?.toLowerCase() === test.patientName?.toLowerCase();
+
+    if (!isSamePatient) return patient;
+
+    return {
+      ...patient,
+      timeline: [
+        ...(patient.timeline || []),
+        {
+          id: Date.now(),
+          date: test.resultDate || test.requestDate || today(),
+          type: "Lab Test",
+          title: `${test.testName} ${test.status}`,
+          details: `Lab test ${test.testId} - ${test.category}. Status: ${test.status}.`,
+        },
+      ],
+    };
+  });
+
+  localStorage.setItem("patients", JSON.stringify(updatedPatients));
+}
   function handleSubmit() {
     const error = validate();
     if (error) { showToast(error, "error"); return; }
 
     if (editingId) {
-      setTests((prev) => prev.map((t) => (t.testId === editingId ? { ...form } : t)));
-      showToast("Test record updated.", "success");
-    } else {
-      setTests((prev) => [...prev, { ...form }]);
-      showToast("Lab test added.", "success");
+     const newTest = {
+  ...form,
+  resultDate: form.status === "Completed" ? today() : form.resultDate,
+};
+
+setTests((prev) => [...prev, newTest]);
+addLabEventToPatientTimeline(newTest);
+showToast("Lab test added and patient timeline updated.", "success");
     }
     closeForm();
   }

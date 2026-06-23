@@ -96,6 +96,31 @@ export default function DashboardPage({
       status: "Pending",
       bookedAt: new Date().toISOString(),
     };
+    const patients = JSON.parse(localStorage.getItem("patients")) || [];
+
+const updatedPatients = patients.map((patient) => {
+  const isSamePatient =
+    patient.name?.toLowerCase() === newAppointment.patient?.toLowerCase() ||
+    patient.phone === newAppointment.phone;
+
+  if (!isSamePatient) return patient;
+
+  return {
+    ...patient,
+    timeline: [
+      ...(patient.timeline || []),
+      {
+        id: Date.now(),
+        date: newAppointment.date,
+        type: "Appointment",
+        title: "Appointment Booked",
+        details: `Token ${newAppointment.token} with ${newAppointment.doctor} on ${newAppointment.date} at ${newAppointment.time}.`,
+      },
+    ],
+  };
+});
+
+localStorage.setItem("patients", JSON.stringify(updatedPatients));
     setAppointments((prev) => [newAppointment, ...prev]);
     addToast("Appointment booked", `Token: ${token}`, "success");
     resetForm();
