@@ -461,22 +461,22 @@ timeline: [
                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
   <div className="bg-blue-600 text-white p-4 rounded-xl">
     <p className="text-xs">Lab Reports</p>
-    <p className="text-2xl font-bold">2</p>
+    <p className="text-2xl font-bold">0</p>
   </div>
 
   <div className="bg-green-600 text-white p-4 rounded-xl">
     <p className="text-xs">Billing</p>
-    <p className="text-2xl font-bold">₹450</p>
+    <p className="text-2xl font-bold">₹0</p>
   </div>
 
   <div className="bg-purple-600 text-white p-4 rounded-xl">
     <p className="text-xs">Reports</p>
-    <p className="text-2xl font-bold">3</p>
+    <p className="text-2xl font-bold">0</p>
   </div>
 
   <div className="bg-orange-600 text-white p-4 rounded-xl">
     <p className="text-xs">Paid Amount</p>
-    <p className="text-2xl font-bold">₹300</p>
+    <p className="text-2xl font-bold">₹0</p>
   </div>
 </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
