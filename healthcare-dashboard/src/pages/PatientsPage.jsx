@@ -259,7 +259,33 @@ timeline: [
     <div className={`p-6 min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
       <h1 className="text-2xl font-bold">Patients</h1>
       <p className="text-slate-500 mt-2">Register, search, edit and manage patient records.</p>
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+  <div className="bg-cyan-600 text-white p-4 rounded-xl">
+    <h3 className="text-sm">Total Patients</h3>
+    <p className="text-2xl font-bold">{patients.length}</p>
+  </div>
 
+  <div className="bg-purple-600 text-white p-4 rounded-xl">
+    <h3 className="text-sm">Male Patients</h3>
+    <p className="text-2xl font-bold">
+      {patients.filter((p) => p.gender === "Male").length}
+    </p>
+  </div>
+
+  <div className="bg-pink-600 text-white p-4 rounded-xl">
+    <h3 className="text-sm">Female Patients</h3>
+    <p className="text-2xl font-bold">
+      {patients.filter((p) => p.gender === "Female").length}
+    </p>
+  </div>
+
+  <div className="bg-green-600 text-white p-4 rounded-xl">
+    <h3 className="text-sm">Other Patients</h3>
+    <p className="text-2xl font-bold">
+      {patients.filter((p) => p.gender === "Other").length}
+    </p>
+  </div>
+</div>
       <form onSubmit={handleSubmit} className={`mt-6 p-5 rounded-xl shadow grid grid-cols-1 md:grid-cols-4 gap-3 ${darkMode ? "bg-slate-900" : "bg-white"}`}>
         <input className={inputClass} placeholder="Patient Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input className={inputClass} placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
@@ -432,7 +458,27 @@ timeline: [
                 <div className="w-28 h-28 rounded-full bg-slate-300 flex items-center justify-center text-4xl">👤</div>
               )}
             </div>
+               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
+  <div className="bg-blue-600 text-white p-4 rounded-xl">
+    <p className="text-xs">Lab Reports</p>
+    <p className="text-2xl font-bold">2</p>
+  </div>
 
+  <div className="bg-green-600 text-white p-4 rounded-xl">
+    <p className="text-xs">Billing</p>
+    <p className="text-2xl font-bold">₹450</p>
+  </div>
+
+  <div className="bg-purple-600 text-white p-4 rounded-xl">
+    <p className="text-xs">Reports</p>
+    <p className="text-2xl font-bold">3</p>
+  </div>
+
+  <div className="bg-orange-600 text-white p-4 rounded-xl">
+    <p className="text-xs">Paid Amount</p>
+    <p className="text-2xl font-bold">₹300</p>
+  </div>
+</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <p><b>ID:</b> {selectedPatient.id}</p>
               <p><b>Name:</b> {selectedPatient.name}</p>
