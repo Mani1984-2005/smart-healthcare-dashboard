@@ -14,7 +14,7 @@ import PharmacyPage from "./pages/PharmacyPage";
 import { useToast } from "./hooks/useToast";
 import Toast from "./components/Toast";
 import ReportsPage from "./pages/ReportsPage";
-
+import XRaySharingPage from "./pages/XRaySharingPage";
 export default function App() {
   const { toasts, addToast, removeToast } = useToast();
   const [page, setPage] = useState("Home");
@@ -119,7 +119,7 @@ if (!isLoggedIn) {
       {page === "Complaints" && (
         <ComplaintsPage darkMode={darkMode} addToast={addToast} />
       )}
-
+        {page === "X-Ray" && <XRaySharingPage darkMode={darkMode} />}
       {page === "Contact" && <ContactPage darkMode={darkMode} />}
      {page === "Reports" && (
   <ReportsPage

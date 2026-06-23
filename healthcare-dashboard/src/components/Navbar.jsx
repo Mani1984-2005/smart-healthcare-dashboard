@@ -49,7 +49,8 @@ export default function Navbar({
     "Staff",
     "Reports",
     "Complaints",
-    "Contact"
+    "Contact",
+    "X-Ray",
   ],
 
   Hospital: [
@@ -64,7 +65,8 @@ export default function Navbar({
     "Staff",
     "Reports",
     "Complaints",
-    "Contact"
+    "Contact",
+    "X-Ray",
   ]
 };
   const navLinks = roleLinks[role] || roleLinks.Admin;

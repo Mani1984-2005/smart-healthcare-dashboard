@@ -12,7 +12,23 @@ const initialPatients = [
     disease: "Fever",
     address: "Davangere",
     registeredDate: "2026-06-15",
-    photo: "",
+   photo: "",
+timeline: [
+  {
+    id: 1,
+    date: "2026-06-15",
+    type: "Registration",
+    title: "Patient Registered",
+    details: "Patient record created in MediCare Pro.",
+  },
+  {
+    id: 2,
+    date: "2026-06-16",
+    type: "Consultation",
+    title: "Doctor Consultation",
+    details: "Visited for fever and general checkup.",
+  },
+],
   },
 ];
 
@@ -24,7 +40,11 @@ export default function PatientsPage({ darkMode }) {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [selectedPatient, setSelectedPatient] = useState(null);
-
+    const [timelineForm, setTimelineForm] = useState({
+  type: "Consultation",
+  title: "",
+  details: "",
+});
   const [form, setForm] = useState({
     name: "",
     age: "",
@@ -37,7 +57,23 @@ export default function PatientsPage({ darkMode }) {
     allergies: "",
     medicalHistory: "",
     visitNotes: "",
-    photo: "",
+  photo: "",
+timeline: [
+  {
+    id: 1,
+    date: "2026-06-15",
+    type: "Registration",
+    title: "Patient Registered",
+    details: "Patient record created in MediCare Pro.",
+  },
+  {
+    id: 2,
+    date: "2026-06-16",
+    type: "Consultation",
+    title: "Doctor Consultation",
+    details: "Visited for fever and general checkup.",
+  },
+],
    photoSource: "Browse Photo",
 
   });
@@ -101,6 +137,22 @@ export default function PatientsPage({ darkMode }) {
       medicalHistory: "",
       visitNotes: "",
       photo: "",
+timeline: [
+  {
+    id: 1,
+    date: "2026-06-15",
+    type: "Registration",
+    title: "Patient Registered",
+    details: "Patient record created in MediCare Pro.",
+  },
+  {
+    id: 2,
+    date: "2026-06-16",
+    type: "Consultation",
+    title: "Doctor Consultation",
+    details: "Visited for fever and general checkup.",
+  },
+],
       photoSource: "Browse Photo",
     });
     setEditingId(null);
@@ -128,6 +180,15 @@ export default function PatientsPage({ darkMode }) {
       id: `PAT-${Date.now()}`,
       ...form,
       registeredDate: new Date().toISOString().split("T")[0],
+      timeline: [
+  {
+    id: Date.now(),
+    date: new Date().toISOString().split("T")[0],
+    type: "Registration",
+    title: "Patient Registered",
+    details: "New patient record created.",
+  },
+],
     };
 
     setPatients([newPatient, ...patients]);
@@ -158,7 +219,42 @@ export default function PatientsPage({ darkMode }) {
     if (!window.confirm("Delete this patient?")) return;
     setPatients(patients.filter((patient) => patient.id !== id));
   };
+      const addTimelineEvent = () => {
+  if (!selectedPatient || !timelineForm.title || !timelineForm.details) {
+    alert("Please fill timeline title and details");
+    return;
+  }
 
+  const newEvent = {
+    id: Date.now(),
+    date: new Date().toISOString().split("T")[0],
+    type: timelineForm.type,
+    title: timelineForm.title,
+    details: timelineForm.details,
+  };
+
+  const updatedPatients = patients.map((patient) =>
+    patient.id === selectedPatient.id
+      ? {
+          ...patient,
+          timeline: [...(patient.timeline || []), newEvent],
+        }
+      : patient
+  );
+
+  setPatients(updatedPatients);
+
+  setSelectedPatient({
+    ...selectedPatient,
+    timeline: [...(selectedPatient.timeline || []), newEvent],
+  });
+
+  setTimelineForm({
+    type: "Consultation",
+    title: "",
+    details: "",
+  });
+};
   return (
     <div className={`p-6 min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
       <h1 className="text-2xl font-bold">Patients</h1>
@@ -351,7 +447,94 @@ export default function PatientsPage({ darkMode }) {
               <p><b>Medical History:</b> {selectedPatient.medicalHistory || "-"}</p>
               <p><b>Visit Notes:</b> {selectedPatient.visitNotes || "-"}</p>
             </div>
+              <div className="mt-6">
+  <h3 className="text-lg font-bold mb-3">Medical Timeline</h3>
 
+  <div className="space-y-3">
+    {(selectedPatient.timeline || []).map((event) => (
+      <div
+        key={event.id}
+        className={`p-4 rounded-xl border ${
+          darkMode
+            ? "bg-slate-800 border-slate-700"
+            : "bg-slate-50 border-slate-200"
+        }`}
+      >
+        <div className="flex justify-between gap-3">
+          <p className="font-bold text-cyan-500">{event.title}</p>
+          <p className="text-xs text-slate-500">{event.date}</p>
+        </div>
+
+        <p className="text-sm mt-1">
+          <b>Type:</b> {event.type}
+        </p>
+
+        <p className="text-sm text-slate-500 mt-1">{event.details}</p>
+      </div>
+    ))}
+
+    {(!selectedPatient.timeline || selectedPatient.timeline.length === 0) && (
+  <div className={`p-4 rounded-xl border ${
+    darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-200"
+  }`}>
+    <div className="flex justify-between gap-3">
+      <p className="font-bold text-cyan-500">Patient Registered</p>
+      <p className="text-xs text-slate-500">{selectedPatient.registeredDate}</p>
+    </div>
+    <p className="text-sm mt-1"><b>Type:</b> Registration</p>
+    <p className="text-sm text-slate-500 mt-1">
+      Existing patient record imported into medical timeline.
+    </p>
+  </div>
+)}
+  </div>
+</div>     
+           <div className="mt-6">
+  <h3 className="text-lg font-bold mb-3">Add Timeline Event</h3>
+
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <select
+      className={inputClass}
+      value={timelineForm.type}
+      onChange={(e) =>
+        setTimelineForm({ ...timelineForm, type: e.target.value })
+      }
+    >
+      <option>Consultation</option>
+      <option>Prescription</option>
+      <option>Lab Test</option>
+      <option>X-Ray</option>
+      <option>Billing</option>
+      <option>Follow-up</option>
+    </select>
+
+    <input
+      className={inputClass}
+      placeholder="Title"
+      value={timelineForm.title}
+      onChange={(e) =>
+        setTimelineForm({ ...timelineForm, title: e.target.value })
+      }
+    />
+
+    <input
+      className={inputClass}
+      placeholder="Details"
+      value={timelineForm.details}
+      onChange={(e) =>
+        setTimelineForm({ ...timelineForm, details: e.target.value })
+      }
+    />
+  </div>
+
+  <button
+    type="button"
+    onClick={addTimelineEvent}
+    className="mt-3 bg-cyan-600 text-white px-4 py-2 rounded-lg"
+  >
+    Add Timeline Event
+  </button>
+</div>
             <div className="mt-6 text-right">
               <button onClick={() => setSelectedPatient(null)} className="bg-cyan-600 text-white px-4 py-2 rounded-lg">
                 Close
