@@ -114,8 +114,35 @@ export default function BillingPage() {
         await updateBill(editingBill.billId, formData);
         showToast("Bill updated successfully.", "success");
       } else {
-        await createBill(formData);
-        showToast("Bill created successfully.", "success");
+       const createdBill = await createBill(formData);
+
+const patients = JSON.parse(localStorage.getItem("patients")) || [];
+
+const updatedPatients = patients.map((patient) => {
+  const isSamePatient =
+    patient.id === formData.patientId ||
+    patient.name.toLowerCase() === formData.patientName.toLowerCase();
+
+  if (!isSamePatient) return patient;
+
+  return {
+    ...patient,
+    timeline: [
+      ...(patient.timeline || []),
+      {
+        id: Date.now(),
+        date: formData.billDate || new Date().toISOString().split("T")[0],
+        type: "Billing",
+        title: "Bill Generated",
+        details: `Bill ${createdBill?.billId || formData.billId} created. Payment Status: ${formData.paymentStatus}.`,
+      },
+    ],
+  };
+});
+
+localStorage.setItem("patients", JSON.stringify(updatedPatients));
+
+showToast("Bill created and patient timeline updated.", "success");
       }
       setShowForm(false);
       setEditingBill(null);
