@@ -153,6 +153,33 @@ export default function PharmacyInventoryPage() {
   const [movementMedicine, setMovementMedicine] = useState(null);
   const [movementMode, setMovementMode] = useState(null); // "purchase" | "sale"
 
+  // QA Checklist state
+  const [qaOpen, setQaOpen] = useState(true);
+  const [qaChecked, setQaChecked] = useState(() => {
+    try {
+      const saved = localStorage.getItem("inventory_qa_checklist");
+      return saved ? JSON.parse(saved) : {
+        addMedicine: false,
+        stockIn: false,
+        stockOut: false,
+        lowStock: false,
+        expiryAlert: false,
+      };
+    } catch {
+      return {
+        addMedicine: false,
+        stockIn: false,
+        stockOut: false,
+        lowStock: false,
+        expiryAlert: false,
+      };
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("inventory_qa_checklist", JSON.stringify(qaChecked));
+  }, [qaChecked]);
+
   // ── Data loading ─────────────────────────────────────────────────────────────
 
   const refreshData = useCallback(async () => {
@@ -302,6 +329,49 @@ export default function PharmacyInventoryPage() {
         >
           + Add Medicine
         </button>
+      </div>
+
+      {/* QA Checklist Panel */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
+        <div 
+          className="flex items-center justify-between cursor-pointer select-none"
+          onClick={() => setQaOpen(!qaOpen)}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🧪</span>
+            <span className="font-bold text-gray-700 text-sm">Inventory QA Testing Checklist</span>
+          </div>
+          <span className="text-gray-400 font-bold text-sm">
+            {qaOpen ? "Hide ▽" : "Show ▷"}
+          </span>
+        </div>
+
+        {qaOpen && (
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-gray-100">
+            {[
+              { key: "addMedicine", label: "Add medicine tested" },
+              { key: "stockIn", label: "Stock in tested" },
+              { key: "stockOut", label: "Stock out tested" },
+              { key: "lowStock", label: "Low stock alert tested" },
+              { key: "expiryAlert", label: "Expiry alert tested" },
+            ].map((item) => (
+              <label 
+                key={item.key} 
+                className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50 transition"
+              >
+                <input
+                  type="checkbox"
+                  checked={qaChecked[item.key]}
+                  onChange={() => setQaChecked(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                  className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                />
+                <span className={`text-xs select-none ${qaChecked[item.key] ? "line-through text-gray-400" : "text-gray-600 font-medium"}`}>
+                  {item.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Dashboard cards + alerts */}
