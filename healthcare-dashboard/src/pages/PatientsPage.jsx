@@ -66,6 +66,7 @@ export default function PatientsPage({ darkMode }) {
     bloodGroup: "O+",
     phone: "",
     disease: "",
+      status: "Waiting",
     address: "",
     emergencyContact: "",
     allergies: "",
@@ -164,6 +165,7 @@ const filteredPatients = patients.filter((patient) => {
       bloodGroup: "O+",
       phone: "",
       disease: "",
+      status: "Waiting",
       address: "",
       emergencyContact: "",
       allergies: "",
@@ -236,6 +238,7 @@ const filteredPatients = patients.filter((patient) => {
       bloodGroup: patient.bloodGroup,
       phone: patient.phone,
       disease: patient.disease,
+      status: patient.status || "Waiting",
       address: patient.address,
       emergencyContact: patient.emergencyContact || "",
       allergies: patient.allergies || "",
@@ -330,6 +333,17 @@ const filteredPatients = patients.filter((patient) => {
 
         <input className={inputClass} placeholder="Phone Number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         <input className={inputClass} placeholder="Disease / Condition" value={form.disease} onChange={(e) => setForm({ ...form, disease: e.target.value })} />
+        <select
+  className={inputClass}
+  value={form.status}
+  onChange={(e) => setForm({ ...form, status: e.target.value })}
+>
+  <option value="Waiting">🟢 Waiting</option>
+  <option value="In Consultation">🔵 In Consultation</option>
+  <option value="Lab Test">🟡 Lab Test</option>
+  <option value="Billing">🟣 Billing</option>
+  <option value="Completed">✅ Completed</option>
+</select>
         <input className={inputClass} placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
         <input className={inputClass} placeholder="Emergency Contact" value={form.emergencyContact} onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })} />
 
@@ -398,8 +412,9 @@ const filteredPatients = patients.filter((patient) => {
               <th className="p-3 text-left">Gender</th>
               <th className="p-3 text-left">Blood</th>
               <th className="p-3 text-left">Phone</th>
-              <th className="p-3 text-left">Disease</th>
-              <th className="p-3 text-left">Address</th>
+               <th className="p-3 text-left">Disease</th>
+               <th className="p-3 text-left">Status</th>
+               <th className="p-3 text-left">Address</th>  
               <th className="p-3 text-left">Registered</th>
               <th className="p-3 text-left">Actions</th>
             </tr>
@@ -421,7 +436,26 @@ const filteredPatients = patients.filter((patient) => {
                 <td className="p-3">{patient.bloodGroup}</td>
                 <td className="p-3">{patient.phone}</td>
                 <td className="p-3">{patient.disease}</td>
-                <td className="p-3">{patient.address}</td>
+
+<td className="p-3">
+  <span
+    className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${
+      patient.status === "Waiting"
+        ? "bg-green-500"
+        : patient.status === "In Consultation"
+        ? "bg-blue-500"
+        : patient.status === "Lab Test"
+        ? "bg-yellow-500"
+        : patient.status === "Billing"
+        ? "bg-purple-500"
+        : "bg-gray-600"
+    }`}
+  >
+    {patient.status}
+  </span>
+</td>
+
+<td className="p-3">{patient.address}</td>
                 <td className="p-3">{patient.registeredDate}</td>
                 <td className="p-3 flex gap-2 flex-wrap">
                   <button onClick={() => handleEdit(patient)} className="bg-yellow-500 text-white px-3 py-1 rounded-lg">Edit</button>
