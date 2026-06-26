@@ -25,11 +25,40 @@ export default function DashboardPage({
   const [specialization, setSpecialization] = useState("All");
   const [historySearch, setHistorySearch] = useState("");
   const [historyStatus, setHistoryStatus] = useState("All");
-
+  const [patients, setPatients] = useState([]); 
   const cardClass = darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-950";
   const inputClass = darkMode ? "bg-slate-950 border-slate-700 text-white placeholder-slate-500" : "bg-white border-slate-300 text-slate-950 placeholder-slate-500";
   const subTextClass = darkMode ? "text-slate-400" : "text-slate-600";
+    // ---------------- Patient Sync ----------------
 
+const loadPatients = () => {
+  try {
+    const storedPatients =
+      JSON.parse(localStorage.getItem("patients")) || [];
+    setPatients(storedPatients);
+  } catch (error) {
+    console.error("Failed to load patients:", error);
+    setPatients([]);
+  }
+};
+
+useEffect(() => {
+  loadPatients();
+
+  const handlePatientsUpdated = () => {
+    loadPatients();
+  };
+
+  window.addEventListener("patientsUpdated", handlePatientsUpdated);
+  window.addEventListener("storage", handlePatientsUpdated);
+
+  return () => {
+    window.removeEventListener("patientsUpdated", handlePatientsUpdated);
+    window.removeEventListener("storage", handlePatientsUpdated);
+  };
+}, []);
+
+// ----------------------------------------------
   // Apply preselected doctor from Doctors page
   useEffect(() => {
     if (preselectedDoctor) {
@@ -51,82 +80,153 @@ export default function DashboardPage({
     if (!formData.symptoms.trim()) return "Please enter symptoms.";
     if (!formData.date) return "Please select date.";
     if (!formData.time) return "Please select time.";
-    if (new Date(`${formData.date}T${formData.time}`) < new Date()) return "Appointment must be in the future.";
+   const appointmentDateTime = new Date(`${formData.date} ${formData.time}`);
+
+if (appointmentDateTime < new Date()) {
+  return "Appointment must be in the future.";
+}
     return null;
   };
 
   const handleBooking = () => {
-    const error = validateForm();
-    if (error) { addToast("Check details", error, "error"); return; }
+  const error = validateForm();
+  if (error) {
+    addToast("Check details", error, "error");
+    return;
+  }
 
-    const duplicate = appointments.some(
-      (item) =>
-        item.id !== editingId &&
-        item.doctor.toLowerCase() === selectedDoctor.name.toLowerCase() &&
-        item.date === formData.date &&
-        item.time === formData.time
+  const duplicate = appointments.some(
+    (item) =>
+      item.id !== editingId &&
+      item.doctor.toLowerCase() === selectedDoctor.name.toLowerCase() &&
+      item.date === formData.date &&
+      item.time === formData.time
+  );
+
+  if (duplicate) {
+    addToast("Duplicate booking", "This slot is already booked for this doctor.", "error");
+    return;
+  }
+
+  if (editingId) {
+    setAppointments((prev) =>
+      prev.map((item) =>
+        item.id === editingId
+          ? {
+              ...item,
+              patient: formData.patient.trim(),
+              age: Number(formData.age),
+              phone: formData.phone.trim(),
+              symptoms: formData.symptoms.trim(),
+              date: formData.date,
+              time: formData.time,
+              doctor: selectedDoctor.name,
+              spec: selectedDoctor.spec,
+            }
+          : item
+      )
     );
-    if (duplicate) { addToast("Duplicate booking", "This slot is already booked for this doctor.", "error"); return; }
 
-    if (editingId) {
-      setAppointments((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? { ...item, patient: formData.patient.trim(), age: Number(formData.age), phone: formData.phone.trim(), symptoms: formData.symptoms.trim(), date: formData.date, time: formData.time, doctor: selectedDoctor.name, spec: selectedDoctor.spec }
-            : item
-        )
-      );
-      addToast("Appointment updated", "Changes saved successfully.", "success");
-      resetForm();
-      return;
-    }
-
-    const token = generateToken();
-    const newAppointment = {
-      id: `${Date.now()}-${Math.random()}`,
-      token,
-      patient: formData.patient.trim(),
-      age: Number(formData.age),
-      phone: formData.phone.trim(),
-      symptoms: formData.symptoms.trim(),
-      date: formData.date,
-      time: formData.time,
-      doctor: selectedDoctor.name,
-      spec: selectedDoctor.spec,
-      status: "Pending",
-      bookedAt: new Date().toISOString(),
-    };
-    const patients = JSON.parse(localStorage.getItem("patients")) || [];
-
-const updatedPatients = patients.map((patient) => {
-  const isSamePatient =
-    patient.name?.toLowerCase() === newAppointment.patient?.toLowerCase() ||
-    patient.phone === newAppointment.phone;
-
-  if (!isSamePatient) return patient;
-
-  return {
-    ...patient,
-    timeline: [
-      ...(patient.timeline || []),
-      {
-        id: Date.now(),
-        date: newAppointment.date,
-        type: "Appointment",
-        title: "Appointment Booked",
-        details: `Token ${newAppointment.token} with ${newAppointment.doctor} on ${newAppointment.date} at ${newAppointment.time}.`,
-      },
-    ],
-  };
-});
-
-localStorage.setItem("patients", JSON.stringify(updatedPatients));
-    setAppointments((prev) => [newAppointment, ...prev]);
-    addToast("Appointment booked", `Token: ${token}`, "success");
+    addToast("Appointment updated", "Changes saved successfully.", "success");
     resetForm();
+    return;
+  }
+
+  const token = generateToken();
+
+  const newAppointment = {
+    id: `${Date.now()}-${Math.random()}`,
+    token,
+    patient: formData.patient.trim(),
+    age: Number(formData.age),
+    phone: formData.phone.trim(),
+    symptoms: formData.symptoms.trim(),
+    date: formData.date,
+    time: formData.time,
+    doctor: selectedDoctor.name,
+    spec: selectedDoctor.spec,
+    status: "Pending",
+    bookedAt: new Date().toISOString(),
   };
 
-  const startEdit = (appt) => {
+  const existingPatients = JSON.parse(localStorage.getItem("patients")) || [];
+
+  const patientExists = existingPatients.some(
+    (patient) =>
+      patient.phone === newAppointment.phone ||
+      patient.name?.toLowerCase() === newAppointment.patient.toLowerCase()
+  );
+
+  let updatedPatients = existingPatients;
+
+  if (patientExists) {
+    updatedPatients = existingPatients.map((patient) => {
+      const isSamePatient =
+        patient.phone === newAppointment.phone ||
+        patient.name?.toLowerCase() === newAppointment.patient.toLowerCase();
+
+      if (!isSamePatient) return patient;
+
+      return {
+        ...patient,
+        timeline: [
+          ...(patient.timeline || []),
+          {
+            id: Date.now(),
+            date: newAppointment.date,
+            type: "Appointment",
+            title: "Appointment Booked",
+            details: `Token ${newAppointment.token} with ${newAppointment.doctor} on ${newAppointment.date} at ${newAppointment.time}.`,
+          },
+        ],
+      };
+    });
+  } else {
+    const newRegisteredPatient = {
+      id: `PAT-${Date.now()}`,
+      name: newAppointment.patient,
+      age: newAppointment.age,
+      gender: "Male",
+      bloodGroup: "O+",
+      phone: newAppointment.phone,
+      disease: newAppointment.symptoms,
+      address: "Not provided",
+      emergencyContact: "",
+      allergies: "",
+      medicalHistory: "",
+      visitNotes: "Created from dashboard appointment booking",
+      photo: "",
+      photoSource: "Browse Photo",
+      registeredDate: new Date().toISOString().split("T")[0],
+      timeline: [
+        {
+          id: Date.now(),
+          date: new Date().toISOString().split("T")[0],
+          type: "Registration",
+          title: "Patient Auto Registered",
+          details: "Patient created from Dashboard appointment booking.",
+        },
+        {
+          id: Date.now() + 1,
+          date: newAppointment.date,
+          type: "Appointment",
+          title: "Appointment Booked",
+          details: `Token ${newAppointment.token} with ${newAppointment.doctor} on ${newAppointment.date} at ${newAppointment.time}.`,
+        },
+      ],
+    };
+
+    updatedPatients = [newRegisteredPatient, ...existingPatients];
+  }
+
+  localStorage.setItem("patients", JSON.stringify(updatedPatients));
+  window.dispatchEvent(new Event("patientsUpdated"));
+
+  setAppointments((prev) => [newAppointment, ...prev]);
+  addToast("Appointment booked", `Token: ${token}`, "success");
+  resetForm();
+};
+ const startEdit = (appt) => {
     const doctor = DOCTORS.find((d) => d.name === appt.doctor);
     setEditingId(appt.id);
     setSelectedDoctor(doctor || DOCTORS[0]);
@@ -153,7 +253,11 @@ localStorage.setItem("patients", JSON.stringify(updatedPatients));
   (a) => a.date === new Date().toISOString().split("T")[0]
 ).length;
 
-const totalPatients = appointments.length;
+const totalPatients = patients.length;
+
+const malePatients = patients.filter((p) => p.gender === "Male").length;
+const femalePatients = patients.filter((p) => p.gender === "Female").length;
+const otherPatients = patients.filter((p) => p.gender === "Other").length;
 
 const completionRate =
   appointments.length > 0
@@ -187,8 +291,30 @@ const completionRate =
 
         {/* Stat Cards */}
         {userRole !== "Patient" && <StatCards darkMode={darkMode} />}
+        {userRole !== "Patient" && (
+  <section className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div className="bg-cyan-600 text-white p-4 rounded-xl">
+      <p className="text-sm">Total Registered Patients</p>
+      <h3 className="text-3xl font-bold">{totalPatients}</h3>
+    </div>
 
-        {/* Announcements */}
+    <div className="bg-purple-600 text-white p-4 rounded-xl">
+      <p className="text-sm">Male Patients</p>
+      <h3 className="text-3xl font-bold">{malePatients}</h3>
+    </div>
+
+    <div className="bg-pink-600 text-white p-4 rounded-xl">
+      <p className="text-sm">Female Patients</p>
+      <h3 className="text-3xl font-bold">{femalePatients}</h3>
+    </div>
+
+    <div className="bg-green-600 text-white p-4 rounded-xl">
+      <p className="text-sm">Other Patients</p>
+      <h3 className="text-3xl font-bold">{otherPatients}</h3>
+    </div>
+  </section>
+)}
+{/* Announcements */}
         {userRole !== "Patient" && (
   <div className="mb-8">
     <AnnouncementsPanel darkMode={darkMode} />
