@@ -94,6 +94,24 @@ export default function PatientsPage({ darkMode }) {
     localStorage.setItem("patients", JSON.stringify(patients));
     dispatchUpdate(); // ← notify entire hospital on every patients change
   }, [patients]);
+     useEffect(() => {
+  const loadPatients = () => {
+    try {
+      const savedPatients = JSON.parse(localStorage.getItem("patients")) || [];
+      setPatients(savedPatients);
+    } catch (error) {
+      console.error("Failed to sync patients:", error);
+    }
+  };
+
+  window.addEventListener("patientsUpdated", loadPatients);
+  window.addEventListener("storage", loadPatients);
+
+  return () => {
+    window.removeEventListener("patientsUpdated", loadPatients);
+    window.removeEventListener("storage", loadPatients);
+  };
+}, []);
 
   const inputClass = "border p-3 rounded-lg text-slate-900";
 
