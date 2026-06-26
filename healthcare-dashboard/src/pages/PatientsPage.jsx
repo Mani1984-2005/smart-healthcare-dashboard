@@ -51,6 +51,7 @@ export default function PatientsPage({ darkMode }) {
 });
 
   const [search, setSearch] = useState("");
+  const [genderFilter, setGenderFilter] = useState("All");
   const [editingId, setEditingId] = useState(null);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [timelineForm, setTimelineForm] = useState({
@@ -142,14 +143,19 @@ export default function PatientsPage({ darkMode }) {
     doc.text(`Registered Date: ${patient.registeredDate}`, 20, 130);
     doc.save(`${patient.id}_receipt.pdf`);
   };
+const filteredPatients = patients.filter((patient) => {
+  const searchText = search.toLowerCase();
 
-  const filteredPatients = patients.filter(
-    (patient) =>
-      patient.name.toLowerCase().includes(search.toLowerCase()) ||
-      patient.id.toLowerCase().includes(search.toLowerCase()) ||
-      patient.phone.includes(search)
-  );
+  const matchesSearch =
+    patient.name?.toLowerCase().includes(searchText) ||
+    patient.id?.toLowerCase().includes(searchText) ||
+    patient.phone?.toLowerCase().includes(searchText);
 
+  const matchesGender =
+    genderFilter === "All" || patient.gender === genderFilter;
+
+  return matchesSearch && matchesGender;
+});
   const resetForm = () => {
     setForm({
       name: "",
@@ -279,8 +285,15 @@ export default function PatientsPage({ darkMode }) {
   return (
     <div className={`p-6 min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
       <h1 className="text-2xl font-bold">Patients</h1>
-      <p className="text-slate-500 mt-2">Register, search, edit and manage patient records.</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-2">
+  <p className="text-slate-500">
+    Register, search, edit and manage patient records.
+  </p>
 
+  <p className="font-semibold text-cyan-600">
+    Showing {filteredPatients.length} of {patients.length} Patients
+  </p>
+</div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
         <div className="bg-cyan-600 text-white p-4 rounded-xl">
           <h3 className="text-sm">Total Patients</h3>
@@ -363,6 +376,16 @@ export default function PatientsPage({ darkMode }) {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
+      <select
+  className="mt-3 w-full md:w-60 border p-3 rounded-lg text-slate-900"
+  value={genderFilter}
+  onChange={(e) => setGenderFilter(e.target.value)}
+>
+  <option value="All">All Genders</option>
+  <option value="Male">Male</option>
+  <option value="Female">Female</option>
+  <option value="Other">Other</option>
+</select>
 
       <div className={`mt-6 rounded-xl shadow overflow-x-auto ${darkMode ? "bg-slate-900" : "bg-white"}`}>
         <table className="w-full text-sm min-w-[1200px]">
