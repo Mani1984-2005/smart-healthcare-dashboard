@@ -26,7 +26,16 @@ const TEST_CATEGORIES = [
 const STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "Cancelled"];
 
 const PRIORITY_OPTIONS = ["Routine", "Urgent", "Emergency"];
-
+const LAB_TEST_PROFILES = {
+  CBC: [
+    "Hemoglobin",
+    "WBC",
+    "Platelets",
+  ],
+  "Blood Sugar": [
+    "Blood Sugar Fasting",
+  ],
+};
 const LAB_TEST_REFERENCES = {
   Hemoglobin: {
     unit: "g/dL",
@@ -698,14 +707,26 @@ function handleChange(e) {
               />
 
              <LabeledSelect
-  label="Test Name *"
+  label="Lab Profile *"
   name="testName"
   value={form.testName}
   onChange={handleChange}
-  options={Object.keys(LAB_TEST_REFERENCES)}
-  placeholder="Select test…"
+  options={Object.keys(LAB_TEST_PROFILES)}
+  placeholder="Select Lab Profile..."
 />
+    {form.testName && LAB_TEST_PROFILES[form.testName] && (
+  <div className="sm:col-span-2 rounded-lg bg-blue-50 border border-blue-200 p-3">
+    <p className="text-sm font-semibold text-blue-800 mb-2">
+      Tests Included
+    </p>
 
+    <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
+      {LAB_TEST_PROFILES[form.testName].map((test) => (
+        <li key={test}>{test}</li>
+      ))}
+    </ul>
+  </div>
+)}
               <LabeledSelect
                 label="Category *"
                 name="category"
