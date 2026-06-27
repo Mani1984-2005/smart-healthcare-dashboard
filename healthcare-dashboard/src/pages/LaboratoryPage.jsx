@@ -78,6 +78,7 @@ const emptyForm = {
   resultDate: "",
   status: "Pending",
   result: "",
+  profileResults: {},
   resultStatus: "",
   referenceRange: "",
   interpretation: "",
@@ -278,9 +279,24 @@ function handleChange(e) {
       updated.referenceRange = judgement.referenceRange;
       updated.interpretation = judgement.interpretation;
     }
-
     return updated;
   });
+}
+    function handleProfileResultChange(testName, value) {
+  const judgement = judgeLabResult(testName, value);
+
+  setForm((prev) => ({
+    ...prev,
+    profileResults: {
+      ...prev.profileResults,
+      [testName]: {
+        value,
+        status: judgement.status,
+        referenceRange: judgement.referenceRange,
+        interpretation: judgement.interpretation,
+      },
+    },
+  }));
 }
 
   function openAddForm() {
@@ -675,7 +691,6 @@ function handleChange(e) {
 
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Patient *</label>
-
                 <select
                   value={form.patientId}
                   onChange={(e) => {
@@ -690,7 +705,6 @@ function handleChange(e) {
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 >
                   <option value="">Select Patient</option>
-
                   {patients.map((patient) => (
                     <option key={patient.id} value={patient.id}>
                       {patient.id} - {patient.name}
@@ -706,27 +720,84 @@ function handleChange(e) {
                 disabled
               />
 
-             <LabeledSelect
-  label="Lab Profile *"
-  name="testName"
-  value={form.testName}
-  onChange={handleChange}
-  options={Object.keys(LAB_TEST_PROFILES)}
-  placeholder="Select Lab Profile..."
-/>
-    {form.testName && LAB_TEST_PROFILES[form.testName] && (
-  <div className="sm:col-span-2 rounded-lg bg-blue-50 border border-blue-200 p-3">
-    <p className="text-sm font-semibold text-blue-800 mb-2">
-      Tests Included
-    </p>
+              <LabeledSelect
+                label="Lab Profile *"
+                name="testName"
+                value={form.testName}
+                onChange={handleChange}
+                options={Object.keys(LAB_TEST_PROFILES)}
+                placeholder="Select Lab Profile..."
+              />
 
-    <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
-      {LAB_TEST_PROFILES[form.testName].map((test) => (
-        <li key={test}>{test}</li>
-      ))}
-    </ul>
-  </div>
-)}
+              {form.testName && LAB_TEST_PROFILES[form.testName] && (
+                <div className="sm:col-span-2 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                  <p className="text-sm font-semibold text-blue-800 mb-2">
+                    Tests Included
+                  </p>
+
+                  <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
+                    {LAB_TEST_PROFILES[form.testName].map((test) => (
+                      <li key={test}>{test}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {form.testName && LAB_TEST_PROFILES[form.testName] && (
+                <div className="sm:col-span-2 space-y-4">
+                  <h3 className="font-semibold text-gray-800">
+                    Enter Test Values
+                  </h3>
+
+                  {LAB_TEST_PROFILES[form.testName].map((test) => {
+                    const result = form.profileResults?.[test] || {};
+
+                    return (
+                      <div key={test} className="border rounded-lg p-3 bg-gray-50">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {test}
+                        </label>
+
+                        <input
+                          type="number"
+                          value={result.value || ""}
+                          onChange={(e) =>
+                            handleProfileResultChange(test, e.target.value)
+                          }
+                          placeholder={`Enter ${test} value`}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        />
+
+                        {result.status && (
+                          <div className="mt-2 text-sm">
+                            <strong>Status:</strong>{" "}
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                result.status === "Normal"
+                                  ? "bg-green-100 text-green-700"
+                                  : result.status === "Low"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : result.status === "High"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {result.status}
+                            </span>
+                          </div>
+                        )}
+
+                        {result.referenceRange && (
+                          <p className="mt-2 text-xs text-gray-600">
+                            <strong>Reference:</strong> {result.referenceRange}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <LabeledSelect
                 label="Category *"
                 name="category"
@@ -776,57 +847,60 @@ function handleChange(e) {
                 options={STATUS_OPTIONS}
               />
 
-              <div className="sm:col-span-2 flex flex-col gap-2">
-  <label className="text-sm font-medium text-gray-700">
-    Result Value
-  </label>
+              {!LAB_TEST_PROFILES[form.testName] && (
+                <div className="sm:col-span-2 flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Result Value
+                  </label>
 
-  <input
-    type="number"
-    name="result"
-    value={form.result}
-    onChange={handleChange}
-    placeholder="Enter numeric value"
-    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-  />
+                  <input
+                    type="number"
+                    name="result"
+                    value={form.result}
+                    onChange={handleChange}
+                    placeholder="Enter numeric value"
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
 
-  {form.result !== "" && (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  {form.result !== "" && (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold">Auto Result:</span>
 
-      <div className="flex items-center gap-2 mb-2">
-        <span className="font-semibold">Auto Result:</span>
+                        <span
+                          className={`px-3 py-1 rounded-full text-white text-xs font-bold ${
+                            form.resultStatus === "Normal"
+                              ? "bg-green-600"
+                              : form.resultStatus === "Low"
+                              ? "bg-yellow-500"
+                              : form.resultStatus === "High"
+                              ? "bg-red-600"
+                              : "bg-gray-500"
+                          }`}
+                        >
+                          {form.resultStatus}
+                        </span>
+                      </div>
 
-        <span
-          className={`px-3 py-1 rounded-full text-white text-xs font-bold
-            ${
-              form.resultStatus === "Normal"
-                ? "bg-green-600"
-                : form.resultStatus === "Low"
-                ? "bg-yellow-500"
-                : form.resultStatus === "High"
-                ? "bg-red-600"
-                : "bg-gray-500"
-            }`}
-        >
-          {form.resultStatus}
-        </span>
-      </div>
+                      <p>
+                        <strong>Reference Range:</strong>{" "}
+                        {form.referenceRange}
+                      </p>
 
-      <p>
-        <strong>Reference Range :</strong>{" "}
-        {form.referenceRange}
-      </p>
+                      <p className="mt-2">
+                        <strong>Interpretation:</strong>{" "}
+                        {form.interpretation}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
-      <p className="mt-2">
-        <strong>Interpretation :</strong>{" "}
-        {form.interpretation}
-      </p>
-
-    </div>
-  )}
-</div>
               <div className="sm:col-span-2 flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Notes</label>
+                <label className="text-sm font-medium text-gray-700">
+                  Notes
+                </label>
+
                 <textarea
                   name="notes"
                   value={form.notes}
@@ -897,46 +971,41 @@ function handleChange(e) {
                 </div>
               ))}
 
-          <div className="sm:col-span-2 flex flex-col gap-1">
-  <label className="text-sm font-medium text-gray-700">Result Value</label>
-  <input
-    type="number"
-    name="result"
-    value={form.result}
-    onChange={handleChange}
-    placeholder="Enter numeric result value…"
-    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-  />
+              {viewingTest.profileResults &&
+              Object.keys(viewingTest.profileResults).length > 0 ? (
+                <div>
+                  <p className="text-gray-500 font-medium mb-2">Profile Results</p>
 
-  {form.result && (
-    <div className="mt-3 rounded-xl border bg-gray-50 p-4 text-sm">
-      <div className="flex flex-wrap items-center gap-2 mb-2">
-        <span className="font-semibold text-gray-700">Auto Result:</span>
-        <span
-          className={`px-3 py-1 rounded-full text-xs font-bold ${
-            form.resultStatus === "Normal"
-              ? "bg-green-100 text-green-700"
-              : form.resultStatus === "Low"
-              ? "bg-yellow-100 text-yellow-700"
-              : form.resultStatus === "High"
-              ? "bg-red-100 text-red-700"
-              : "bg-gray-100 text-gray-600"
-          }`}
-        >
-          {form.resultStatus}
-        </span>
-      </div>
-
-      <p className="text-gray-600">
-        <strong>Reference Range:</strong> {form.referenceRange}
-      </p>
-
-      <p className="text-gray-600 mt-1">
-        <strong>Interpretation:</strong> {form.interpretation}
-      </p>
-    </div>
-  )}
-</div>
+                  <div className="space-y-2">
+                    {Object.entries(viewingTest.profileResults).map(
+                      ([testName, result]) => (
+                        <div
+                          key={testName}
+                          className="bg-gray-50 rounded-lg p-3 text-gray-700"
+                        >
+                          <div className="flex justify-between gap-3">
+                            <strong>{testName}</strong>
+                            <span>{result.value || "—"}</span>
+                          </div>
+                          <p className="text-xs mt-1">
+                            Status: {result.status || "Manual Review"}
+                          </p>
+                          <p className="text-xs">
+                            Reference: {result.referenceRange || "Not available"}
+                          </p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-gray-500 font-medium mb-1">Result</p>
+                  <p className="bg-gray-50 rounded-lg p-3 text-gray-700 whitespace-pre-wrap">
+                    {viewingTest.result || "No result entered yet."}
+                  </p>
+                </div>
+              )}
 
               {viewingTest.notes && (
                 <div>
