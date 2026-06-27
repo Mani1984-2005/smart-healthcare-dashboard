@@ -58,9 +58,7 @@ if (!isLoggedIn) {
   );
 }return (
     <div>
-      <div style={{ padding: "10px", background: "yellow" }}>
-        Current Page: {page}
-      </div>
+     
         <Navbar
   page={page}
   setPage={setPage}
