@@ -26,6 +26,7 @@ const TEST_CATEGORIES = [
 const STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "Cancelled"];
 
 const PRIORITY_OPTIONS = ["Routine", "Urgent", "Emergency"];
+
 const LAB_TEST_REFERENCES = {
   Hemoglobin: {
     unit: "g/dL",
