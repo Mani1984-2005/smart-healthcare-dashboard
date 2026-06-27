@@ -26,7 +26,36 @@ const TEST_CATEGORIES = [
 const STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "Cancelled"];
 
 const PRIORITY_OPTIONS = ["Routine", "Urgent", "Emergency"];
-
+const LAB_TEST_REFERENCES = {
+  Hemoglobin: {
+    unit: "g/dL",
+    min: 13,
+    max: 17,
+    lowText: "Hemoglobin is lower than normal. Possible anemia. Doctor review recommended.",
+    highText: "Hemoglobin is higher than normal. Doctor review recommended.",
+  },
+  WBC: {
+    unit: "cells/µL",
+    min: 4000,
+    max: 11000,
+    lowText: "WBC is lower than normal. Immunity-related review may be needed.",
+    highText: "WBC is higher than normal. Infection or inflammation should be checked.",
+  },
+  Platelets: {
+    unit: "lakh/µL",
+    min: 1.5,
+    max: 4.5,
+    lowText: "Platelets are lower than normal. Bleeding risk review recommended.",
+    highText: "Platelets are higher than normal. Doctor review recommended.",
+  },
+  "Blood Sugar Fasting": {
+    unit: "mg/dL",
+    min: 70,
+    max: 99,
+    lowText: "Sugar level is lower than normal.",
+    highText: "Sugar level is higher than normal. Diabetes screening may be needed.",
+  },
+};
 const emptyForm = {
   testId: "",
   patientName: "",
@@ -39,6 +68,9 @@ const emptyForm = {
   resultDate: "",
   status: "Pending",
   result: "",
+  resultStatus: "",
+  referenceRange: "",
+  interpretation: "",
   notes: "",
 };
 
@@ -50,6 +82,44 @@ function genId() {
 
 function today() {
   return new Date().toISOString().split("T")[0];
+}
+function judgeLabResult(testName, value) {
+  const ref = LAB_TEST_REFERENCES[testName];
+  const num = Number(value);
+
+  if (!ref || value === "" || Number.isNaN(num)) {
+    return {
+      status: "Manual Review",
+      unit: "",
+      referenceRange: "Not available",
+      interpretation: "Reference range not available. Doctor/lab review required.",
+    };
+  }
+
+  if (num < ref.min) {
+    return {
+      status: "Low",
+      unit: ref.unit,
+      referenceRange: `${ref.min} - ${ref.max} ${ref.unit}`,
+      interpretation: ref.lowText,
+    };
+  }
+
+  if (num > ref.max) {
+    return {
+      status: "High",
+      unit: ref.unit,
+      referenceRange: `${ref.min} - ${ref.max} ${ref.unit}`,
+      interpretation: ref.highText,
+    };
+  }
+
+  return {
+    status: "Normal",
+    unit: ref.unit,
+    referenceRange: `${ref.min} - ${ref.max} ${ref.unit}`,
+    interpretation: "Result is within normal reference range.",
+  };
 }
 
 function readArrayFromStorage(key) {
@@ -182,11 +252,26 @@ export default function LaboratoryPage() {
   function showToast(message, type = "success") {
     setToast({ message, type });
   }
+function handleChange(e) {
+  const { name, value } = e.target;
 
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
+  setForm((prev) => {
+    const updated = { ...prev, [name]: value };
+
+    if (name === "testName" || name === "result") {
+      const judgement = judgeLabResult(
+        name === "testName" ? value : updated.testName,
+        name === "result" ? value : updated.result
+      );
+
+      updated.resultStatus = judgement.status;
+      updated.referenceRange = judgement.referenceRange;
+      updated.interpretation = judgement.interpretation;
+    }
+
+    return updated;
+  });
+}
 
   function openAddForm() {
     setForm({ ...emptyForm, testId: genId(), requestDate: today() });
@@ -611,13 +696,14 @@ export default function LaboratoryPage() {
                 disabled
               />
 
-              <LabeledField
-                label="Test Name *"
-                name="testName"
-                value={form.testName}
-                onChange={handleChange}
-                placeholder="e.g. Complete Blood Count"
-              />
+             <LabeledSelect
+  label="Test Name *"
+  name="testName"
+  value={form.testName}
+  onChange={handleChange}
+  options={Object.keys(LAB_TEST_REFERENCES)}
+  placeholder="Select test…"
+/>
 
               <LabeledSelect
                 label="Category *"
@@ -668,18 +754,55 @@ export default function LaboratoryPage() {
                 options={STATUS_OPTIONS}
               />
 
-              <div className="sm:col-span-2 flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Result</label>
-                <textarea
-                  name="result"
-                  value={form.result}
-                  onChange={handleChange}
-                  placeholder="Enter test result here…"
-                  rows={3}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-                />
-              </div>
+              <div className="sm:col-span-2 flex flex-col gap-2">
+  <label className="text-sm font-medium text-gray-700">
+    Result Value
+  </label>
 
+  <input
+    type="number"
+    name="result"
+    value={form.result}
+    onChange={handleChange}
+    placeholder="Enter numeric value"
+    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+  />
+
+  {form.result !== "" && (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+
+      <div className="flex items-center gap-2 mb-2">
+        <span className="font-semibold">Auto Result:</span>
+
+        <span
+          className={`px-3 py-1 rounded-full text-white text-xs font-bold
+            ${
+              form.resultStatus === "Normal"
+                ? "bg-green-600"
+                : form.resultStatus === "Low"
+                ? "bg-yellow-500"
+                : form.resultStatus === "High"
+                ? "bg-red-600"
+                : "bg-gray-500"
+            }`}
+        >
+          {form.resultStatus}
+        </span>
+      </div>
+
+      <p>
+        <strong>Reference Range :</strong>{" "}
+        {form.referenceRange}
+      </p>
+
+      <p className="mt-2">
+        <strong>Interpretation :</strong>{" "}
+        {form.interpretation}
+      </p>
+
+    </div>
+  )}
+</div>
               <div className="sm:col-span-2 flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Notes</label>
                 <textarea
@@ -752,12 +875,46 @@ export default function LaboratoryPage() {
                 </div>
               ))}
 
-              <div>
-                <p className="text-gray-500 font-medium mb-1">Result</p>
-                <p className="bg-gray-50 rounded-lg p-3 text-gray-700 whitespace-pre-wrap">
-                  {viewingTest.result || "No result entered yet."}
-                </p>
-              </div>
+          <div className="sm:col-span-2 flex flex-col gap-1">
+  <label className="text-sm font-medium text-gray-700">Result Value</label>
+  <input
+    type="number"
+    name="result"
+    value={form.result}
+    onChange={handleChange}
+    placeholder="Enter numeric result value…"
+    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+  />
+
+  {form.result && (
+    <div className="mt-3 rounded-xl border bg-gray-50 p-4 text-sm">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <span className="font-semibold text-gray-700">Auto Result:</span>
+        <span
+          className={`px-3 py-1 rounded-full text-xs font-bold ${
+            form.resultStatus === "Normal"
+              ? "bg-green-100 text-green-700"
+              : form.resultStatus === "Low"
+              ? "bg-yellow-100 text-yellow-700"
+              : form.resultStatus === "High"
+              ? "bg-red-100 text-red-700"
+              : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {form.resultStatus}
+        </span>
+      </div>
+
+      <p className="text-gray-600">
+        <strong>Reference Range:</strong> {form.referenceRange}
+      </p>
+
+      <p className="text-gray-600 mt-1">
+        <strong>Interpretation:</strong> {form.interpretation}
+      </p>
+    </div>
+  )}
+</div>
 
               {viewingTest.notes && (
                 <div>
