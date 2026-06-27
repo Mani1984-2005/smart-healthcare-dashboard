@@ -246,6 +246,7 @@ const filteredPatients = patients.filter((patient) => {
       visitNotes: patient.visitNotes || "",
       photo: patient.photo || "",
       photoSource: patient.photoSource || "Browse Photo",
+      timeline: patient.timeline || [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -467,7 +468,7 @@ const filteredPatients = patients.filter((patient) => {
             ))}
             {filteredPatients.length === 0 && (
               <tr>
-                <td colSpan="11" className="p-5 text-center text-slate-500">No patients found.</td>
+                <td colSpan="12" className="p-5 text-center text-slate-500">No patients found.</td>
               </tr>
             )}
           </tbody>
