@@ -1,298 +1,854 @@
-// FILE PATH: src/pages/BillingPage.jsx
-// REPLACE your existing BillingPage.jsx with this file.
-//
-// Phase 4 complete billing module. Uses storage key "billing_v2" — the old
-// Phase 2 "billing_invoices" key is untouched; switching to this page will
-// NOT delete any existing invoice data.
-//
-// Architecture:
-//   BillingPage (state + layout)
-//     └── BillForm    (create / edit a bill)
-//     └── BillTable   (history + search + filter + PDF/print)
-//     └── billingStorage (all reads/writes)
-//
-// Components imported from:
-//   src/utils/billingStorage.js
-//   src/components/billing/BillForm.jsx
-//   src/components/billing/BillTable.jsx
-
-import { useState, useEffect, useCallback } from "react";
-import {
-  Receipt, TrendingUp, CalendarDays, AlertCircle, Plus, RefreshCw,
-} from "lucide-react";
-import BillForm  from "../components/billing/BillForm";
-import BillTable from "../components/billing/BillTable";
-import {
-  getBills,
-  getBillingSummary,
-  createBill,
-  updateBill,
-  deleteBill,
-} from "../utils/billingStorage";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmt(n) {
-  return "₹" + Number(n || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-// ─── Toast ────────────────────────────────────────────────────────────────────
-
-function Toast({ message, type, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3500);
-    return () => clearTimeout(t);
-  }, [onClose]);
-
-  const styles = {
-    success: "border-l-success-500 bg-white text-success-700",
-    error:   "border-l-error-500  bg-white text-error-700",
-    warning: "border-l-warning-500 bg-white text-warning-700",
-  };
-
-  return (
-    <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 border-l-4 rounded-md shadow-lift px-4 py-3.5 max-w-sm w-full animate-slide-up ${styles[type] || styles.success}`}>
-      <span className="text-sm flex-1">{message}</span>
-      <button onClick={onClose} className="text-lg leading-none opacity-50 hover:opacity-80">×</button>
-    </div>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-export default function BillingPage() {
-  const [bills,   setBills]   = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // Form modal state
-  const [showForm,    setShowForm]    = useState(false);
-  const [formMode,    setFormMode]    = useState("create"); // "create" | "edit"
-  const [editingBill, setEditingBill] = useState(null);
-  const [saving,      setSaving]      = useState(false);
-
-  // Toast state
-  const [toast, setToast] = useState(null);
-
-  // ── Load data ──────────────────────────────────────────────────────────────
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const [allBills, dashSummary] = await Promise.all([getBills(), getBillingSummary()]);
-    setBills(allBills);
-    setSummary(dashSummary);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  function showToast(message, type = "success") {
-    setToast({ message, type });
-  }
-
-  // ── Create bill ────────────────────────────────────────────────────────────
-
-  function openCreateForm() {
-    setFormMode("create");
-    setEditingBill(null);
-    setShowForm(true);
-  }
-
-  function openEditForm(bill) {
-    setFormMode("edit");
-    setEditingBill(bill);
-    setShowForm(true);
-  }
-
-  async function handleFormSubmit(formData) {
-    setSaving(true);
-    try {
-      if (formMode === "edit") {
-        await updateBill(editingBill.billId, formData);
-        showToast("Bill updated successfully.", "success");
-      } else {
-       const createdBill = await createBill(formData);
-
-const patients = JSON.parse(localStorage.getItem("patients")) || [];
-
-const updatedPatients = patients.map((patient) => {
-  const isSamePatient =
-    patient.id === formData.patientId ||
-    patient.name.toLowerCase() === formData.patientName.toLowerCase();
-
-  if (!isSamePatient) return patient;
-
-  return {
-    ...patient,
-    timeline: [
-      ...(patient.timeline || []),
-      {
-        id: Date.now(),
-        date: formData.billDate || new Date().toISOString().split("T")[0],
-        type: "Billing",
-        title: "Bill Generated",
-        details: `Bill ${createdBill?.billId || formData.billId} created. Payment Status: ${formData.paymentStatus}.`,
-      },
-    ],
-  };
-});
-
-localStorage.setItem("patients", JSON.stringify(updatedPatients));
-
-showToast("Bill created and patient timeline updated.", "success");
-      }
-      setShowForm(false);
-      setEditingBill(null);
-      await loadData();
-    } catch (err) {
-      console.error(err);
-      showToast("Something went wrong. Please try again.", "error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // ── Delete bill ────────────────────────────────────────────────────────────
-
-  async function handleDeleteBill(billId) {
-    try {
-      await deleteBill(billId);
-      showToast("Bill deleted.", "warning");
-      await loadData();
-    } catch {
-      showToast("Failed to delete bill.", "error");
-    }
-  }
-
-  // ── Render ─────────────────────────────────────────────────────────────────
-
-  return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-screen-xl mx-auto">
-      {/* ── Page header ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">💳 Billing</h1>
-          <p className="text-sm text-neutral-500 mt-1">Create bills, track payments, and download invoices.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadData}
-            className="h-9 px-3 rounded-lg border border-neutral-200 text-neutral-500 hover:bg-neutral-50 inline-flex items-center gap-1.5 text-sm transition-colors"
-          >
-            <RefreshCw size={14} /> Refresh
-          </button>
-          <button
-            onClick={openCreateForm}
-            className="h-9 px-4 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold inline-flex items-center gap-2 transition-colors shadow-soft"
-          >
-            <Plus size={16} /> New Bill
-          </button>
-          <button
-  onClick={openCreateForm}
-  className="h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold inline-flex items-center gap-2"
->
-  <Plus size={16} /> New Bill
-</button>
-
-
-        </div>
-      </div>
-
-      {/* ── Dashboard cards ───────────────────────────────────────────────── */}
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-neutral-200 h-24 animate-pulse" />
-          ))}
-        </div>
-      ) : summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <SummaryCard icon={<Receipt size={20} />}       label="Total Bills"       value={summary.totalBills}            tone="primary" />
-          <SummaryCard icon={<CalendarDays size={20} />}  label="Revenue Today"     value={fmt(summary.revenueToday)}     tone="success" />
-          <SummaryCard icon={<TrendingUp size={20} />}    label="Revenue This Month" value={fmt(summary.revenueMonth)}   tone="info" />
-          <SummaryCard icon={<AlertCircle size={20} />}   label="Unpaid Bills"      value={summary.unpaidCount}           tone="warning" />
-        </div>
-      )}
-
-      {/* ── Bill history table ───────────────────────────────────────────── */}
-      {loading ? (
-        <div className="bg-white rounded-xl border border-neutral-200 h-64 flex items-center justify-center">
-          <p className="text-sm text-neutral-400">Loading bills…</p>
-        </div>
-      ) : (
-        <BillTable
-          bills={bills}
-          onEdit={openEditForm}
-          onDelete={handleDeleteBill}
-          onRefresh={loadData}
-        />
-      )}
-
-      {/* ── Create / Edit form modal ─────────────────────────────────────── */}
-      {showForm && (
-        <div
-          className="fixed inset-0 z-50 bg-neutral-900/40 backdrop-blur-[2px] flex items-start justify-center p-4 overflow-y-auto animate-fade-in"
-          onClick={() => { if (!saving) setShowForm(false); }}
-        >
-          <div
-            className="bg-white rounded-xl shadow-modal w-full max-w-2xl my-8 overflow-hidden animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-              <div>
-                <h2 className="text-lg font-bold text-neutral-800">
-                  {formMode === "edit" ? "✏️ Edit Bill" : "➕ New Bill"}
-                </h2>
-                <p className="text-xs text-neutral-500 mt-0.5">
-                  {formMode === "edit" ? `Editing ${editingBill?.billId}` : "Fill in the billing details below."}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowForm(false)}
-                disabled={saving}
-                className="w-8 h-8 inline-flex items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-colors disabled:opacity-40"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="px-6 py-5 max-h-[80vh] overflow-y-auto">
-              <BillForm
-                mode={formMode}
-                initialData={editingBill}
-                onSubmit={handleFormSubmit}
-                onCancel={() => setShowForm(false)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Toast ────────────────────────────────────────────────────────── */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
-  );
-}
-
-// ─── Local summary card ───────────────────────────────────────────────────────
-
-function SummaryCard({ icon, label, value, tone }) {
-  const toneMap = {
-    primary: "bg-primary-50 text-primary-700",
-    success: "bg-success-50 text-success-700",
-    info:    "bg-info-50 text-info-700",
-    warning: "bg-warning-50 text-warning-700",
-    error:   "bg-error-50 text-error-700",
-  };
-  return (
-    <div className="bg-white rounded-xl border border-neutral-200/60 shadow-card p-5">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${toneMap[tone]}`}>
-        {icon}
-      </div>
-      <p className="text-2xl font-bold text-neutral-800 leading-tight">{value}</p>
-      <p className="text-sm text-neutral-500 mt-0.5">{label}</p>
-    </div>
-  );
-}
+// src/pages/BillingPage.jsx 
+// Enterprise Hospital Billing Module — fully self-contained (no external component files needed) 
+// Storage key: "billing_invoices" (preserved from existing project) 
+ 
+import { useState, useEffect, useCallback, useRef } from "react"; 
+import { jsPDF } from "jspdf"; 
+ 
+// ─── Storage Helpers 
+────────────────────────────────────────────────────────── 
+ 
+function getBills() { 
+  return JSON.parse(localStorage.getItem("billing_invoices") || "[]"); 
+} 
+ 
+function saveBills(bills) { 
+  localStorage.setItem("billing_invoices", JSON.stringify(bills)); 
+} 
+ 
+function generateBillId() { 
+  const now = new Date(); 
+  const y = now.getFullYear(); 
+  const m = String(now.getMonth() + 1).padStart(2, "0"); 
+  const d = String(now.getDate()).padStart(2, "0"); 
+  const rand = Math.floor(1000 + Math.random() * 9000); 
+  return `INV-${y}${m}${d}-${rand}`; 
+} 
+ 
+function computeTotals(charges, discountPct, gstPct) { 
+  const subtotal = Object.values(charges).reduce((s, v) => s + (parseFloat(v) || 0), 0); 
+  const discount = (subtotal * (parseFloat(discountPct) || 0)) / 100; 
+  const taxable = subtotal - discount; 
+  const gst = (taxable * (parseFloat(gstPct) || 0)) / 100; 
+  const grand = taxable + gst; 
+  return { subtotal, discount, taxable, gst, grand }; 
+} 
+ 
+function getBillingSummary(bills) { 
+  const today = new Date().toISOString().split("T")[0]; 
+  const nowMonth = today.slice(0, 7); 
+  const nowWeek = (() => { 
+    const d = new Date(); 
+    const day = d.getDay(); 
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+    return new Date(d.setDate(diff)).toISOString().split("T")[0]; 
+  })(); 
+ 
+  let revenueToday = 0, revenueWeek = 0, revenueMonth = 0, pending = 0, insurance = 0; 
+  let paidCount = 0, pendingCount = 0, highest = 0; 
+  bills.forEach((b) => { 
+    const amt = parseFloat(b.grandTotal) || 0; 
+    if (b.billDate === today) revenueToday += amt; 
+    if (b.billDate >= nowWeek) revenueWeek += amt; 
+    if ((b.billDate || "").startsWith(nowMonth)) revenueMonth += amt; 
+    if (b.paymentStatus === "Pending" || b.paymentStatus === "Partial") pending += 
+parseFloat(b.dueAmount) || 0; 
+    if (b.paymentMethod === "Insurance") insurance += amt; 
+    if (b.paymentStatus === "Paid") paidCount++; 
+    else pendingCount++; 
+    if (amt > highest) highest = amt; 
+  }); 
+  const avg = bills.length ? (bills.reduce((s, b) => s + (parseFloat(b.grandTotal) || 0), 0) / 
+bills.length) : 0; 
+  return { revenueToday, revenueWeek, revenueMonth, pending, insurance, paidCount, 
+pendingCount, highest, avg, total: bills.length }; 
+} 
+ 
+// ─── Formatters 
+────────────────────────────────────────────────────────────
+─── 
+ 
+function fmt(n) { 
+  return "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, 
+maximumFractionDigits: 2 }); 
+} 
+ 
+function fmtDate(str) { 
+  if (!str) return "—"; 
+  const d = new Date(str); 
+  return isNaN(d) ? str : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: 
+"numeric" }); 
+} 
+ 
+// ─── Toast 
+────────────────────────────────────────────────────────────
+──────── 
+ 
+function Toast({ message, type, onClose }) { 
+  useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t); }, 
+[onClose]); 
+  const styles = { success: "border-green-500 bg-green-50 text-green-800", error: 
+"border-red-500 bg-red-50 text-red-800", warning: "border-yellow-500 bg-yellow-50 
+text-yellow-800" }; 
+  return ( 
+    <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 border-l-4 rounded-lg 
+shadow-lg px-4 py-3 max-w-sm w-full text-sm ${styles[type] || styles.success}`}> 
+      <span className="flex-1">{message}</span> 
+      <button onClick={onClose} className="opacity-60 hover:opacity-100 text-lg 
+leading-none">×</button> 
+    </div> 
+  ); 
+} 
+ 
+// ─── Status / Method Badges 
+─────────────────────────────────────────────────── 
+ 
+const STATUS_STYLES = { 
+  Paid:      "bg-green-100 text-green-700 border border-green-200", 
+  Pending:   "bg-yellow-100 text-yellow-700 border border-yellow-200", 
+  Partial:   "bg-blue-100 text-blue-700 border border-blue-200", 
+  Refunded:  "bg-red-100 text-red-700 border border-red-200", 
+}; 
+ 
+function StatusBadge({ status }) { 
+  return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs 
+font-semibold ${STATUS_STYLES[status] || "bg-slate-100 text-slate-600"}`}>{status || 
+"—"}</span>; 
+} 
+ 
+// ─── Charge Row 
+────────────────────────────────────────────────────────────
+─── 
+ 
+const CHARGE_FIELDS = [ 
+  { key: "consultationFee",   label: "Consultation Fee" }, 
+  { key: "labCharges",        label: "Laboratory Charges" }, 
+  { key: "pharmacyCharges",   label: "Pharmacy Charges" }, 
+  { key: "procedureCharges",  label: "Procedure Charges" }, 
+  { key: "roomCharges",       label: "Room Charges" }, 
+  { key: "nursingCharges",    label: "Nursing Charges" }, 
+  { key: "miscCharges",       label: "Miscellaneous" }, 
+]; 
+ 
+// ─── PDF Invoice 
+────────────────────────────────────────────────────────────
+── 
+ 
+function generateInvoicePDF(bill) { 
+  const doc = new jsPDF({ unit: "pt", format: "a4" }); 
+  const pw = doc.internal.pageSize.getWidth(); 
+ 
+  // Header strip 
+  doc.setFillColor(30, 64, 175); 
+  doc.rect(0, 0, pw, 80, "F"); 
+  doc.setTextColor(255, 255, 255); 
+  doc.setFontSize(22); 
+  doc.setFont("helvetica", "bold"); 
+  doc.text("MediCare Pro", 40, 38); 
+  doc.setFontSize(10); 
+  doc.setFont("helvetica", "normal"); 
+  doc.text("Enterprise Hospital Management System", 40, 56); 
+  doc.text("123 Healthcare Avenue, Medical City | Tel: +91-9876543210", 40, 70); 
+ 
+  // Invoice meta 
+  doc.setTextColor(30, 30, 30); 
+  doc.setFontSize(18); 
+  doc.setFont("helvetica", "bold"); 
+  doc.text("TAX INVOICE", pw - 40, 38, { align: "right" }); 
+  doc.setFontSize(10); 
+  doc.setFont("helvetica", "normal"); 
+  doc.setTextColor(80, 80, 80); 
+  doc.text(`Invoice No: ${bill.billId}`, pw - 40, 56, { align: "right" }); 
+  doc.text(`Date: ${fmtDate(bill.billDate)}`, pw - 40, 70, { align: "right" }); 
+ 
+  // Patient / Doctor section 
+  let y = 105; 
+  doc.setFillColor(245, 247, 250); 
+  doc.roundedRect(30, y, pw - 60, 80, 4, 4, "F"); 
+  doc.setTextColor(30, 30, 30); 
+  doc.setFontSize(9); 
+  doc.setFont("helvetica", "bold"); 
+  doc.text("BILL TO", 44, y + 16); 
+  doc.setFont("helvetica", "normal"); 
+  doc.text(bill.patientName || "—", 44, y + 30); 
+  doc.text(`Patient ID: ${bill.patientId || "—"}`, 44, y + 44); 
+  doc.text(`Dept: ${bill.department || "—"}`, 44, y + 58); 
+ 
+  doc.setFont("helvetica", "bold"); 
+  doc.text("ATTENDING DOCTOR", pw / 2, y + 16); 
+  doc.setFont("helvetica", "normal"); 
+  doc.text(bill.doctorName || "—", pw / 2, y + 30); 
+  doc.text(`Billing Staff: ${bill.billingStaff || "Reception"}`, pw / 2, y + 44); 
+  doc.text(`Payment Method: ${bill.paymentMethod || "—"}`, pw / 2, y + 58); 
+ 
+  // QR placeholder 
+  doc.setDrawColor(200, 200, 200); 
+  doc.rect(pw - 100, y + 4, 68, 68); 
+  doc.setFontSize(7); 
+  doc.setTextColor(150, 150, 150); 
+  doc.text("QR CODE", pw - 66, y + 42, { align: "center" }); 
+ 
+  // Charges table 
+  y += 100; 
+  doc.setFillColor(30, 64, 175); 
+  doc.rect(30, y, pw - 60, 22, "F"); 
+  doc.setTextColor(255, 255, 255); 
+  doc.setFontSize(9); 
+  doc.setFont("helvetica", "bold"); 
+  doc.text("Description", 44, y + 14); 
+  doc.text("Amount", pw - 44, y + 14, { align: "right" }); 
+  y += 22; 
+ 
+  doc.setFont("helvetica", "normal"); 
+  doc.setTextColor(30, 30, 30); 
+  CHARGE_FIELDS.forEach(({ key, label }, idx) => { 
+    const val = parseFloat(bill.charges?.[key]) || 0; 
+    if (val === 0) return; 
+    if (idx % 2 === 0) { doc.setFillColor(250, 251, 252); doc.rect(30, y, pw - 60, 20, "F"); } 
+    doc.text(label, 44, y + 13); 
+    doc.text(fmt(val), pw - 44, y + 13, { align: "right" }); 
+    y += 20; 
+  }); 
+ 
+  // Totals 
+  y += 10; 
+  const lineX = pw - 200; 
+  const { subtotal, discount, gst, grand } = computeTotals(bill.charges || {}, bill.discountPct, 
+bill.gstPct); 
+ 
+  const totRows = [ 
+    ["Subtotal", fmt(subtotal)], 
+    [`Discount (${bill.discountPct || 0}%)`, `-${fmt(discount)}`], 
+    [`GST (${bill.gstPct || 0}%)`, fmt(gst)], 
+  ]; 
+  doc.setFontSize(9); 
+  totRows.forEach(([l, v]) => { 
+    doc.setTextColor(80, 80, 80); 
+    doc.text(l, lineX, y); 
+    doc.text(v, pw - 44, y, { align: "right" }); 
+    y += 18; 
+  }); 
+ 
+  doc.setDrawColor(200, 200, 200); 
+  doc.line(lineX, y - 4, pw - 30, y - 4); 
+  doc.setFontSize(12); 
+  doc.setFont("helvetica", "bold"); 
+  doc.setTextColor(30, 64, 175); 
+  doc.text("Grand Total", lineX, y + 8); 
+  doc.text(fmt(grand), pw - 44, y + 8, { align: "right" }); 
+  y += 24; 
+ 
+  doc.setFontSize(9); 
+  doc.setTextColor(220, 40, 40); 
+  doc.text(`Due Amount: ${fmt(bill.dueAmount || 0)}`, lineX, y); 
+  doc.setTextColor(30, 30, 30); 
+  doc.text(`Status: ${bill.paymentStatus}`, pw - 44, y, { align: "right" }); 
+ 
+  // Notes 
+  if (bill.notes) { 
+    y += 30; 
+    doc.setFontSize(8); 
+    doc.setTextColor(80, 80, 80); 
+    doc.text(`Notes: ${bill.notes}`, 40, y); 
+  } 
+ 
+  // Signature block 
+  y = doc.internal.pageSize.getHeight() - 90; 
+  doc.setDrawColor(200, 200, 200); 
+  doc.line(44, y, 180, y); 
+  doc.line(pw - 180, y, pw - 44, y); 
+  doc.setFontSize(8); 
+  doc.setTextColor(80, 80, 80); 
+  doc.text("Authorized Signatory", 44, y + 14); 
+  doc.text("Patient / Representative", pw - 44, y + 14, { align: "right" }); 
+ 
+  // Footer 
+  doc.setFillColor(30, 64, 175); 
+  doc.rect(0, doc.internal.pageSize.getHeight() - 32, pw, 32, "F"); 
+  doc.setTextColor(255, 255, 255); 
+  doc.setFontSize(8); 
+  doc.text("Thank you for choosing MediCare Pro. Get well soon!", pw / 2, 
+doc.internal.pageSize.getHeight() - 14, { align: "center" }); 
+ 
+  doc.save(`${bill.billId}.pdf`); 
+} 
+ 
+// ─── Bill Form 
+────────────────────────────────────────────────────────────
+──── 
+ 
+const EMPTY_CHARGES = { consultationFee: "", labCharges: "", pharmacyCharges: "", 
+procedureCharges: "", roomCharges: "", nursingCharges: "", miscCharges: "" }; 
+ 
+function BillForm({ mode, initialData, onSubmit, onCancel, saving }) { 
+  const patients = JSON.parse(localStorage.getItem("patients") || "[]"); 
+  const doctors  = JSON.parse(localStorage.getItem("doctors") || "[]"); 
+ 
+  const [form, setForm] = useState(() => { 
+    if (mode === "edit" && initialData) { 
+      return { 
+        ...initialData, 
+        charges: { ...EMPTY_CHARGES, ...(initialData.charges || {}) }, 
+      }; 
+    } 
+    return { 
+      billId: generateBillId(), 
+      billDate: new Date().toISOString().split("T")[0], 
+      patientId: "", patientName: "", doctorName: "", department: "", billingStaff: "Reception", 
+      charges: { ...EMPTY_CHARGES }, 
+      discountPct: "0", gstPct: "5", 
+      paymentMethod: "Cash", paymentStatus: "Paid", 
+      paidAmount: "", notes: "", 
+    }; 
+  }); 
+ 
+  function set(field, val) { setForm((f) => ({ ...f, [field]: val })); } 
+  function setCharge(key, val) { setForm((f) => ({ ...f, charges: { ...f.charges, [key]: val } })); } 
+ 
+  function handlePatientSelect(e) { 
+    const p = patients.find((x) => x.id === e.target.value || String(x.id) === e.target.value); 
+    if (p) { set("patientId", p.id); set("patientName", p.name); } 
+  } 
+ 
+  function handleDoctorSelect(e) { 
+    const d = doctors.find((x) => x.id === e.target.value || String(x.id) === e.target.value); 
+    if (d) { set("doctorName", d.name || d.fullName); set("department", d.department || 
+d.specialization || ""); } 
+  } 
+ 
+  const { subtotal, discount, gst, grand } = computeTotals(form.charges, form.discountPct, 
+form.gstPct); 
+  const paid = parseFloat(form.paidAmount) || (form.paymentStatus === "Paid" ? grand : 0); 
+  const due  = Math.max(0, grand - paid); 
+ 
+  function handleSubmit() { 
+    if (!form.patientName.trim()) { alert("Patient name is required."); return; } 
+    onSubmit({ ...form, grandTotal: grand.toFixed(2), paidAmount: paid.toFixed(2), dueAmount: 
+due.toFixed(2) }); 
+  } 
+ 
+  const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm 
+focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"; 
+  const labelCls = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide"; 
+ 
+  return ( 
+    <div className="space-y-5"> 
+      {/* Bill ID + Date */} 
+      <div className="grid grid-cols-2 gap-4"> 
+        <div> 
+          <label className={labelCls}>Invoice Number</label> 
+          <input className={inputCls + " bg-slate-50 font-mono"} value={form.billId} readOnly /> 
+        </div> 
+        <div> 
+          <label className={labelCls}>Bill Date</label> 
+          <input type="date" className={inputCls} value={form.billDate} onChange={(e) => 
+set("billDate", e.target.value)} /> 
+        </div> 
+      </div> 
+ 
+      {/* Patient */} 
+      <div className="grid grid-cols-2 gap-4"> 
+        <div> 
+          <label className={labelCls}>Select Patient</label> 
+          <select className={inputCls} onChange={handlePatientSelect} value={form.patientId || 
+""}> 
+            <option value="">— Select —</option> 
+            {patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)} 
+          </select> 
+        </div> 
+        <div> 
+          <label className={labelCls}>Patient Name</label> 
+          <input className={inputCls} placeholder="Or type manually" value={form.patientName} 
+onChange={(e) => set("patientName", e.target.value)} /> 
+        </div> 
+      </div> 
+ 
+      {/* Doctor + Department */} 
+      <div className="grid grid-cols-2 gap-4"> 
+        <div> 
+          <label className={labelCls}>Attending Doctor</label> 
+          <select className={inputCls} onChange={handleDoctorSelect} value={doctors.find(d => 
+(d.name || d.fullName) === form.doctorName)?.id || ""}> 
+            <option value="">— Select —</option> 
+            {doctors.map((d) => <option key={d.id} value={d.id}>{d.name || d.fullName}</option>)} 
+          </select> 
+        </div> 
+        <div> 
+          <label className={labelCls}>Department</label> 
+          <input className={inputCls} placeholder="e.g. Cardiology" value={form.department} 
+onChange={(e) => set("department", e.target.value)} /> 
+        </div> 
+      </div> 
+ 
+      {/* Charges */} 
+      <div> 
+        <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><span 
+className="w-1.5 h-4 bg-blue-600 rounded inline-block" />Charge Breakdown</h3> 
+        <div className="grid grid-cols-2 gap-3"> 
+          {CHARGE_FIELDS.map(({ key, label }) => ( 
+            <div key={key}> 
+              <label className={labelCls}>{label}</label> 
+              <input type="number" min="0" className={inputCls} placeholder="0.00" 
+value={form.charges[key]} onChange={(e) => setCharge(key, e.target.value)} /> 
+            </div> 
+          ))} 
+        </div> 
+      </div> 
+ 
+      {/* Discount + GST */} 
+      <div className="grid grid-cols-2 gap-4"> 
+        <div> 
+          <label className={labelCls}>Discount (%)</label> 
+          <input type="number" min="0" max="100" className={inputCls} 
+value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /> 
+        </div> 
+        <div> 
+          <label className={labelCls}>GST (%)</label> 
+          <input type="number" min="0" max="100" className={inputCls} value={form.gstPct} 
+onChange={(e) => set("gstPct", e.target.value)} /> 
+        </div> 
+      </div> 
+ 
+      {/* Totals display */} 
+      <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-1.5 border border-slate-200"> 
+        <div className="flex justify-between text-slate-600"><span>Subtotal</span><span 
+className="font-medium">{fmt(subtotal)}</span></div> 
+        <div className="flex justify-between text-slate-600"><span>Discount 
+({form.discountPct}%)</span><span className="text-red-600">-{fmt(discount)}</span></div> 
+        <div className="flex justify-between text-slate-600"><span>GST 
+({form.gstPct}%)</span><span>{fmt(gst)}</span></div> 
+        <div className="border-t border-slate-200 pt-1.5 flex justify-between font-bold text-base 
+text-blue-700"><span>Grand Total</span><span>{fmt(grand)}</span></div> 
+      </div> 
+ 
+      {/* Payment */} 
+      <div className="grid grid-cols-2 gap-4"> 
+        <div> 
+          <label className={labelCls}>Payment Method</label> 
+          <select className={inputCls} value={form.paymentMethod} onChange={(e) => 
+set("paymentMethod", e.target.value)}> 
+            {["Cash", "UPI", "Card", "Insurance", "Mixed"].map((m) => <option 
+key={m}>{m}</option>)} 
+          </select> 
+        </div> 
+        <div> 
+          <label className={labelCls}>Payment Status</label> 
+          <select className={inputCls} value={form.paymentStatus} onChange={(e) => 
+set("paymentStatus", e.target.value)}> 
+            {["Paid", "Pending", "Partial", "Refunded"].map((s) => <option key={s}>{s}</option>)} 
+          </select> 
+        </div> 
+      </div> 
+ 
+      {form.paymentStatus === "Partial" && ( 
+        <div> 
+          <label className={labelCls}>Amount Paid (₹)</label> 
+          <input type="number" min="0" className={inputCls} value={form.paidAmount} 
+onChange={(e) => set("paidAmount", e.target.value)} placeholder="Enter amount received" /> 
+          <p className="text-xs text-red-600 mt-1">Due: {fmt(due)}</p> 
+        </div> 
+      )} 
+ 
+      <div> 
+        <label className={labelCls}>Billing Staff</label> 
+        <input className={inputCls} value={form.billingStaff} onChange={(e) => set("billingStaff", 
+e.target.value)} /> 
+      </div> 
+ 
+      <div> 
+        <label className={labelCls}>Notes</label> 
+        <textarea rows={2} className={inputCls + " resize-none"} value={form.notes} 
+onChange={(e) => set("notes", e.target.value)} placeholder="Optional notes..." /> 
+      </div> 
+ 
+      {/* Actions */} 
+      <div className="flex gap-3 pt-1"> 
+        <button onClick={onCancel} className="flex-1 h-10 border border-slate-200 rounded-lg 
+text-sm text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button> 
+        <button onClick={handleSubmit} disabled={saving} className="flex-1 h-10 bg-blue-600 
+hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold 
+transition-colors"> 
+          {saving ? "Saving…" : mode === "edit" ? "Update Bill" : "Create Bill"} 
+        </button> 
+      </div> 
+    </div> 
+  ); 
+} 
+ 
+// ─── Bill Table 
+────────────────────────────────────────────────────────────
+─── 
+ 
+function BillTable({ bills, onEdit, onDelete, onRefresh }) { 
+  const [search, setSearch] = useState(""); 
+  const [statusFilter, setStatusFilter] = useState("All"); 
+  const [methodFilter, setMethodFilter] = useState("All"); 
+  const [page, setPage] = useState(1); 
+  const PER_PAGE = 10; 
+ 
+  const filtered = bills.filter((b) => { 
+    const q = search.toLowerCase(); 
+    const matchSearch = !q || b.billId?.toLowerCase().includes(q) || 
+b.patientName?.toLowerCase().includes(q) || b.doctorName?.toLowerCase().includes(q); 
+    const matchStatus = statusFilter === "All" || b.paymentStatus === statusFilter; 
+    const matchMethod = methodFilter === "All" || b.paymentMethod === methodFilter; 
+    return matchSearch && matchStatus && matchMethod; 
+  }); 
+ 
+  const totalPages = Math.ceil(filtered.length / PER_PAGE); 
+  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE); 
+ 
+  function confirmDelete(bill) { 
+    if (window.confirm(`Delete bill ${bill.billId}? This cannot be undone.`)) onDelete(bill.billId); 
+  } 
+ 
+  return ( 
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"> 
+      {/* Toolbar */} 
+      <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-start 
+sm:items-center"> 
+        <input 
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full sm:w-64 
+focus:outline-none focus:ring-2 focus:ring-blue-500" 
+          placeholder="Search bill, patient, doctor…" 
+          value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} 
+        /> 
+        <div className="flex gap-2 flex-wrap"> 
+          {["All", "Paid", "Pending", "Partial", "Refunded"].map((s) => ( 
+            <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }} 
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors 
+${statusFilter === s ? "bg-blue-600 text-white border-blue-600" : "border-slate-200 text-slate-600 
+hover:bg-slate-50"}`}> 
+              {s} 
+            </button> 
+          ))} 
+        </div> 
+        <select 
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm ml-auto 
+focus:outline-none" 
+          value={methodFilter} onChange={(e) => { setMethodFilter(e.target.value); setPage(1); }}> 
+          {["All", "Cash", "UPI", "Card", "Insurance", "Mixed"].map((m) => <option 
+key={m}>{m}</option>)} 
+        </select> 
+      </div> 
+ 
+      {/* Table */} 
+      <div className="overflow-x-auto"> 
+        <table className="w-full text-sm"> 
+          <thead> 
+            <tr className="bg-slate-50 text-left"> 
+              {["Invoice", "Patient", "Doctor", "Date", "Grand Total", "Due", "Method", "Status", 
+""].map((h) => ( 
+                <th key={h} className="px-4 py-3 text-xs font-bold text-slate-500 uppercase 
+tracking-wider whitespace-nowrap">{h}</th> 
+              ))} 
+            </tr> 
+          </thead> 
+          <tbody className="divide-y divide-slate-100"> 
+            {paged.length === 0 ? ( 
+              <tr><td colSpan={9} className="text-center py-16 text-slate-400 text-sm">No bills 
+found. Create your first bill using the button above.</td></tr> 
+            ) : paged.map((b) => ( 
+              <tr key={b.billId} className="hover:bg-slate-50 transition-colors"> 
+                <td className="px-4 py-3 font-mono text-xs text-blue-700 font-semibold 
+whitespace-nowrap">{b.billId}</td> 
+                <td className="px-4 py-3 font-medium text-slate-800 
+whitespace-nowrap">{b.patientName || "—"}</td> 
+                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{b.doctorName || 
+"—"}</td> 
+                <td className="px-4 py-3 text-slate-500 
+whitespace-nowrap">{fmtDate(b.billDate)}</td> 
+                <td className="px-4 py-3 font-bold text-slate-800 
+whitespace-nowrap">{fmt(b.grandTotal)}</td> 
+                <td className="px-4 py-3 text-red-600 font-medium 
+whitespace-nowrap">{fmt(b.dueAmount)}</td> 
+                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{b.paymentMethod || 
+"—"}</td> 
+                <td className="px-4 py-3 whitespace-nowrap"><StatusBadge 
+status={b.paymentStatus} /></td> 
+                <td className="px-4 py-3 whitespace-nowrap"> 
+                  <div className="flex items-center gap-2"> 
+                    <button onClick={() => generateInvoicePDF(b)} title="Download PDF" 
+className="w-7 h-7 rounded-md bg-green-50 hover:bg-green-100 text-green-700 text-xs flex 
+items-center justify-center transition-colors">
+📄
+</button> 
+                    <button onClick={() => onEdit(b)} title="Edit" className="w-7 h-7 rounded-md 
+bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs flex items-center justify-center 
+transition-colors">
+✏
+</button> 
+                    <button onClick={() => confirmDelete(b)} title="Delete" className="w-7 h-7 
+rounded-md bg-red-50 hover:bg-red-100 text-red-700 text-xs flex items-center justify-center 
+transition-colors">
+🗑
+</button> 
+                  </div> 
+                </td> 
+              </tr> 
+            ))} 
+          </tbody> 
+        </table> 
+      </div> 
+ 
+      {/* Pagination */} 
+      {totalPages > 1 && ( 
+        <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between 
+text-sm text-slate-500"> 
+          <span>Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, 
+filtered.length)} of {filtered.length}</span> 
+          <div className="flex gap-1"> 
+            {[...Array(totalPages)].map((_, i) => ( 
+              <button key={i} onClick={() => setPage(i + 1)} 
+                className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${page === i 
++ 1 ? "bg-blue-600 text-white" : "border border-slate-200 hover:bg-slate-50"}`}> 
+                {i + 1} 
+              </button> 
+            ))} 
+          </div> 
+        </div> 
+      )} 
+    </div> 
+  ); 
+} 
+ 
+// ─── Summary Card 
+────────────────────────────────────────────────────────────
+─ 
+ 
+function SummaryCard({ icon, label, value, tone }) { 
+  const tones = { 
+    blue:   "bg-blue-50 text-blue-700", 
+    green:  "bg-green-50 text-green-700", 
+    indigo: "bg-indigo-50 text-indigo-700", 
+    yellow: "bg-yellow-50 text-yellow-700", 
+    red:    "bg-red-50 text-red-700", 
+    purple: "bg-purple-50 text-purple-700", 
+    teal:   "bg-teal-50 text-teal-700", 
+    orange: "bg-orange-50 text-orange-700", 
+    slate:  "bg-slate-50 text-slate-700", 
+  }; 
+  return ( 
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4"> 
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 text-lg 
+${tones[tone] || tones.blue}`}>{icon}</div> 
+      <p className="text-xl font-bold text-slate-800 leading-tight">{value}</p> 
+      <p className="text-xs text-slate-500 mt-0.5">{label}</p> 
+    </div> 
+  ); 
+} 
+ 
+// ─── Main Page 
+────────────────────────────────────────────────────────────
+──── 
+ 
+export default function BillingPage({ darkMode }) { 
+  const [bills,   setBillsState] = useState([]); 
+  const [summary, setSummary]    = useState(null); 
+  const [loading, setLoading]    = useState(true); 
+  const [showForm, setShowForm]  = useState(false); 
+  const [formMode, setFormMode]  = useState("create"); 
+  const [editingBill, setEditingBill] = useState(null); 
+  const [saving, setSaving]      = useState(false); 
+  const [toast,  setToast]       = useState(null); 
+ 
+  const loadData = useCallback(() => { 
+    setLoading(true); 
+    const b = getBills(); 
+    setBillsState(b); 
+    setSummary(getBillingSummary(b)); 
+    setLoading(false); 
+  }, []); 
+ 
+  useEffect(() => { loadData(); }, [loadData]); 
+ 
+  function showToast(msg, type = "success") { setToast({ message: msg, type }); } 
+ 
+  function openCreate() { setFormMode("create"); setEditingBill(null); setShowForm(true); } 
+  function openEdit(bill) { setFormMode("edit"); setEditingBill(bill); setShowForm(true); } 
+ 
+  function handleFormSubmit(formData) { 
+    setSaving(true); 
+    try { 
+      const all = getBills(); 
+      if (formMode === "edit") { 
+        const idx = all.findIndex((b) => b.billId === editingBill.billId); 
+        if (idx !== -1) { all[idx] = { ...all[idx], ...formData }; } 
+        saveBills(all); 
+        showToast("Bill updated successfully.", "success"); 
+      } else { 
+        const newBill = { ...formData, createdAt: new Date().toISOString() }; 
+        saveBills([newBill, ...all]); 
+ 
+        // Update patient timeline 
+        const patients = JSON.parse(localStorage.getItem("patients") || "[]"); 
+        const updated = patients.map((p) => { 
+          const match = p.id === formData.patientId || p.name?.toLowerCase() === 
+formData.patientName?.toLowerCase(); 
+          if (!match) return p; 
+          return { 
+            ...p, 
+            timeline: [...(p.timeline || []), { 
+              id: Date.now(), 
+              date: formData.billDate || new Date().toISOString().split("T")[0], 
+              type: "Billing", 
+              title: "Bill Generated", 
+              details: `Invoice ${formData.billId} created. Amount: ${fmt(formData.grandTotal)}. 
+Status: ${formData.paymentStatus}.`, 
+            }], 
+          }; 
+        }); 
+        localStorage.setItem("patients", JSON.stringify(updated)); 
+        showToast("Bill created and patient timeline updated.", "success"); 
+      } 
+      setShowForm(false); 
+      setEditingBill(null); 
+      loadData(); 
+    } catch (err) { 
+      console.error(err); 
+      showToast("Something went wrong. Please try again.", "error"); 
+    } finally { 
+      setSaving(false); 
+    } 
+  } 
+ 
+  function handleDelete(billId) { 
+    const all = getBills().filter((b) => b.billId !== billId); 
+    saveBills(all); 
+    showToast("Bill deleted.", "warning"); 
+    loadData(); 
+  } 
+ 
+  const summaryCards = summary ? [ 
+    { icon: "
+💳
+", label: "Total Bills",       value: summary.total,         tone: "blue" }, 
+    { icon: "
+💰
+", label: "Revenue Today",     value: fmt(summary.revenueToday),  tone: "green" }, 
+    { icon: "
+📅
+", label: "Revenue This Week", value: fmt(summary.revenueWeek),   tone: "indigo" 
+}, 
+    { icon: "
+📈
+", label: "Revenue This Month",value: fmt(summary.revenueMonth),  tone: "purple" 
+}, 
+    { icon: "
+⏳
+", label: "Pending Amount",    value: fmt(summary.pending),        tone: "yellow" }, 
+    { icon: "
+✅
+", label: "Paid Bills",        value: summary.paidCount,           tone: "teal" }, 
+    { icon: "
+🔔
+", label: "Pending Bills",     value: summary.pendingCount,        tone: "orange" }, 
+    { icon: "
+🏥
+", label: "Insurance Claims",  value: fmt(summary.insurance),      tone: "blue" }, 
+    { icon: "
+📊
+", label: "Average Bill",      value: fmt(summary.avg),            tone: "slate" }, 
+  ] : []; 
+ 
+  return ( 
+    <div className={`min-h-screen p-4 md:p-6 lg:p-8 ${darkMode ? "bg-slate-950 text-white" : 
+"bg-slate-50 text-slate-900"}`}> 
+      <div className="max-w-screen-xl mx-auto"> 
+        {/* Header */} 
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 
+mb-6"> 
+          <div> 
+            <h1 className="text-2xl font-bold text-slate-800">
+💳
+ Billing</h1> 
+            <p className="text-sm text-slate-500 mt-1">Create invoices, track payments, and 
+manage billing records.</p> 
+          </div> 
+          <div className="flex items-center gap-2"> 
+            <button onClick={loadData} className="h-9 px-3 rounded-lg border border-slate-200 
+text-slate-500 hover:bg-slate-100 text-sm transition-colors"> 
+              
+�
+�
+ Refresh 
+            </button> 
+            <button onClick={openCreate} className="h-9 px-4 rounded-lg bg-blue-600 
+hover:bg-blue-700 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-sm 
+transition-colors"> 
+              
+➕
+ New Bill 
+            </button> 
+          </div> 
+        </div> 
+ 
+        {/* Summary Cards */} 
+        {loading ? ( 
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"> 
+            {[...Array(9)].map((_, i) => <div key={i} className="bg-white rounded-xl border 
+border-slate-200 h-24 animate-pulse" />)} 
+          </div> 
+        ) : ( 
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6"> 
+            {summaryCards.map((c) => <SummaryCard key={c.label} {...c} />)} 
+          </div> 
+        )} 
+ 
+        {/* Bill Table */} 
+        {loading ? ( 
+          <div className="bg-white rounded-xl border border-slate-200 h-64 flex items-center 
+justify-center"> 
+            <p className="text-sm text-slate-400">Loading billing records…</p> 
+          </div> 
+        ) : ( 
+          <BillTable bills={bills} onEdit={openEdit} onDelete={handleDelete} onRefresh={loadData} 
+/> 
+        )} 
+ 
+        {/* Future Architecture: Insurance / Audit / Tax structure placeholders stored in localStorage 
+schema */} 
+        {/* billing_audit_log, billing_insurance_claims, billing_tax_reports keys reserved for future 
+modules */} 
+ 
+        {/* Modal */} 
+        {showForm && ( 
+          <div 
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start 
+justify-center p-4 overflow-y-auto" 
+            onClick={() => { if (!saving) setShowForm(false); }} 
+          > 
+            <div 
+              className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 overflow-hidden" 
+              onClick={(e) => e.stopPropagation()} 
+            > 
+              <div className="flex items-center justify-between px-6 py-4 border-b 
+border-slate-100"> 
+                <div> 
+                  <h2 className="text-lg font-bold text-slate-800">{formMode === "edit" ? "
+✏
+ Edit 
+Bill" : "
+➕
+ New Bill"}</h2> 
+                  <p className="text-xs text-slate-500 mt-0.5">{formMode === "edit" ? `Editing 
+${editingBill?.billId}` : "Fill in the details to generate a new invoice."}</p> 
+                </div> 
+                <button onClick={() => setShowForm(false)} disabled={saving} className="w-8 h-8 
+flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 
+transition-colors">✕</button> 
+              </div> 
+              <div className="px-6 py-5 max-h-[80vh] overflow-y-auto"> 
+                <BillForm mode={formMode} initialData={editingBill} onSubmit={handleFormSubmit} 
+onCancel={() => setShowForm(false)} saving={saving} /> 
+              </div> 
+            </div> 
+          </div> 
+        )} 
+ 
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => 
+setToast(null)} />} 
+      </div> 
+    </div> 
+); 
+} 
