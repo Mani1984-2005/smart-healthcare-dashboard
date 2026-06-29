@@ -939,3 +939,187 @@ export default function BillingPage({ darkMode }) {
     </div>
   );
 }
+
+// src/pages/BillingPage.jsx
+import { useMemo, useState } from "react";
+
+const initialInvoices = [
+  {
+    id: "INV-1001",
+    patientId: "PAT-1001",
+    patientName: "Ravi Kumar",
+    phone: "9876543210",
+    status: "Paid",
+    paymentMethod: "UPI",
+    grandTotal: 850,
+    amountPaid: 850,
+    balanceDue: 0,
+    billingDate: "2026-06-15",
+    items: [
+      { serviceName: "Consultation", category: "Consultation", quantity: 1, unitPrice: 300, amount: 300 },
+      { serviceName: "CBC Test", category: "Lab", quantity: 1, unitPrice: 250, amount: 250 },
+      { serviceName: "Paracetamol", category: "Medicine", quantity: 5, unitPrice: 60, amount: 300 },
+    ],
+  },
+];
+
+export default function BillingPage({ darkMode }) {
+  const [invoices, setInvoices] = useState(initialInvoices);
+  const [selectedPatient, setSelectedPatient] = useState("PAT-1001");
+  const [patientName, setPatientName] = useState("Ravi Kumar");
+  const [phone, setPhone] = useState("9876543210");
+  const [items, setItems] = useState([
+    { serviceName: "", category: "Consultation", quantity: 1, unitPrice: 0 },
+  ]);
+  const [discount, setDiscount] = useState(0);
+  const [tax, setTax] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState("Pending");
+  const [notes, setNotes] = useState("");
+
+  const subtotal = useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0),
+    [items]
+  );
+  const grandTotal = Math.max(0, subtotal - Number(discount || 0) + Number(tax || 0));
+
+  const addItem = () => {
+    setItems((prev) => [...prev, { serviceName: "", category: "Other", quantity: 1, unitPrice: 0 }]);
+  };
+
+  const updateItem = (index, field, value) => {
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const removeItem = (index) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const createInvoice = () => {
+    if (!patientName.trim() || !selectedPatient.trim() || items.length === 0) return;
+
+    const cleanItems = items
+      .filter((item) => item.serviceName.trim())
+      .map((item) => ({
+        ...item,
+        quantity: Number(item.quantity || 1),
+        unitPrice: Number(item.unitPrice || 0),
+        amount: Number(item.quantity || 1) * Number(item.unitPrice || 0),
+      }));
+
+    const newInvoice = {
+      id: `INV-${Date.now()}`,
+      patientId: selectedPatient,
+      patientName,
+      phone,
+      status: paymentMethod === "Pending" ? "Unpaid" : "Paid",
+      paymentMethod,
+      grandTotal,
+      amountPaid: paymentMethod === "Pending" ? 0 : grandTotal,
+      balanceDue: paymentMethod === "Pending" ? grandTotal : 0,
+      billingDate: new Date().toISOString().split("T")[0],
+      items: cleanItems,
+      notes,
+    };
+
+    setInvoices((prev) => [newInvoice, ...prev]);
+    setItems([{ serviceName: "", category: "Consultation", quantity: 1, unitPrice: 0 }]);
+    setDiscount(0);
+    setTax(0);
+    setNotes("");
+  };
+
+  const cardBg = darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900";
+  const inputClass = `w-full border rounded-lg p-2 text-sm ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-300"}`;
+
+  return (
+    <div className={`min-h-screen p-6 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-900"}`}>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Billing</h1>
+          <p className="text-sm text-slate-500">Invoice generation, service billing, and patient history</p>
+        </div>
+        <div className="text-sm font-semibold">Invoices: {invoices.length}</div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`${cardBg} rounded-2xl p-5 shadow lg:col-span-2`}>
+          <h2 className="text-lg font-bold mb-4">Create Invoice</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <input className={inputClass} placeholder="Patient ID" value={selectedPatient} onChange={(e) => setSelectedPatient(e.target.value)} />
+            <input className={inputClass} placeholder="Patient Name" value={patientName} onChange={(e) => setPatientName(e.target.value)} />
+            <input className={inputClass} placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+
+          <div className="space-y-3">
+            {items.map((item, index) => (
+              <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                <input className={`${inputClass} md:col-span-4`} placeholder="Service name" value={item.serviceName} onChange={(e) => updateItem(index, "serviceName", e.target.value)} />
+                <select className={`${inputClass} md:col-span-2`} value={item.category} onChange={(e) => updateItem(index, "category", e.target.value)}>
+                  <option>Consultation</option>
+                  <option>Lab</option>
+                  <option>Procedure</option>
+                  <option>Medicine</option>
+                  <option>Room</option>
+                  <option>Other</option>
+                </select>
+                <input className={`${inputClass} md:col-span-2`} type="number" min="1" placeholder="Qty" value={item.quantity} onChange={(e) => updateItem(index, "quantity", e.target.value)} />
+                <input className={`${inputClass} md:col-span-2`} type="number" min="0" placeholder="Unit price" value={item.unitPrice} onChange={(e) => updateItem(index, "unitPrice", e.target.value)} />
+                <button type="button" onClick={() => removeItem(index)} className="md:col-span-2 px-3 py-2 rounded-lg bg-red-600 text-white">
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button type="button" onClick={addItem} className="mt-4 px-4 py-2 rounded-lg bg-cyan-600 text-white">
+            + Add Service
+          </button>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+            <input className={inputClass} type="number" min="0" placeholder="Discount" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+            <input className={inputClass} type="number" min="0" placeholder="Tax" value={tax} onChange={(e) => setTax(e.target.value)} />
+            <select className={inputClass} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+              <option>Pending</option>
+              <option>Cash</option>
+              <option>Card</option>
+              <option>UPI</option>
+              <option>Insurance</option>
+            </select>
+          </div>
+
+          <textarea className={`${inputClass} mt-3`} rows="3" placeholder="Billing notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+          <div className="flex items-center justify-between mt-5">
+            <div className="text-sm">
+              <div>Subtotal: {subtotal}</div>
+              <div>Grand Total: {grandTotal}</div>
+            </div>
+            <button type="button" onClick={createInvoice} className="px-5 py-2 rounded-lg bg-green-600 text-white font-semibold">
+              Generate Invoice
+            </button>
+          </div>
+        </div>
+
+        <div className={`${cardBg} rounded-2xl p-5 shadow`}>
+          <h2 className="text-lg font-bold mb-4">Billing History</h2>
+          <div className="space-y-3 max-h-[650px] overflow-auto">
+            {invoices.map((invoice) => (
+              <div key={invoice.id} className={`p-3 rounded-xl border ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
+                <div className="flex justify-between">
+                  <div className="font-semibold">{invoice.invoiceNumber || invoice.id}</div>
+                  <div className="text-xs px-2 py-1 rounded-full bg-cyan-600 text-white">{invoice.status}</div>
+                </div>
+                <div className="text-sm mt-1">{invoice.patientName}</div>
+                <div className="text-sm text-slate-500">Total: {invoice.grandTotal}</div>
+                <div className="text-xs text-slate-400 mt-1">{invoice.billingDate}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
