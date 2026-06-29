@@ -159,4 +159,4 @@ function relationEmoji(rel) {
     "Emergency Contact": "🚨", Other: "👤",
   };
   return map[rel] || "👤";
-}s
+}
