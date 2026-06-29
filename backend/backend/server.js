@@ -5,7 +5,9 @@ import healthRoutes from "./routes/healthRoutes.js";
 // import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
+const pharmacyRoutes = require("./routes/pharmacyRoutes");
 
+app.use("/api", pharmacyRoutes);
 const app = express();
 
 app.use(cors());
