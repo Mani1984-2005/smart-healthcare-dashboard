@@ -1,33 +1,33 @@
 // src/components/pharmacy/PrescriptionBuilder.jsx
-// MediCare Pro — Prescription Builder
-// Rule-based dosage auto-fill + drug interaction warning engine
+// MediCare Pro — Prescription Builder (Unified offline/online engine)
 
 import { useState, useCallback } from "react";
+import MedicineCard from "./MedicineCard";
 
-// ─── Local rule engine (mirrors backend, so UI works offline/localStorage) ────
+// ─── Local Rule Engine (Mirrors backend for offline / immediate UI updates) ───
 const DOSAGE_RULES = {
-  amoxicillin:   { standard: "500mg", frequency: "3 times daily",                    duration: "7 days",         timing: "With or without food",           route: "Oral",       form: "Capsule", warnings: ["Complete full course", "Monitor for allergic reaction"] },
-  azithromycin:  { standard: "500mg", frequency: "Once daily",                       duration: "3-5 days",       timing: "With food to reduce GI upset",   route: "Oral",       form: "Tablet",  warnings: ["Do not take with antacids"] },
-  ciprofloxacin: { standard: "500mg", frequency: "Twice daily",                      duration: "7-14 days",      timing: "Empty stomach preferred",        route: "Oral",       form: "Tablet",  warnings: ["Avoid dairy", "Avoid sun exposure"] },
-  metronidazole: { standard: "400mg", frequency: "3 times daily",                    duration: "7 days",         timing: "After food",                     route: "Oral",       form: "Tablet",  warnings: ["Avoid alcohol completely", "Metallic taste is normal"] },
-  doxycycline:   { standard: "100mg", frequency: "Twice daily",                      duration: "7-14 days",      timing: "With plenty of water after food",route: "Oral",       form: "Capsule", warnings: ["Avoid sunlight", "Avoid dairy products"] },
-  paracetamol:   { standard: "500mg", frequency: "Every 4-6 hours (max 4/day)",      duration: "As needed",      timing: "Any time",                       route: "Oral",       form: "Tablet",  warnings: ["Max 4g/day total", "Check all products for paracetamol"] },
-  ibuprofen:     { standard: "400mg", frequency: "Every 6-8 hours",                  duration: "5-7 days",       timing: "After food",                     route: "Oral",       form: "Tablet",  warnings: ["Take with food", "Avoid in renal impairment"] },
-  aspirin:       { standard: "75mg",  frequency: "Once daily (antiplatelet)",        duration: "Long-term",      timing: "After food",                     route: "Oral",       form: "Tablet",  warnings: ["EC tablet — swallow whole", "Avoid in under-16s"] },
-  amlodipine:    { standard: "5mg",   frequency: "Once daily",                       duration: "Long-term",      timing: "Same time daily",                route: "Oral",       form: "Tablet",  warnings: ["May cause ankle swelling", "Do not stop abruptly"] },
-  metoprolol:    { standard: "50mg",  frequency: "Twice daily",                      duration: "Long-term",      timing: "With or after food",             route: "Oral",       form: "Tablet",  warnings: ["Taper when stopping — never stop abruptly", "Monitor HR"] },
-  lisinopril:    { standard: "10mg",  frequency: "Once daily",                       duration: "Long-term",      timing: "Consistent time daily",          route: "Oral",       form: "Tablet",  warnings: ["May cause dry cough", "Monitor potassium", "Avoid in pregnancy"] },
-  atorvastatin:  { standard: "20mg",  frequency: "Once daily (evening)",             duration: "Long-term",      timing: "Evening",                        route: "Oral",       form: "Tablet",  warnings: ["Report muscle pain", "Avoid grapefruit juice"] },
-  simvastatin:   { standard: "20mg",  frequency: "Once daily (evening)",             duration: "Long-term",      timing: "Evening",                        route: "Oral",       form: "Tablet",  warnings: ["Avoid grapefruit", "Report muscle pain or weakness"] },
-  warfarin:      { standard: "Per INR", frequency: "Once daily",                     duration: "Long-term",      timing: "Same time each day",             route: "Oral",       form: "Tablet",  warnings: ["Regular INR monitoring essential", "Many drug & food interactions", "Report bleeding"] },
-  metformin:     { standard: "500mg", frequency: "Twice daily with meals",           duration: "Long-term",      timing: "With meals",                     route: "Oral",       form: "Tablet",  warnings: ["Take with food to reduce GI side effects", "Hold before contrast procedures"] },
-  omeprazole:    { standard: "20mg",  frequency: "Once daily",                       duration: "4-8 weeks",      timing: "30 mins before breakfast",       route: "Oral",       form: "Capsule", warnings: ["Take before eating", "Long-term use may reduce B12"] },
-  pantoprazole:  { standard: "40mg",  frequency: "Once daily",                       duration: "4-8 weeks",      timing: "30-60 mins before meal",         route: "Oral",       form: "Tablet",  warnings: ["Swallow whole", "Monitor magnesium with long-term use"] },
-  ondansetron:   { standard: "4mg",   frequency: "Every 8 hours (as needed)",        duration: "2-3 days",       timing: "Before meals",                   route: "Oral",       form: "Tablet",  warnings: ["May cause headache", "QT prolongation risk"] },
-  salbutamol:    { standard: "2.5mg", frequency: "Every 4-6 hours (as needed)",      duration: "As needed",      timing: "As needed",                      route: "Inhalation", form: "Inhaler", warnings: ["Shake before use", "Rinse mouth after use"] },
-  montelukast:   { standard: "10mg",  frequency: "Once daily",                       duration: "Long-term",      timing: "Evening",                        route: "Oral",       form: "Tablet",  warnings: ["Report behavioral or mood changes"] },
-  diazepam:      { standard: "5mg",   frequency: "Twice daily",                      duration: "Max 4 weeks",    timing: "Any time",                       route: "Oral",       form: "Tablet",  warnings: ["Risk of dependence", "Avoid driving", "No alcohol"] },
-  pregabalin:    { standard: "75mg",  frequency: "Twice daily",                      duration: "As directed",    timing: "Any time",                       route: "Oral",       form: "Capsule", warnings: ["Drowsiness — avoid driving", "Taper when stopping"] },
+  amoxicillin:   { standard: "500mg", frequency: "tds",  duration: "7",  timing: "With or without food",           route: "Oral", form: "Capsule", warnings: ["Complete full course", "Monitor for allergic reaction"] },
+  azithromycin:  { standard: "500mg", frequency: "od",   duration: "3",  timing: "With food to reduce GI upset",   route: "Oral", form: "Tablet",  warnings: ["Do not take with antacids"] },
+  ciprofloxacin: { standard: "500mg", frequency: "bd",   duration: "7",  timing: "Empty stomach preferred",        route: "Oral", form: "Tablet",  warnings: ["Avoid dairy", "Avoid sun exposure"] },
+  metronidazole: { standard: "400mg", frequency: "tds",  duration: "7",  timing: "After food",                     route: "Oral", form: "Tablet",  warnings: ["Avoid alcohol completely", "Metallic taste is normal"] },
+  doxycycline:   { standard: "100mg", frequency: "bd",   duration: "7",  timing: "With plenty of water after food",route: "Oral", form: "Capsule", warnings: ["Avoid sunlight", "Avoid dairy products"] },
+  paracetamol:   { standard: "500mg", frequency: "sos",  duration: "5",  timing: "Any time",                       route: "Oral", form: "Tablet",  warnings: ["Max 4g/day total", "Check all products for paracetamol"] },
+  ibuprofen:     { standard: "400mg", frequency: "sos",  duration: "5",  timing: "After food",                     route: "Oral", form: "Tablet",  warnings: ["Take with food", "Avoid in renal impairment"] },
+  aspirin:       { standard: "75mg",  frequency: "od",   duration: "30", timing: "After food",                     route: "Oral", form: "Tablet",  warnings: ["EC tablet — swallow whole", "Avoid in under-16s"] },
+  amlodipine:    { standard: "5mg",   frequency: "od",   duration: "30", timing: "Same time daily",                route: "Oral", form: "Tablet",  warnings: ["May cause ankle swelling", "Do not stop abruptly"] },
+  metoprolol:    { standard: "50mg",  frequency: "bd",   duration: "30", timing: "With or after food",             route: "Oral", form: "Tablet",  warnings: ["Taper when stopping — never stop abruptly", "Monitor HR"] },
+  lisinopril:    { standard: "10mg",  frequency: "od",   duration: "30", timing: "Consistent time daily",          route: "Oral", form: "Tablet",  warnings: ["May cause dry cough", "Monitor potassium", "Avoid in pregnancy"] },
+  atorvastatin:  { standard: "20mg",  frequency: "od",   duration: "30", timing: "Evening",                        route: "Oral", form: "Tablet",  warnings: ["Report muscle pain", "Avoid grapefruit juice"] },
+  simvastatin:   { standard: "20mg",  frequency: "od",   duration: "30", timing: "Evening",                        route: "Oral", form: "Tablet",  warnings: ["Avoid grapefruit", "Report muscle pain or weakness"] },
+  warfarin:      { standard: "Per INR", frequency: "od",  duration: "30", timing: "Same time each day",             route: "Oral", form: "Tablet",  warnings: ["Regular INR monitoring essential", "Many drug & food interactions", "Report bleeding"] },
+  metformin:     { standard: "500mg", frequency: "bd",   duration: "30", timing: "With meals",                     route: "Oral", form: "Tablet",  warnings: ["Take with food to reduce GI side effects", "Hold before contrast procedures"] },
+  omeprazole:    { standard: "20mg",  frequency: "od",   duration: "28", timing: "30 mins before breakfast",       route: "Oral", form: "Capsule", warnings: ["Take before eating", "Long-term use may reduce B12"] },
+  pantoprazole:  { standard: "40mg",  frequency: "od",   duration: "28", timing: "30-60 mins before meal",         route: "Oral", form: "Tablet",  warnings: ["Swallow whole", "Monitor magnesium with long-term use"] },
+  ondansetron:   { standard: "4mg",   frequency: "sos",  duration: "3",  timing: "Before meals",                   route: "Oral", form: "Tablet",  warnings: ["May cause headache", "QT prolongation risk"] },
+  salbutamol:    { standard: "2.5mg", frequency: "sos",  duration: "30", timing: "As needed",                      route: "Inhalation", form: "Inhaler", warnings: ["Shake before use", "Rinse mouth after use"] },
+  montelukast:   { standard: "10mg",  frequency: "od",   duration: "30", timing: "Evening",                        route: "Oral", form: "Tablet",  warnings: ["Report behavioral or mood changes"] },
+  diazepam:      { standard: "5mg",   frequency: "bd",   duration: "14", timing: "Any time",                       route: "Oral", form: "Tablet",  warnings: ["Risk of dependence", "Avoid driving", "No alcohol"] },
+  pregabalin:    { standard: "75mg",  frequency: "bd",   duration: "30", timing: "Any time",                       route: "Oral", form: "Capsule", warnings: ["Drowsiness — avoid driving", "Taper when stopping"] },
 };
 
 const DRUG_INTERACTIONS = {
@@ -41,122 +41,238 @@ const DRUG_INTERACTIONS = {
   lisinopril:    [{ drug: "potassium", sev: "MODERATE", msg: "Lisinopril + Potassium supplements: Hyperkalemia risk." },{ drug: "spironolactone", sev: "MODERATE", msg: "Lisinopril + Spironolactone: Hyperkalemia. Monitor electrolytes." }],
 };
 
-const getSuggestion = (name) => {
+const FREQUENCY_OPTIONS = [
+  { value: "od",   label: "OD — Once daily" },
+  { value: "bd",   label: "BD — Twice daily" },
+  { value: "tds",  label: "TDS — Three times daily" },
+  { value: "qds",  label: "QDS — Four times daily" },
+  { value: "sos",  label: "SOS — As needed" },
+  { value: "stat", label: "STAT — Immediately" },
+  { value: "hs",   label: "HS — At bedtime" },
+  { value: "ac",   label: "AC — Before meals" },
+  { value: "pc",   label: "PC — After meals" },
+];
+
+const FREQ_MAP = { od: 1, bd: 2, tds: 3, qds: 4, sos: 1, stat: 1, hs: 1, ac: 3, pc: 3 };
+
+const SEV_COLOR = {
+  HIGH:     { bg: "bg-red-100 border-red-400 text-red-800",     icon: "🔴", badge: "bg-red-500 text-white" },
+  MODERATE: { bg: "bg-amber-100 border-amber-400 text-amber-800", icon: "🟡", badge: "bg-amber-500 text-white" },
+  LOW:      { bg: "bg-blue-100 border-blue-400 text-blue-800",  icon: "🔵", badge: "bg-blue-500 text-white" },
+};
+
+const getLocalSuggestion = (name) => {
   const key = name.toLowerCase().trim();
   if (DOSAGE_RULES[key]) return DOSAGE_RULES[key];
   const found = Object.keys(DOSAGE_RULES).find((k) => key.includes(k) || k.includes(key.split(" ")[0]));
   return found ? DOSAGE_RULES[found] : null;
 };
 
-const detectInteractions = (meds) => {
-  const interactions = [];
-  const names = meds.map((m) => m.medicine_name?.toLowerCase?.() || "");
-  for (let i = 0; i < names.length; i++) {
-    const rules = DRUG_INTERACTIONS[names[i]];
-    if (!rules) continue;
-    for (const rule of rules) {
-      const hit = names.find((n, idx) => idx !== i && n.includes(rule.drug));
-      if (hit && !interactions.find((x) => x.msg === rule.msg)) {
-        interactions.push({ sev: rule.sev, drugs: [names[i], hit], msg: rule.msg });
-      }
-    }
-  }
-  return interactions;
-};
-
-const sevColor = {
-  HIGH:     { bg: "bg-red-100 border-red-400 text-red-800",     icon: "🔴", badge: "bg-red-500 text-white" },
-  MODERATE: { bg: "bg-amber-100 border-amber-400 text-amber-800", icon: "🟡", badge: "bg-amber-500 text-white" },
-  LOW:      { bg: "bg-blue-100 border-blue-400 text-blue-800",  icon: "🔵", badge: "bg-blue-500 text-white" },
-};
-
-const KNOWN_DRUGS = Object.keys(DOSAGE_RULES).map((k) => k.charAt(0).toUpperCase() + k.slice(1));
-const DRUG_CATEGORIES = ["Antibiotic", "Analgesic", "Antihypertensive", "Antidiabetic", "Cardiac", "GI", "Respiratory", "Neurological", "Antifungal", "Anticoagulant", "Other"];
-const FREQUENCIES = ["Once daily", "Twice daily", "3 times daily", "Every 4-6 hours", "Every 6-8 hours", "Every 8 hours", "Every 12 hours", "Weekly", "As needed", "With each meal"];
-const ROUTES = ["Oral", "Inhalation", "Topical", "IV", "IM", "SC", "Sublingual", "Ophthalmic", "Otic", "Nasal"];
-const FORMS = ["Tablet", "Capsule", "Syrup", "Injection", "Inhaler", "Cream", "Ointment", "Drops", "Patch", "Suppository"];
-const TIMINGS = ["Any time", "Before breakfast", "After breakfast", "With meals", "Before meals", "After meals", "At bedtime", "Morning", "Evening", "Empty stomach"];
-
-const emptyMed = () => ({
-  _id: Date.now(),
-  medicine_name: "", generic_name: "", category: "", dosage_strength: "",
-  dosage_form: "Tablet", frequency: "", duration: "", timing: "",
-  route: "Oral", quantity: "", refills: 0, instructions: "",
-  warnings: [], interactions: [],
+const emptyItem = () => ({
+  medicine_id:   null,
+  medicine_name: "",
+  form:          "Tablet",
+  requires_rx:   false,
+  dosage:        "",
+  frequency:     "od",
+  duration_days: 5,
+  quantity:      5,
+  instructions:  "",
+  _search:       "",
+  _results:      [],
+  _warnings:     [],
 });
 
-export default function PrescriptionBuilder({ medicines, onChange, darkMode }) {
-  const [showSuggestions, setShowSuggestions] = useState(null); // index of active search
-  const [searchQuery, setSearchQuery] = useState("");
+export default function PrescriptionBuilder({
+  darkMode,
+  patient,
+  onSubmit,
+  loading = false,
+}) {
+  const [form, setForm] = useState({
+    doctor_name: "",
+    diagnosis:   "",
+    notes:       "",
+  });
+  const [items, setItems]       = useState([emptyItem()]);
+  const [searching, setSearching] = useState({});
+  const [error, setError]       = useState("");
+  const [success, setSuccess]   = useState("");
 
-  const meds = medicines || [];
-  const interactions = detectInteractions(meds);
+  const card   = darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900";
+  const input  = `border rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-2 focus:ring-cyan-400 ${
+    darkMode ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300 text-slate-900 placeholder-slate-400"
+  }`;
+  const label  = "text-xs font-semibold uppercase tracking-wide text-slate-500 block mb-1";
 
-  const addMedicine = () => {
-    onChange([...meds, emptyMed()]);
+  // ─── Direct Cross-Row Drug Interaction Detection ──────────────────────────
+  const detectInteractions = (currentItems) => {
+    const crossInteractions = [];
+    const names = currentItems.map((m) => m.medicine_name?.toLowerCase?.() || "");
+
+    for (let i = 0; i < names.length; i++) {
+      const currentMedName = names[i];
+      if (!currentMedName) continue;
+      
+      const rules = DRUG_INTERACTIONS[currentMedName];
+      if (!rules) continue;
+
+      for (const rule of rules) {
+        const hitIdx = names.findIndex((n, idx) => idx !== i && n.includes(rule.drug));
+        if (hitIdx !== -1 && !crossInteractions.find((x) => x.msg === rule.msg)) {
+          crossInteractions.push({
+            sev: rule.sev,
+            drugs: [currentMedName, names[hitIdx]],
+            msg: rule.msg
+          });
+        }
+      }
+    }
+    return crossInteractions;
   };
 
-  const removeMedicine = (idx) => {
-    onChange(meds.filter((_, i) => i !== idx));
+  const activeInteractions = detectInteractions(items);
+
+  // ─── Item Patch Utility ───────────────────────────────────────────────────
+  const updateItem = (idx, patch) => {
+    setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
   };
 
-  const updateMed = (idx, field, value) => {
-    const updated = meds.map((m, i) => i === idx ? { ...m, [field]: value } : m);
-    onChange(updated);
+  // ─── Async Remote + Local Fallback Match Engine ───────────────────────────
+  const searchMedicines = useCallback(async (idx, query) => {
+    updateItem(idx, { _search: query, medicine_name: query });
+    if (!query || query.length < 2) {
+      updateItem(idx, { _results: [], _warnings: [] });
+      return;
+    }
+
+    setSearching((s) => ({ ...s, [idx]: true }));
+    try {
+      const res = await fetch(`/api/pharmacy/medicines?search=${encodeURIComponent(query)}&limit=8`);
+      const data = await res.json();
+      updateItem(idx, { _results: data.medicines || [] });
+    } catch {
+      // Offline fallback: Match query locally from offline dosage rule dictionary keys
+      const localizedMatches = Object.keys(DOSAGE_RULES)
+        .filter((k) => k.includes(query.toLowerCase()))
+        .map((k) => ({
+          id: `local-${k}`,
+          name: k.charAt(0).toUpperCase() + k.slice(1),
+          form: DOSAGE_RULES[k].form,
+          strength: DOSAGE_RULES[k].standard,
+          requires_rx: true
+        }));
+      updateItem(idx, { _results: localizedMatches });
+    } finally {
+      setSearching((s) => ({ ...s, [idx]: false }));
+    }
+  }, []);
+
+  // ─── Select Medicine & Trigger Auto-dosage/Qty Calculations ───────────────
+  const selectMedicine = (idx, med) => {
+    const localRule = getLocalSuggestion(med.name);
+    
+    // Fallbacks switch down safely between dynamic values or hardcoded defaults
+    const selectedFreq = localRule?.frequency || items[idx].frequency || "od";
+    const selectedDur  = localRule?.duration ? parseInt(localRule.duration) : (items[idx].duration_days || 5);
+    const standardDose = localRule?.standard  || med.strength || "";
+    const primaryForm   = localRule?.form      || med.form     || "Tablet";
+    const staticWarns  = localRule?.warnings  || [];
+
+    const perDay = FREQ_MAP[selectedFreq] || 1;
+    const computedQty = perDay * selectedDur;
+
+    updateItem(idx, {
+      medicine_id:   med.id,
+      medicine_name: med.name,
+      form:          primaryForm,
+      requires_rx:   !!med.requires_rx,
+      dosage:        standardDose,
+      frequency:     selectedFreq,
+      duration_days: selectedDur,
+      quantity:      computedQty,
+      instructions:  localRule?.timing || items[idx].instructions || "",
+      _search:       med.name,
+      _results:      [],
+      _warnings:     staticWarns,
+    });
   };
 
-  const applyDosageSuggestion = (idx, name) => {
-    const suggestion = getSuggestion(name);
-    if (!suggestion) return;
-    const updated = meds.map((m, i) => i === idx ? {
-      ...m,
-      medicine_name:   name,
-      dosage_strength: suggestion.standard || m.dosage_strength,
-      dosage_form:     suggestion.form     || m.dosage_form,
-      frequency:       suggestion.frequency || m.frequency,
-      duration:        suggestion.duration  || m.duration,
-      timing:          suggestion.timing    || m.timing,
-      route:           suggestion.route     || m.route,
-      warnings:        suggestion.warnings  || [],
-    } : m);
-    onChange(updated);
-    setShowSuggestions(null);
-    setSearchQuery("");
+  // ─── Reactive Variable Quantities ─────────────────────────────────────────
+  const recalcQty = (idx, field, value) => {
+    setItems((prev) => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const freq = field === "frequency" ? value : item.frequency;
+      const dur  = field === "duration_days" ? parseInt(value) : item.duration_days;
+      const perDay = FREQ_MAP[freq] || 1;
+      return {
+        ...item,
+        [field]: value,
+        quantity: perDay * (dur || 0)
+      };
+    }));
   };
 
-  const inputCls = `border rounded-lg px-3 py-2 text-sm w-full ${
-    darkMode
-      ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:border-cyan-500"
-      : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-cyan-500"
-  } focus:outline-none transition-colors`;
+  const addItem  = () => setItems((prev) => [...prev, emptyItem()]);
+  const removeItem = (idx) => setItems((prev) => prev.filter((_, i) => i !== idx));
 
-  const labelCls = "text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1 block";
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(""); setSuccess("");
 
-  const filteredDrugs = KNOWN_DRUGS.filter((d) =>
-    d.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    if (!form.doctor_name.trim()) return setError("Doctor name is required.");
+    if (items.some((it) => !it.medicine_name.trim())) return setError("All medicine rows must have a medicine selected.");
+    if (items.some((it) => !it.dosage.trim())) return setError("All items need a specified dosage.");
+
+    const payload = {
+      patient_id:    patient?.id,
+      patient_name:  patient?.name,
+      patientAge:    patient?.age,
+      patientWeight: patient?.weight,
+      ...form,
+      items: items.map(({ medicine_id, medicine_name, form: mform, requires_rx, dosage, frequency, duration_days, quantity, instructions }) => ({
+        medicine_id, medicine_name, form: mform, requires_rx,
+        dosage, frequency, duration_days: parseInt(duration_days), quantity: parseInt(quantity), instructions,
+      })),
+    };
+
+    try {
+      await onSubmit(payload);
+      setSuccess("Prescription created successfully.");
+      setItems([emptyItem()]);
+      setForm({ doctor_name: "", diagnosis: "", notes: "" });
+    } catch (err) {
+      setError(err.message || "Failed to save prescription.");
+    }
+  };
 
   return (
-    <div className="space-y-4">
+    <div className={`rounded-2xl border p-6 ${card}`}>
+      <h2 className="text-lg font-bold mb-1">New Prescription</h2>
+      {patient && (
+        <p className={`text-sm mb-4 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+          Patient: <span className="font-medium text-cyan-500">{patient.name}</span> ({patient.id})
+        </p>
+      )}
 
-      {/* ── Interaction Warnings Panel ── */}
-      {interactions.length > 0 && (
-        <div className="space-y-2">
+      {/* Cross-Drug Interaction Board */}
+      {activeInteractions.length > 0 && (
+        <div className="mb-4 space-y-2">
           <p className="text-xs font-bold uppercase tracking-wide text-red-500 flex items-center gap-1.5">
-            ⚠️ Drug Interaction Warnings ({interactions.length})
+            ⚠️ Drug Interaction Warnings ({activeInteractions.length})
           </p>
-          {interactions.map((ix, i) => {
-            const style = sevColor[ix.sev] || sevColor.LOW;
+          {activeInteractions.map((ix, i) => {
+            const style = SEV_COLOR[ix.sev] || SEV_COLOR.LOW;
             return (
-              <div key={i} className={`border rounded-xl p-3 text-sm flex gap-3 items-start ${style.bg}`}>
+              <div key={i} className={`border rounded-xl p-3 text-sm flex gap-3 items-start transition-all ${style.bg}`}>
                 <span className="text-base shrink-0 mt-0.5">{style.icon}</span>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${style.badge}`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${style.badge}`}>
                       {ix.sev}
                     </span>
                     <span className="text-xs font-semibold capitalize">
-                      {ix.drugs.map((d) => d.charAt(0).toUpperCase() + d.slice(1)).join(" + ")}
+                      {ix.drugs.join(" + ")}
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed">{ix.msg}</p>
@@ -167,223 +283,184 @@ export default function PrescriptionBuilder({ medicines, onChange, darkMode }) {
         </div>
       )}
 
-      {/* ── Medicine Cards ── */}
-      {meds.map((med, idx) => {
-        const suggestion = getSuggestion(med.medicine_name);
-        const hasSuggestion = !!suggestion && med.medicine_name.trim().length > 0;
-        return (
-          <div
-            key={med._id || idx}
-            className={`rounded-2xl border p-4 relative ${
-              darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-200"
-            }`}
-          >
-            {/* Card header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white bg-cyan-600`}>
-                  {idx + 1}
-                </span>
-                <span className="text-sm font-semibold">
-                  {med.medicine_name || `Medicine ${idx + 1}`}
-                </span>
-                {hasSuggestion && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700 font-medium">
-                    ✓ Auto-filled
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => removeMedicine(idx)}
-                className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                ✕ Remove
-              </button>
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={label}>Doctor Name *</label>
+            <input
+              className={input}
+              value={form.doctor_name}
+              onChange={(e) => setForm((f) => ({ ...f, doctor_name: e.target.value }))}
+              placeholder="Dr. Name"
+            />
+          </div>
+          <div>
+            <label className={label}>Diagnosis</label>
+            <input
+              className={input}
+              value={form.diagnosis}
+              onChange={(e) => setForm((f) => ({ ...f, diagnosis: e.target.value }))}
+              placeholder="Primary diagnosis"
+            />
+          </div>
+        </div>
 
-            {/* Row 1: Name search + Category */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-              {/* Medicine name with autocomplete */}
-              <div className="md:col-span-2 relative">
-                <label className={labelCls}>Medicine Name *</label>
-                <input
-                  className={inputCls}
-                  placeholder="Type to search known drugs..."
-                  value={med.medicine_name}
-                  onChange={(e) => {
-                    updateMed(idx, "medicine_name", e.target.value);
-                    setSearchQuery(e.target.value);
-                    setShowSuggestions(idx);
-                  }}
-                  onFocus={() => {
-                    setSearchQuery(med.medicine_name);
-                    setShowSuggestions(idx);
-                  }}
-                  onBlur={() => setTimeout(() => setShowSuggestions(null), 200)}
-                />
-                {/* Dropdown */}
-                {showSuggestions === idx && searchQuery.length > 0 && filteredDrugs.length > 0 && (
-                  <div className={`absolute z-30 top-full mt-1 w-full rounded-xl shadow-lg border max-h-52 overflow-y-auto ${
-                    darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
-                  }`}>
-                    {filteredDrugs.slice(0, 10).map((drug) => {
-                      const rule = DOSAGE_RULES[drug.toLowerCase()];
-                      return (
-                        <button
-                          key={drug}
-                          type="button"
-                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-50 hover:text-cyan-700 transition-colors ${darkMode ? "hover:bg-slate-700 hover:text-cyan-400" : ""}`}
-                          onClick={() => applyDosageSuggestion(idx, drug)}
-                        >
-                          <div className="font-semibold">{drug}</div>
-                          {rule && (
-                            <div className="text-xs text-slate-500 mt-0.5">
-                              {rule.standard} · {rule.frequency} · {rule.form}
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Medicines</h3>
+            <button
+              type="button"
+              onClick={addItem}
+              className="text-xs bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+            >
+              + Add Medicine
+            </button>
+          </div>
+
+          {items.map((item, idx) => {
+            const ruleFound = getLocalSuggestion(item.medicine_name);
+            const isAutoFilled = !!ruleFound && item.medicine_name.trim().length > 0;
+
+            return (
+              <div key={idx} className={`rounded-xl border p-4 space-y-3 relative ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
+                {items.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeItem(idx)}
+                    className="absolute top-3 right-3 text-red-400 hover:text-red-600 text-xs transition-colors"
+                  >
+                    ✕ Remove
+                  </button>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Medicine Search Autocomplete Row */}
+                  <div className="sm:col-span-2 relative">
+                    <div className="flex items-center gap-2 mb-1">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 block">Medicine *</label>
+                      {isAutoFilled && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-100 text-cyan-700 font-medium">
+                          ✓ Auto-filled
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      className={input}
+                      value={item._search}
+                      onChange={(e) => searchMedicines(idx, e.target.value)}
+                      placeholder="Search medicine name (e.g. Amoxicillin, Warfarin)..."
+                      autoComplete="off"
+                    />
+                    {searching[idx] && (
+                      <div className="absolute right-3 top-9 text-xs text-slate-400 animate-pulse">Searching…</div>
+                    )}
+                    {item._results.length > 0 && (
+                      <div className={`absolute z-20 w-full top-full mt-1 rounded-xl border shadow-lg max-h-60 overflow-y-auto ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}>
+                        {item._results.map((med) => (
+                          <MedicineCard
+                            key={med.id}
+                            medicine={med}
+                            darkMode={darkMode}
+                            compact
+                            onSelect={(m) => selectMedicine(idx, m)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dosage Strength */}
+                  <div>
+                    <label className={label}>Dosage *</label>
+                    <input
+                      className={input}
+                      value={item.dosage}
+                      onChange={(e) => updateItem(idx, { dosage: e.target.value })}
+                      placeholder="e.g. 500mg"
+                    />
+                  </div>
+
+                  {/* Frequency Selector */}
+                  <div>
+                    <label className={label}>Frequency</label>
+                    <select
+                      className={input}
+                      value={item.frequency}
+                      onChange={(e) => recalcQty(idx, "frequency", e.target.value)}
+                    >
+                      {FREQUENCY_OPTIONS.map(({ value, label: lbl }) => (
+                        <option key={value} value={value}>{lbl}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Days Duration */}
+                  <div>
+                    <label className={label}>Duration (days)</label>
+                    <input
+                      className={input}
+                      type="number"
+                      min={1}
+                      value={item.duration_days}
+                      onChange={(e) => recalcQty(idx, "duration_days", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Quantities (Calculated) */}
+                  <div>
+                    <label className={label}>Quantity (auto)</label>
+                    <input
+                      className={`${input} opacity-70`}
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(idx, { quantity: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+
+                  {/* Special Instructions/Timing */}
+                  <div className="sm:col-span-2">
+                    <label className={label}>Instructions</label>
+                    <input
+                      className={input}
+                      value={item.instructions}
+                      onChange={(e) => updateItem(idx, { instructions: e.target.value })}
+                      placeholder="e.g. Take after meals with water"
+                    />
+                  </div>
+                </div>
+
+                {/* Local Specific Isolated Warnings */}
+                {(item._warnings || []).length > 0 && (
+                  <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 space-y-1">
+                    {item._warnings.map((w, wi) => <p key={wi}>⚠ {w}</p>)}
                   </div>
                 )}
               </div>
+            );
+          })}
+        </div>
 
-              <div>
-                <label className={labelCls}>Generic Name</label>
-                <input
-                  className={inputCls}
-                  placeholder="Generic / INN name"
-                  value={med.generic_name}
-                  onChange={(e) => updateMed(idx, "generic_name", e.target.value)}
-                />
-              </div>
+        <div>
+          <label className={label}>Additional Notes</label>
+          <textarea
+            className={`${input} h-20 resize-none`}
+            value={form.notes}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+            placeholder="Pharmacist instructions, follow-up details…"
+          />
+        </div>
 
-              <div>
-                <label className={labelCls}>Category</label>
-                <select className={inputCls} value={med.category} onChange={(e) => updateMed(idx, "category", e.target.value)}>
-                  <option value="">Select category</option>
-                  {DRUG_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-            </div>
+        {error   && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">⚠ {error}</p>}
+        {success && <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">✓ {success}</p>}
 
-            {/* Row 2: Dosage details */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-              <div>
-                <label className={labelCls}>Strength / Dose</label>
-                <input
-                  className={inputCls}
-                  placeholder="e.g. 500mg"
-                  value={med.dosage_strength}
-                  onChange={(e) => updateMed(idx, "dosage_strength", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className={labelCls}>Dosage Form</label>
-                <select className={inputCls} value={med.dosage_form} onChange={(e) => updateMed(idx, "dosage_form", e.target.value)}>
-                  {FORMS.map((f) => <option key={f}>{f}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelCls}>Frequency</label>
-                <select className={inputCls} value={med.frequency} onChange={(e) => updateMed(idx, "frequency", e.target.value)}>
-                  <option value="">Select frequency</option>
-                  {FREQUENCIES.map((f) => <option key={f}>{f}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelCls}>Duration</label>
-                <input
-                  className={inputCls}
-                  placeholder="e.g. 7 days"
-                  value={med.duration}
-                  onChange={(e) => updateMed(idx, "duration", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className={labelCls}>Timing</label>
-                <select className={inputCls} value={med.timing} onChange={(e) => updateMed(idx, "timing", e.target.value)}>
-                  <option value="">Select timing</option>
-                  {TIMINGS.map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelCls}>Route</label>
-                <select className={inputCls} value={med.route} onChange={(e) => updateMed(idx, "route", e.target.value)}>
-                  {ROUTES.map((r) => <option key={r}>{r}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelCls}>Quantity (units)</label>
-                <input
-                  className={inputCls}
-                  type="number"
-                  placeholder="e.g. 21"
-                  value={med.quantity}
-                  onChange={(e) => updateMed(idx, "quantity", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className={labelCls}>Refills</label>
-                <input
-                  className={inputCls}
-                  type="number"
-                  min="0"
-                  max="12"
-                  placeholder="0"
-                  value={med.refills}
-                  onChange={(e) => updateMed(idx, "refills", e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Row 3: Instructions */}
-            <div>
-              <label className={labelCls}>Special Instructions</label>
-              <input
-                className={inputCls}
-                placeholder="e.g. Avoid alcohol, take with plenty of water..."
-                value={med.instructions}
-                onChange={(e) => updateMed(idx, "instructions", e.target.value)}
-              />
-            </div>
-
-            {/* Auto-filled warnings */}
-            {med.warnings?.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {med.warnings.map((w, wi) => (
-                  <span key={wi} className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 font-medium">
-                    ⚠ {w}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* ── Add Medicine Button ── */}
-      <button
-        type="button"
-        onClick={addMedicine}
-        className="w-full py-3 rounded-xl border-2 border-dashed border-cyan-400 text-cyan-600 hover:bg-cyan-50 hover:border-cyan-500 text-sm font-semibold transition-all flex items-center justify-center gap-2"
-      >
-        + Add Medicine
-      </button>
-
-      {meds.length === 0 && (
-        <p className="text-center text-slate-400 text-sm py-4">
-          No medicines added yet. Click "Add Medicine" to start building the prescription.
-        </p>
-      )}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2.5 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50"
+        >
+          {loading ? "Saving…" : "Save Prescription"}
+        </button>
+      </form>
     </div>
   );
 }
