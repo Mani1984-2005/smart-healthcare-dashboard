@@ -1,6 +1,7 @@
 // backend/controllers/pharmacyController.js
-// MediCare Pro — Pharmacy & Prescription Controller
+// MediCare Pro — Integrated Pharmacy & Prescription Controller
 
+const Medicine = require("../models/Medicine");
 const {
   createPrescription,
   addMedicine,
@@ -12,8 +13,9 @@ const {
   deletePrescription,
 } = require("../models/Prescription");
 
+// ==============================================================================
 // ─── Drug Interaction Rule Engine ─────────────────────────────────────────────
-// Key: normalized drug name (lowercase), Value: array of interaction rules
+// ==============================================================================
 const DRUG_INTERACTIONS = {
   warfarin: [
     { drug: "aspirin",     severity: "HIGH",   message: "Warfarin + Aspirin: Increased bleeding risk. Monitor INR closely." },
@@ -66,41 +68,39 @@ const DRUG_INTERACTIONS = {
   ],
 };
 
+// ==============================================================================
 // ─── Rule-Based Dosage Calculator ─────────────────────────────────────────────
+// ==============================================================================
 const DOSAGE_RULES = {
-  // Antibiotics
   amoxicillin:       { standard: "500mg",  frequency: "3 times daily", duration: "7 days",  timing: "With or without food", route: "Oral", form: "Capsule",  warnings: ["Complete full course", "Monitor for allergic reaction"] },
   azithromycin:      { standard: "500mg",  frequency: "Once daily",    duration: "3-5 days",timing: "With food to reduce GI upset", route: "Oral", form: "Tablet", warnings: ["Do not take with antacids"] },
   ciprofloxacin:     { standard: "500mg",  frequency: "Twice daily",   duration: "7-14 days",timing: "Empty stomach preferred", route: "Oral", form: "Tablet", warnings: ["Avoid dairy", "Avoid sun exposure", "Do not take with antacids"] },
   metronidazole:     { standard: "400mg",  frequency: "3 times daily", duration: "7 days",  timing: "After food",            route: "Oral", form: "Tablet",  warnings: ["Avoid alcohol completely", "May cause metallic taste"] },
   doxycycline:       { standard: "100mg",  frequency: "Twice daily",   duration: "7-14 days",timing: "With plenty of water, after food", route: "Oral", form: "Capsule", warnings: ["Avoid sunlight", "Avoid dairy products", "Take upright"] },
-  // Analgesics
   paracetamol:       { standard: "500mg",  frequency: "Every 4-6 hours (max 4 doses/day)", duration: "As needed", timing: "Any time", route: "Oral", form: "Tablet", warnings: ["Max 4g/day", "Avoid alcohol", "Check other products for paracetamol"] },
   ibuprofen:         { standard: "400mg",  frequency: "Every 6-8 hours", duration: "5-7 days", timing: "After food",  route: "Oral", form: "Tablet", warnings: ["Take with food", "Avoid in renal impairment", "Caution in heart disease"] },
   aspirin:           { standard: "75mg",   frequency: "Once daily (antiplatelet)", duration: "Long-term", timing: "After food", route: "Oral", form: "Tablet", warnings: ["Do not crush or chew EC tablets", "Avoid in children under 16", "Risk of GI bleed"] },
-  // Cardiovascular
   amlodipine:        { standard: "5mg",    frequency: "Once daily",    duration: "Long-term",timing: "Any time, same time daily", route: "Oral", form: "Tablet", warnings: ["May cause ankle swelling", "Do not stop abruptly"] },
   metoprolol:        { standard: "50mg",   frequency: "Twice daily",   duration: "Long-term",timing: "With or after food", route: "Oral", form: "Tablet", warnings: ["Do not stop abruptly — taper", "Monitor heart rate", "Avoid abrupt withdrawal"] },
   lisinopril:        { standard: "10mg",   frequency: "Once daily",    duration: "Long-term",timing: "Any time, consistent", route: "Oral", form: "Tablet", warnings: ["May cause dry cough", "Monitor potassium", "Avoid in pregnancy"] },
   atorvastatin:      { standard: "20mg",   frequency: "Once daily (evening)", duration: "Long-term", timing: "Evening", route: "Oral", form: "Tablet", warnings: ["Report muscle pain immediately", "Avoid grapefruit juice", "Liver function monitoring"] },
   simvastatin:       { standard: "20mg",   frequency: "Once daily (evening)", duration: "Long-term", timing: "Evening", route: "Oral", form: "Tablet", warnings: ["Avoid grapefruit", "Report muscle pain or weakness"] },
   warfarin:          { standard: "Individualized per INR", frequency: "Once daily", duration: "Long-term", timing: "Same time each day", route: "Oral", form: "Tablet", warnings: ["Regular INR monitoring essential", "Many drug & food interactions", "Report any unusual bleeding"] },
-  // Diabetes
   metformin:         { standard: "500mg",  frequency: "Twice daily with meals", duration: "Long-term", timing: "With meals", route: "Oral", form: "Tablet", warnings: ["Take with food to reduce GI upset", "Hold before contrast procedures", "Monitor renal function"] },
   glibenclamide:     { standard: "5mg",    frequency: "Once daily before breakfast", duration: "Long-term", timing: "Before breakfast", route: "Oral", form: "Tablet", warnings: ["Monitor blood glucose", "Risk of hypoglycemia", "Avoid skipping meals"] },
-  // GI
   omeprazole:        { standard: "20mg",   frequency: "Once daily",    duration: "4-8 weeks",timing: "30 mins before breakfast", route: "Oral", form: "Capsule", warnings: ["Take before eating", "Long-term use may reduce B12 and Mg"] },
   pantoprazole:      { standard: "40mg",   frequency: "Once daily",    duration: "4-8 weeks",timing: "30-60 mins before meal", route: "Oral", form: "Tablet", warnings: ["Swallow whole", "Long-term use — monitor Mg"] },
   ondansetron:       { standard: "4mg",    frequency: "Every 8 hours (as needed)", duration: "2-3 days", timing: "Before meals", route: "Oral", form: "Tablet", warnings: ["May cause headache", "Caution in liver disease", "QT prolongation risk"] },
-  // Respiratory
   salbutamol:        { standard: "2.5mg",  frequency: "Every 4-6 hours (as needed)", duration: "As needed", timing: "As needed", route: "Inhalation", form: "Inhaler", warnings: ["Shake before use", "Rinse mouth after", "Not for long-term daily use alone"] },
   montelukast:       { standard: "10mg",   frequency: "Once daily",    duration: "Long-term",timing: "Evening",            route: "Oral", form: "Tablet", warnings: ["May cause mood changes", "Report behavioral changes"] },
-  // Neurological
   diazepam:          { standard: "5mg",    frequency: "Twice daily",   duration: "Short-term (max 4 weeks)", timing: "Any time", route: "Oral", form: "Tablet", warnings: ["Risk of dependence", "Avoid driving", "Do not mix with alcohol"] },
   pregabalin:        { standard: "75mg",   frequency: "Twice daily",   duration: "As directed", timing: "Any time", route: "Oral", form: "Capsule", warnings: ["Drowsiness — avoid driving", "Taper when stopping", "Renal dose adjustment required"] },
 };
 
-// ─── Helper: Check Drug Interactions ──────────────────────────────────────────
+// ==============================================================================
+// ─── Engine Helper Utilities ──────────────────────────────────────────────────
+// ==============================================================================
+
 const checkInteractions = (medicineList) => {
   const interactions = [];
   const names = medicineList.map((m) => m.medicine_name.toLowerCase().trim());
@@ -115,9 +115,7 @@ const checkInteractions = (medicineList) => {
         (n, idx) => idx !== i && n.includes(rule.drug.toLowerCase())
       );
       if (interactsWith) {
-        const alreadyLogged = interactions.find(
-          (x) => x.message === rule.message
-        );
+        const alreadyLogged = interactions.find((x) => x.message === rule.message);
         if (!alreadyLogged) {
           interactions.push({
             severity: rule.severity,
@@ -128,21 +126,16 @@ const checkInteractions = (medicineList) => {
       }
     }
   }
-
   return interactions;
 };
 
-// ─── Helper: Auto Dosage Lookup ────────────────────────────────────────────────
 const getDosageSuggestion = (medicineName) => {
   const key = medicineName.toLowerCase().trim();
-  // Exact match
   if (DOSAGE_RULES[key]) return DOSAGE_RULES[key];
-  // Partial match
   const found = Object.keys(DOSAGE_RULES).find((k) => key.includes(k) || k.includes(key.split(" ")[0]));
   return found ? DOSAGE_RULES[found] : null;
 };
 
-// ─── Helper: Build QR Payload ──────────────────────────────────────────────────
 const buildQRPayload = (prescription, medicines) => {
   const payload = {
     rxId: prescription.prescription_id,
@@ -161,12 +154,96 @@ const buildQRPayload = (prescription, medicines) => {
   return JSON.stringify(payload);
 };
 
-// ─── Generate Prescription ID ──────────────────────────────────────────────────
 const generateRxId = () => `RX-${Date.now()}`;
 
-// ══════════════════════════════════════════════════════════════════════════════
-// CONTROLLERS
-// ══════════════════════════════════════════════════════════════════════════════
+// ==============================================================================
+// ─── Medicine Management Controllers (From File 1) ───────────────────────────
+// ==============================================================================
+
+exports.listMedicines = async (req, res) => {
+  try {
+    const { search = "", category = "", form = "", page = 1, limit = 20 } = req.query;
+    const result = await Medicine.findAll({
+      search,
+      category,
+      form,
+      page: parseInt(page),
+      limit: Math.min(parseInt(limit), 100),
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error("listMedicines:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch medicines." });
+  }
+};
+
+exports.getMedicine = async (req, res) => {
+  try {
+    const medicine = await Medicine.findById(req.params.id);
+    if (!medicine) return res.status(404).json({ success: false, error: "Medicine not found." });
+    res.json({ success: true, medicine });
+  } catch (err) {
+    console.error("getMedicine:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch medicine." });
+  }
+};
+
+exports.createMedicine = async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ success: false, error: "Medicine name is required." });
+    const medicine = await Medicine.create(req.body);
+    res.status(201).json({ success: true, medicine });
+  } catch (err) {
+    console.error("createMedicine:", err);
+    res.status(500).json({ success: false, error: "Failed to create medicine." });
+  }
+};
+
+exports.updateMedicine = async (req, res) => {
+  try {
+    const medicine = await Medicine.update(req.params.id, req.body);
+    if (!medicine) return res.status(404).json({ success: false, error: "Medicine not found." });
+    res.json({ success: true, medicine });
+  } catch (err) {
+    console.error("updateMedicine:", err);
+    res.status(500).json({ success: false, error: "Failed to update medicine." });
+  }
+};
+
+exports.deleteMedicine = async (req, res) => {
+  try {
+    await Medicine.delete(req.params.id);
+    res.json({ success: true, message: "Medicine deactivated." });
+  } catch (err) {
+    console.error("deleteMedicine:", err);
+    res.status(500).json({ success: false, error: "Failed to delete medicine." });
+  }
+};
+
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = await Medicine.getCategories();
+    res.json({ success: true, categories });
+  } catch (err) {
+    console.error("getCategories:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch categories." });
+  }
+};
+
+exports.getLowStock = async (req, res) => {
+  try {
+    const medicines = await Medicine.getLowStock();
+    res.json({ success: true, medicines });
+  } catch (err) {
+    console.error("getLowStock:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch low-stock medicines." });
+  }
+};
+
+// ==============================================================================
+// ─── Engine and Prescription Controllers (From File 2) ───────────────────────
+// ==============================================================================
 
 // GET /api/pharmacy/dosage-suggestion?name=amoxicillin
 exports.getDosageSuggestion = (req, res) => {
@@ -311,7 +388,7 @@ exports.deletePrescription = async (req, res) => {
 };
 
 // DELETE /api/pharmacy/medicines/:medicineId
-exports.deleteMedicine = async (req, res) => {
+exports.deletePrescriptionMedicine = async (req, res) => {
   try {
     await deleteMedicine(req.params.medicineId);
     return res.json({ success: true });
