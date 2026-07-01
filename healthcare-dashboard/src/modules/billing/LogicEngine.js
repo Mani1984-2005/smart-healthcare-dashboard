@@ -1,376 +1,343 @@
 /**
- * LogicEngine.js
- * MediCare Pro – Enterprise Billing Module
- * Pure, side-effect-free billing calculation functions.
- * All functions are deterministic and unit-testable.
+ * =========================================================
+ * MEDICARE PRO — ENTERPRISE BILLING LOGIC ENGINE
+ * Unified + Production-Optimized Version (FIXED)
+ * Pure deterministic financial computation layer
+ * =========================================================
  */
 
 import {
+  GST_CONFIG,
   TAX_CONFIG,
-  DISCOUNT_CONFIG,
+  PAYMENT_STATUS,
+  VALIDATION_LIMITS,
+  INVOICE_NUMBER_CONFIG,
   OVERDUE_CONFIG,
-  CURRENCY_CONFIG,
-  BILLING_CATEGORIES,
+  REFUND_CONFIG,
+  DISCOUNT_CONFIG,
 } from "./CoreConfig.js";
 
-// ─── Currency Formatting ──────────────────────────────────────────────────────
+// =========================================================
+// SAFE MATH CORE
+// =========================================================
 
-/**
- * Format a numeric value as localized currency string.
- * @param {number} amount
- * @returns {string}
- */
-export function formatCurrency(amount) {
-  return new Intl.NumberFormat(CURRENCY_CONFIG.locale, {
-    style:    "currency",
-    currency: CURRENCY_CONFIG.code,
-    minimumFractionDigits: CURRENCY_CONFIG.decimals,
-    maximumFractionDigits: CURRENCY_CONFIG.decimals,
-  }).format(amount);
-}
+const toNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
-/**
- * Round to 2 decimal places (financial rounding).
- * @param {number} value
- * @returns {number}
- */
-export function financialRound(value) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
+const round2 = (v) =>
+  Math.round((toNumber(v) + Number.EPSILON) * 100) / 100;
 
-// ─── Item-level Calculations ──────────────────────────────────────────────────
+const clamp = (v, min, max) => Math.min(max, Math.max(min, toNumber(v)));
 
-/**
- * Calculate the subtotal for a single line item.
- * @param {{ quantity: number, unitPrice: number }} item
- * @returns {number}
- */
-export function computeLineTotal(item) {
-  const { quantity, unitPrice } = item;
-  if (quantity <= 0 || unitPrice < 0) return 0;
-  return financialRound(quantity * unitPrice);
-}
+// =========================================================
+// SUBTOTAL
+// =========================================================
 
-/**
- * Determine whether a billing category is GST-exempt.
- * @param {string} category
- * @returns {boolean}
- */
-export function isTaxExempt(category) {
-  return TAX_CONFIG.GST.exemptCategories.includes(category);
-}
+export const calculateSubtotal = (items = []) =>
+  round2(
+    (Array.isArray(items) ? items : []).reduce((sum, i) => {
+      return sum + toNumber(i.quantity) * toNumber(i.unitPrice);
+    }, 0)
+  );
 
-/**
- * Compute GST breakdown for a given amount and category.
- * @param {number} amount        Pre-tax amount
- * @param {string} category      BILLING_CATEGORIES key
- * @param {boolean} interstate   Whether supply is inter-state (IGST)
- * @returns {{ cgst: number, sgst: number, igst: number, total: number }}
- */
-export function computeGST(amount, category, interstate = false) {
-  if (!TAX_CONFIG.GST.enabled || isTaxExempt(category)) {
+// =========================================================
+// GST ENGINE (FIXED ROUNDING SAFETY)
+// =========================================================
+
+export const calculateGST = (
+  amount,
+  ratePercent = GST_CONFIG.defaultRate,
+  intraState = true,
+  category = null
+) => {
+  const amt = toNumber(amount);
+
+  const exempt =
+    TAX_CONFIG?.GST?.exemptCategories?.includes(category) || false;
+
+  if (!GST_CONFIG.enabled || exempt) {
     return { cgst: 0, sgst: 0, igst: 0, total: 0 };
   }
 
-  if (interstate) {
-    const igst = financialRound(amount * TAX_CONFIG.GST.components.IGST);
-    return { cgst: 0, sgst: 0, igst, total: igst };
+  const totalTax = round2((amt * ratePercent) / 100);
+
+  if (!intraState) {
+    return { cgst: 0, sgst: 0, igst: totalTax, total: totalTax };
   }
 
-  const cgst = financialRound(amount * TAX_CONFIG.GST.components.CGST);
-  const sgst = financialRound(amount * TAX_CONFIG.GST.components.SGST);
-  return { cgst, sgst, igst: 0, total: financialRound(cgst + sgst) };
-}
+  // FIX: prevents cgst + sgst mismatch due to rounding
+  const cgst = round2(totalTax / 2);
+  const sgst = round2(totalTax - cgst);
 
-// ─── Discount Calculations ────────────────────────────────────────────────────
+  return { cgst, sgst, igst: 0, total: totalTax };
+};
 
-/**
- * Clamp a discount percentage to configured maximum.
- * @param {number} percent
- * @returns {number}
- */
-export function clampDiscount(percent) {
-  return Math.max(0, Math.min(percent, DISCOUNT_CONFIG.maxPercentage));
-}
+// =========================================================
+// DISCOUNT ENGINE
+// =========================================================
 
-/**
- * Compute discount amount from subtotal and percentage.
- * @param {number} subtotal
- * @param {number} discountPercent
- * @returns {{ percent: number, amount: number, requiresApproval: boolean }}
- */
-export function computeDiscount(subtotal, discountPercent) {
-  const clamped = clampDiscount(discountPercent);
-  const amount  = financialRound(subtotal * (clamped / 100));
-  return {
-    percent:          clamped,
-    amount,
-    requiresApproval: clamped >= DISCOUNT_CONFIG.requiresApproval,
-  };
-}
+export const calculateDiscount = (base, discount = {}) => {
+  const value = toNumber(base);
 
-/**
- * Apply senior citizen discount if eligible.
- * @param {number} currentPercent
- * @param {number} age
- * @returns {number} Updated discount percent
- */
-export function applySeniorDiscount(currentPercent, age) {
-  if (age >= 60) {
-    return Math.min(
-      currentPercent + DISCOUNT_CONFIG.seniorCitizen,
+  if (!discount || !discount.value) return 0;
+
+  if (discount.type === "PERCENT") {
+    const percent = clamp(
+      discount.value,
+      0,
       DISCOUNT_CONFIG.maxPercentage
     );
+    return round2((value * percent) / 100);
   }
-  return currentPercent;
-}
 
-// ─── Invoice Totals ───────────────────────────────────────────────────────────
+  return round2(clamp(discount.value, 0, value));
+};
 
-/**
- * @typedef {Object} LineItem
- * @property {string}  category    BILLING_CATEGORIES key
- * @property {number}  quantity
- * @property {number}  unitPrice
- * @property {number}  [discountPercent]
- * @property {boolean} [interstate]
- */
+// =========================================================
+// INSURANCE ENGINE (FIXED LOGIC)
+// =========================================================
 
-/**
- * @typedef {Object} InvoiceSummary
- * @property {number} subtotal
- * @property {number} discountAmount
- * @property {number} taxableAmount
- * @property {number} cgst
- * @property {number} sgst
- * @property {number} igst
- * @property {number} totalTax
- * @property {number} grandTotal
- * @property {LineItem[]} lineItems  Enriched items with computed fields
- */
+export const calculateInsurance = (amount, policy = {}) => {
+  const base = toNumber(amount);
 
-/**
- * Compute full invoice summary from line items.
- * @param {LineItem[]} items
- * @param {number}     invoiceDiscountPercent  Invoice-level discount
- * @param {boolean}    interstate
- * @returns {InvoiceSummary}
- */
-export function computeInvoiceTotals(items, invoiceDiscountPercent = 0, interstate = false) {
-  let subtotal     = 0;
-  let totalCGST    = 0;
-  let totalSGST    = 0;
-  let totalIGST    = 0;
+  if (!policy?.coveragePercent) {
+    return { insuranceCovered: 0, patientPayable: base };
+  }
 
-  const enrichedItems = items.map((item) => {
-    const lineTotal   = computeLineTotal(item);
-    const itemDisc    = computeDiscount(lineTotal, item.discountPercent ?? 0);
-    const afterDisc   = financialRound(lineTotal - itemDisc.amount);
-    const gst         = computeGST(afterDisc, item.category, interstate);
+  let covered = round2((base * clamp(policy.coveragePercent, 0, 100)) / 100);
 
-    subtotal   += lineTotal;
-    totalCGST  += gst.cgst;
-    totalSGST  += gst.sgst;
-    totalIGST  += gst.igst;
+  if (policy.coverageCap) {
+    covered = Math.min(covered, toNumber(policy.coverageCap));
+  }
 
-    return {
-      ...item,
-      lineTotal,
-      discountAmount: itemDisc.amount,
-      taxableAmount:  afterDisc,
-      cgst:           gst.cgst,
-      sgst:           gst.sgst,
-      igst:           gst.igst,
-      lineTax:        gst.total,
-      lineGrandTotal: financialRound(afterDisc + gst.total),
-    };
-  });
+  covered = Math.min(covered, base);
 
-  subtotal          = financialRound(subtotal);
-  const invDiscount = computeDiscount(subtotal, invoiceDiscountPercent);
-  const taxableAmt  = financialRound(subtotal - invDiscount.amount);
+  return {
+    insuranceCovered: covered,
+    patientPayable: round2(base - covered),
+  };
+};
 
-  // Invoice-level tax on the taxable remainder (after invoice discount)
-  // Item-level taxes already computed; here we recalculate proportionally
-  const scaleFactor     = subtotal > 0 ? taxableAmt / subtotal : 0;
-  const scaledCGST      = financialRound(totalCGST * scaleFactor);
-  const scaledSGST      = financialRound(totalSGST * scaleFactor);
-  const scaledIGST      = financialRound(totalIGST * scaleFactor);
-  const totalTax        = financialRound(scaledCGST + scaledSGST + scaledIGST);
-  const grandTotal      = financialRound(taxableAmt + totalTax);
+// =========================================================
+// GRAND TOTAL ENGINE (FIXED INSURANCE POSITION)
+// =========================================================
+
+export const calculateGrandTotal = ({
+  items = [],
+  discount = null,
+  gstRate = GST_CONFIG.defaultRate,
+  intraState = true,
+  insurance = null,
+} = {}) => {
+  const subtotal = calculateSubtotal(items);
+
+  const discountAmount = calculateDiscount(subtotal, discount);
+
+  const taxable = round2(subtotal - discountAmount);
+
+  const gst = calculateGST(taxable, gstRate, intraState);
+
+  // FIX: insurance applies BEFORE GST (correct hospital billing logic)
+  const insuranceResult = calculateInsurance(taxable, insurance);
+
+  const insuranceCovered = insuranceResult.insuranceCovered;
+
+  const taxableAfterInsurance = round2(taxable - insuranceCovered);
+
+  const gstAfterInsurance = calculateGST(
+    taxableAfterInsurance,
+    gstRate,
+    intraState
+  );
+
+  const grandTotal = round2(taxableAfterInsurance + gstAfterInsurance.total);
 
   return {
     subtotal,
-    discountAmount:          invDiscount.amount,
-    discountPercent:         invDiscount.percent,
-    discountRequiresApproval: invDiscount.requiresApproval,
-    taxableAmount:           taxableAmt,
-    cgst:                    scaledCGST,
-    sgst:                    scaledSGST,
-    igst:                    scaledIGST,
-    totalTax,
+    discountAmount,
+    taxableAmount: taxable,
+    insuranceCovered,
+    taxableAfterInsurance,
+    cgst: gstAfterInsurance.cgst,
+    sgst: gstAfterInsurance.sgst,
+    igst: gstAfterInsurance.igst,
+    totalTax: gstAfterInsurance.total,
     grandTotal,
-    lineItems:               enrichedItems,
+    patientPayable: grandTotal,
   };
-}
+};
 
-// ─── Payment Balance ──────────────────────────────────────────────────────────
+// =========================================================
+// PAYMENT ENGINE
+// =========================================================
 
-/**
- * @typedef {Object} PaymentRecord
- * @property {number}  amount
- * @property {string}  status   "SETTLED" | "REVERSED" | "PENDING"
- */
-
-/**
- * Compute balance due from invoice total and payment history.
- * @param {number}          grandTotal
- * @param {PaymentRecord[]} payments
- * @returns {{ amountPaid: number, balanceDue: number, overpayment: number, isFullyPaid: boolean }}
- */
-export function computeBalance(grandTotal, payments = []) {
-  const amountPaid = financialRound(
-    payments
-      .filter((p) => p.status === "SETTLED")
-      .reduce((sum, p) => sum + p.amount, 0)
+export const calculatePaidAmount = (payments = []) =>
+  round2(
+    (Array.isArray(payments) ? payments : [])
+      .filter((p) => p.status !== "FAILED")
+      .reduce((sum, p) => sum + toNumber(p.amount), 0)
   );
 
-  const balanceDue   = financialRound(Math.max(0, grandTotal - amountPaid));
-  const overpayment  = financialRound(Math.max(0, amountPaid - grandTotal));
-  const isFullyPaid  = balanceDue === 0 && amountPaid > 0;
+export const calculateDueAmount = (total, payments = []) => {
+  const paid = calculatePaidAmount(payments);
+  return Math.max(0, round2(toNumber(total) - paid));
+};
 
-  return { amountPaid, balanceDue, overpayment, isFullyPaid };
-}
+// =========================================================
+// PAYMENT STATUS RESOLVER (FIXED EDGE CASE)
+// =========================================================
 
-// ─── Late Fee ─────────────────────────────────────────────────────────────────
+export const resolvePaymentStatus = (grandTotal, payments = []) => {
+  const paid = calculatePaidAmount(payments);
+  const due = calculateDueAmount(grandTotal, payments);
 
-/**
- * Compute late fee for an overdue invoice.
- * @param {number} grandTotal
- * @param {Date|string} dueDate
- * @param {Date|string} [asOf]   Default: now
- * @returns {{ daysOverdue: number, lateFeePercent: number, lateFeeAmount: number }}
- */
-export function computeLateFee(grandTotal, dueDate, asOf = new Date()) {
-  const due    = new Date(dueDate);
-  const check  = new Date(asOf);
-  const diffMs = check - due;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (paid <= 0) return PAYMENT_STATUS.PENDING;
+  if (paid >= grandTotal) return PAYMENT_STATUS.PAID;
+  if (due > 0) return PAYMENT_STATUS.PARTIALLY_PAID;
 
-  if (diffDays <= OVERDUE_CONFIG.gracePeriodDays) {
-    return { daysOverdue: diffDays, lateFeePercent: 0, lateFeeAmount: 0 };
-  }
+  return PAYMENT_STATUS.PAID;
+};
 
-  const billableMonths = Math.ceil((diffDays - OVERDUE_CONFIG.gracePeriodDays) / 30);
-  const rawPercent     = billableMonths * OVERDUE_CONFIG.lateFeePercent;
-  const cappedPercent  = Math.min(rawPercent, OVERDUE_CONFIG.maxLateFeePercent);
-  const lateFeeAmount  = financialRound(grandTotal * (cappedPercent / 100));
+// =========================================================
+// PARTIAL PAYMENT
+// =========================================================
+
+export const processPartialPayment = (
+  grandTotal,
+  existing = [],
+  amount = 0
+) => {
+  const updated = [
+    ...(Array.isArray(existing) ? existing : []),
+    {
+      amount: toNumber(amount),
+      status: "SUCCESS",
+      paidAt: new Date().toISOString(),
+    },
+  ];
+
+  const totalPaid = calculatePaidAmount(updated);
+  const due = calculateDueAmount(grandTotal, updated);
 
   return {
-    daysOverdue:    diffDays,
-    lateFeePercent: cappedPercent,
-    lateFeeAmount,
+    updatedPayments: updated,
+    totalPaid,
+    dueAmount: due,
+    status: resolvePaymentStatus(grandTotal, updated),
   };
-}
+};
 
-// ─── Insurance Split ──────────────────────────────────────────────────────────
+// =========================================================
+// REFUND ENGINE
+// =========================================================
 
-/**
- * Split invoice total between insurance coverage and patient liability.
- * @param {number} grandTotal
- * @param {number} coverageAmount    Amount the insurer will pay
- * @param {number} coPayPercent      Co-pay percentage (patient's share of covered amount)
- * @returns {{ insurancePays: number, patientPays: number, copayAmount: number }}
- */
-export function computeInsuranceSplit(grandTotal, coverageAmount, coPayPercent = 0) {
-  const eligible      = Math.min(coverageAmount, grandTotal);
-  const copayAmount   = financialRound(eligible * (coPayPercent / 100));
-  const insurancePays = financialRound(eligible - copayAmount);
-  const uncovered     = financialRound(grandTotal - eligible);
-  const patientPays   = financialRound(copayAmount + uncovered);
+export const calculateRefund = (
+  totalPaid,
+  refundAmount,
+  alreadyRefunded = 0
+) => {
+  const paid = toNumber(totalPaid);
+  const refunded = toNumber(alreadyRefunded);
 
-  return { insurancePays, patientPays, copayAmount, uncoveredAmount: uncovered };
-}
+  const maxRefundable = Math.max(0, paid - refunded);
 
-// ─── Refund Eligibility ───────────────────────────────────────────────────────
-
-/**
- * Determine whether a refund is eligible.
- * @param {{ paidAt: Date|string, category: string, grandTotal: number, amountPaid: number }} invoice
- * @param {number} refundAmount
- * @returns {{ eligible: boolean, reason: string | null }}
- */
-export function checkRefundEligibility(invoice, refundAmount) {
-  const { REFUND_CONFIG } = await import("./CoreConfig.js").catch(() => {
-    // Synchronous fallback if dynamic import not available
-    return { REFUND_CONFIG: { windowDays: 30, nonRefundable: ["OT_CHARGES", "BLOOD_BANK"], partialAllowed: true } };
-  });
-
-  return _checkRefundSync(invoice, refundAmount);
-}
-
-// Internal synchronous version used by RuleGuard
-export function _checkRefundSync(invoice, refundAmount, refundConfig) {
-  const cfg = refundConfig ?? { windowDays: 30, nonRefundable: ["OT_CHARGES", "BLOOD_BANK"], partialAllowed: true };
-
-  if (!invoice.paidAt) {
-    return { eligible: false, reason: "Invoice has not been paid." };
-  }
-
-  const daysSincePaid = Math.floor(
-    (Date.now() - new Date(invoice.paidAt).getTime()) / (1000 * 60 * 60 * 24)
+  const finalRefund = Math.min(
+    Math.max(0, toNumber(refundAmount)),
+    maxRefundable
   );
 
-  if (daysSincePaid > cfg.windowDays) {
-    return { eligible: false, reason: `Refund window of ${cfg.windowDays} days has expired.` };
-  }
+  const totalRefunded = refunded + finalRefund;
 
-  if (cfg.nonRefundable.includes(invoice.category)) {
-    return { eligible: false, reason: `${invoice.category} charges are non-refundable.` };
-  }
+  let status = PAYMENT_STATUS.PARTIALLY_REFUNDED;
+  if (totalRefunded <= 0) status = PAYMENT_STATUS.PAID;
+  if (totalRefunded >= paid) status = PAYMENT_STATUS.REFUNDED;
 
-  if (!cfg.partialAllowed && refundAmount < invoice.amountPaid) {
-    return { eligible: false, reason: "Partial refunds are not permitted." };
-  }
+  return {
+    refundAmount: finalRefund,
+    totalRefunded,
+    remainingRefundable: Math.max(0, paid - totalRefunded),
+    status,
+  };
+};
 
-  if (refundAmount > invoice.amountPaid) {
-    return { eligible: false, reason: "Refund amount exceeds amount paid." };
-  }
+// =========================================================
+// INVOICE NUMBER (PRODUCTION SAFE)
+// =========================================================
 
-  return { eligible: true, reason: null };
-}
+export const generateInvoiceNumber = (
+  sequence = 1,
+  date = new Date()
+) => {
+  const fyStart = INVOICE_NUMBER_CONFIG.financialYearStartMonthIndex;
 
-// ─── Utility ──────────────────────────────────────────────────────────────────
+  const year = date.getFullYear();
+  const month = date.getMonth();
 
-/**
- * Generate a human-readable invoice number.
- * Format: INV-YYYYMMDD-XXXXX
- * @param {Date} [date]
- * @returns {string}
- */
-export function generateInvoiceNumber(date = new Date()) {
-  const d     = date;
-  const year  = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day   = String(d.getDate()).padStart(2, "0");
-  const seq   = String(Math.floor(Math.random() * 99999)).padStart(5, "0");
-  return `INV-${year}${month}${day}-${seq}`;
-}
+  const startYear = month >= fyStart ? year : year - 1;
+  const endYear = String((startYear + 1) % 100).padStart(2, "0");
 
-/**
- * Determine invoice status from balance and dates.
- * @param {number}  balanceDue
- * @param {Date|string} dueDate
- * @param {boolean} isCancelled
- * @param {boolean} isRefunded
- * @returns {string}  INVOICE_STATUS value
- */
-export function deriveInvoiceStatus(balanceDue, amountPaid, grandTotal, dueDate, isCancelled, isRefunded) {
-  if (isCancelled)  return "CANCELLED";
-  if (isRefunded)   return "REFUNDED";
-  if (balanceDue === 0 && amountPaid > 0) return "PAID";
-  if (amountPaid > 0 && balanceDue > 0)  return "PARTIALLY_PAID";
-  if (balanceDue === grandTotal && new Date() > new Date(dueDate)) return "OVERDUE";
-  if (balanceDue === grandTotal)          return "PENDING";
-  return "DRAFT";
-}
+  const fy = `${startYear}-${endYear}`;
+
+  const seq = String(sequence).padStart(
+    INVOICE_NUMBER_CONFIG.sequencePadLength,
+    "0"
+  );
+
+  return `${INVOICE_NUMBER_CONFIG.prefix}-${fy}-${seq}`;
+};
+
+// =========================================================
+// FINANCIAL SUMMARY
+// =========================================================
+
+export const generateFinancialSummary = (invoices = []) => {
+  const list = Array.isArray(invoices) ? invoices : [];
+
+  const summary = list.reduce(
+    (acc, inv) => {
+      const total = toNumber(inv.grandTotal);
+      const paid = calculatePaidAmount(inv.payments);
+      const due = calculateDueAmount(total, inv.payments);
+
+      acc.totalBilled += total;
+      acc.totalCollected += paid;
+      acc.totalOutstanding += due;
+
+      return acc;
+    },
+    {
+      totalBilled: 0,
+      totalCollected: 0,
+      totalOutstanding: 0,
+    }
+  );
+
+  return {
+    ...summary,
+    collectionRate:
+      summary.totalBilled > 0
+        ? round2((summary.totalCollected / summary.totalBilled) * 100)
+        : 0,
+    invoiceCount: list.length,
+  };
+};
+
+// =========================================================
+// EXPORT ENGINE
+// =========================================================
+
+const BillingLogicEngine = Object.freeze({
+  calculateSubtotal,
+  calculateGST,
+  calculateDiscount,
+  calculateInsurance,
+  calculateGrandTotal,
+  calculatePaidAmount,
+  calculateDueAmount,
+  resolvePaymentStatus,
+  processPartialPayment,
+  calculateRefund,
+  generateInvoiceNumber,
+  generateFinancialSummary,
+});
+
+export default BillingLogicEngine;

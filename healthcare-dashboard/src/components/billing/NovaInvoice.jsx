@@ -1,5 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useInvoices, useBillingSummary, useCreateInvoice } from "../hooks/useBilling";
+import {
+  useInvoices,
+  useBillingSummary,
+  useCreateInvoice,
+} from '../../hooks/useBilling';
 import {
   Search,
   Bell,
@@ -20,22 +24,13 @@ import {
   X,
 } from 'lucide-react';
 
-// Integration points — rendered once these modules land in the same directory.
 import BillForm from './BillForm';
 import BillTable from './BillTable';
 import BillPrintTemplate from './BillPrintTemplate';
- const filters = useMemo(() => ({
-  query,
-  status: statusFilter,
-  payer: payerFilter,
-}), [query, statusFilter, payerFilter]);
+
 const DISPLAY_FONT = "'Manrope', 'Inter', sans-serif";
 const DATA_FONT = "'IBM Plex Mono', 'Roboto Mono', monospace";
-const { data: invoices = [], isLoading } = useInvoices(filters);
 
-const { data: revenueSummary = {} } = useBillingSummary();
-
-const createInvoiceMutation = useCreateInvoice();
 const STATUS_FILTERS = ['All', 'Paid', 'Pending', 'Overdue', 'Draft'];
 const PAYER_FILTERS = ['All payers', 'Self-pay', 'Private insurance', 'Medicare', 'Medicaid'];
 
@@ -46,24 +41,31 @@ const currency = (value) =>
     maximumFractionDigits: 0,
   }).format(value ?? 0);
 
-/**
- * Vital-style readout for a single billing metric. Modeled on a clinical
- * monitor strip: a large tabular figure, a trend caret, and a thin status
- * bar whose color communicates whether the metric sits in a healthy range.
- */
 function VitalReadout({ label, value, delta, tone = 'stable', format = 'currency' }) {
   const toneColor =
-    tone === 'good' ? '#1C8C5B' : tone === 'watch' ? '#C2872A' : tone === 'risk' ? '#C24A3A' : '#2D5DA1';
+    tone === 'good'
+      ? '#1C8C5B'
+      : tone === 'watch'
+        ? '#C2872A'
+        : tone === 'risk'
+          ? '#C24A3A'
+          : '#2D5DA1';
 
   const displayValue =
-    format === 'currency' ? currency(value) : format === 'percent' ? `${(value ?? 0).toFixed(1)}%` : value ?? 0;
+    format === 'currency'
+      ? currency(value)
+      : format === 'percent'
+        ? `${(value ?? 0).toFixed(1)}%`
+        : value ?? 0;
 
   const isPositive = (delta ?? 0) >= 0;
 
   return (
     <div className="flex-1 min-w-[180px] px-5 py-4 border-r border-[#E2E7EB] last:border-r-0">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-semibold tracking-[0.14em] uppercase text-[#5B6B7C]">{label}</span>
+        <span className="text-[11px] font-semibold tracking-[0.14em] uppercase text-[#5B6B7C]">
+          {label}
+        </span>
         {typeof delta === 'number' && (
           <span
             className={`flex items-center gap-0.5 text-[11px] font-medium ${
@@ -147,19 +149,10 @@ function EmptyMount({ label, hint }) {
   );
 }
 
-/**
- * NovaInvoice
- * Executive billing workspace for MediCare Pro. Orchestrates search,
- * smart filtering, and quick actions, and hosts the mount points for
- * BillForm, BillTable, and BillPrintTemplate. All figures are supplied
- * by the parent via props and are expected to originate from the
- * PostgreSQL-backed billing API (GET /api/billing/summary,
- * GET /api/billing/invoices) — no data is fetched or fabricated here.
- */
 export default function NovaInvoice({
   currentUser = { name: 'Billing Administrator', role: 'Finance' },
-  revenueSummary = { collected: 0, collectedDelta: 0, outstanding: 0, outstandingDelta: 0, collectionRate: 0, collectionRateDelta: 0, avgDaysToPay: 0, avgDaysToPayDelta: 0 },
-  
+  revenueSummary: _propRevenueSummary,
+  notifications = [],
   onCreateInvoice = () => {},
   onRecordPayment = () => {},
   onGenerateStatement = () => {},
@@ -174,7 +167,30 @@ export default function NovaInvoice({
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [isFormOpen, setFormOpen] = useState(false);
 
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const filters = useMemo(
+    () => ({ query, status: statusFilter, payer: payerFilter }),
+    [query, statusFilter, payerFilter],
+  );
+
+  const { data: invoices = [], isLoading: isInvoicesLoading } = useInvoices(filters);
+  const { data: billingSummary = {} } = useBillingSummary();
+  const createInvoiceMutation = useCreateInvoice();
+
+  const revenueSummary = useMemo(() => ({
+    collected: billingSummary.collected ?? 0,
+    collectedDelta: billingSummary.collectedDelta ?? 0,
+    outstanding: billingSummary.outstanding ?? 0,
+    outstandingDelta: billingSummary.outstandingDelta ?? 0,
+    collectionRate: billingSummary.collectionRate ?? 0,
+    collectionRateDelta: billingSummary.collectionRateDelta ?? 0,
+    avgDaysToPay: billingSummary.avgDaysToPay ?? 0,
+    avgDaysToPayDelta: billingSummary.avgDaysToPayDelta ?? 0,
+  }), [billingSummary]);
+
+  const unreadCount = useMemo(
+    () => (Array.isArray(notifications) ? notifications.filter((n) => !n.read).length : 0),
+    [notifications],
+  );
 
   const handleSearchChange = useCallback(
     (event) => {
@@ -182,19 +198,30 @@ export default function NovaInvoice({
       setQuery(value);
       onSearch({ query: value, status: statusFilter, payer: payerFilter });
     },
-    [onSearch, statusFilter, payerFilter]
+    [onSearch, statusFilter, payerFilter],
   );
 
   const applyFilters = useCallback(
     (nextStatus, nextPayer) => {
+      setStatusFilter(nextStatus);
+      setPayerFilter(nextPayer);
       onSearch({ query, status: nextStatus, payer: nextPayer });
     },
-    [onSearch, query]
+    [onSearch, query],
+  );
+
+  const handleCreateInvoice = useCallback(
+    (invoice) => {
+      if (createInvoiceMutation && typeof createInvoiceMutation.mutate === 'function') {
+        createInvoiceMutation.mutate(invoice);
+      }
+      onCreateInvoice(invoice);
+    },
+    [createInvoiceMutation, onCreateInvoice],
   );
 
   return (
     <div className="min-h-screen bg-[#F7F9FA]">
-      {/* Executive Header */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-[#E2E7EB]">
         <div className="max-w-[1400px] mx-auto px-6 py-3.5 flex items-center gap-4">
           <div className="flex items-center gap-2.5 shrink-0">
@@ -245,7 +272,7 @@ export default function NovaInvoice({
                     </button>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
-                    {notifications.length === 0 ? (
+                    {!Array.isArray(notifications) || notifications.length === 0 ? (
                       <p className="text-[13px] text-[#8B99A7] px-4 py-6 text-center">You're caught up.</p>
                     ) : (
                       notifications.map((note) => (
@@ -274,7 +301,6 @@ export default function NovaInvoice({
       </header>
 
       <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
-        {/* Billing Vitals — Revenue Cards + Billing Statistics */}
         <section className="bg-white border border-[#E2E7EB] rounded-xl flex flex-wrap overflow-hidden">
           <VitalReadout label="Revenue Collected" value={revenueSummary.collected} delta={revenueSummary.collectedDelta} tone="good" />
           <VitalReadout label="Outstanding Balance" value={revenueSummary.outstanding} delta={revenueSummary.outstandingDelta} tone="watch" />
@@ -282,7 +308,6 @@ export default function NovaInvoice({
           <VitalReadout label="Avg. Days to Payment" value={revenueSummary.avgDaysToPay} delta={revenueSummary.avgDaysToPayDelta} tone="stable" format="number" />
         </section>
 
-        {/* Quick Actions */}
         <div className="flex flex-wrap gap-2.5">
           <QuickAction icon={Plus} label="New Invoice" primary onClick={() => setFormOpen(true)} />
           <QuickAction icon={CreditCard} label="Record Payment" onClick={onRecordPayment} />
@@ -291,21 +316,13 @@ export default function NovaInvoice({
           <QuickAction icon={Download} label="Bulk Export" onClick={onExport} />
         </div>
 
-        {/* Search + Smart Filters */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 mr-1 text-[12px] font-medium text-[#8B99A7] uppercase tracking-wide">
             <CircleDollarSign className="w-3.5 h-3.5" />
             Filters
           </div>
           {STATUS_FILTERS.map((status) => (
-            <FilterChip
-              key={status}
-              active={statusFilter === status}
-              onClick={() => {
-                setStatusFilter(status);
-                applyFilters(status, payerFilter);
-              }}
-            >
+            <FilterChip key={status} active={statusFilter === status} onClick={() => applyFilters(status, payerFilter)}>
               {status}
             </FilterChip>
           ))}
@@ -313,10 +330,7 @@ export default function NovaInvoice({
           <div className="relative">
             <select
               value={payerFilter}
-              onChange={(event) => {
-                setPayerFilter(event.target.value);
-                applyFilters(statusFilter, event.target.value);
-              }}
+              onChange={(event) => applyFilters(statusFilter, event.target.value)}
               className="appearance-none pl-3 pr-8 py-1.5 rounded-full text-[13px] font-medium border border-[#DEE3E8] bg-white text-[#5B6B7C] focus:outline-none focus:border-[#0E7C86]"
             >
               {PAYER_FILTERS.map((payer) => (
@@ -329,18 +343,25 @@ export default function NovaInvoice({
           </div>
         </div>
 
-        {/* Recent Invoices + Billing Table Mount */}
         <SectionPanel
           title="Recent Invoices"
           description="Latest activity across all departments, most recent first."
           action={
-            <button className="text-[13px] font-medium text-[#0E7C86] hover:text-[#0C6B74]" onClick={() => onSearch({ query: '', status: 'All', payer: 'All payers' })}>
+            <button
+              className="text-[13px] font-medium text-[#0E7C86] hover:text-[#0C6B74]"
+              onClick={() => {
+                setQuery('');
+                setStatusFilter('All');
+                setPayerFilter('All payers');
+                onSearch({ query: '', status: 'All', payer: 'All payers' });
+              }}
+            >
               View all
             </button>
           }
         >
-          {invoices.length > 0 ? (
-            <BillTable invoices={invoices} isLoading={isLoading} onOpenInvoice={onOpenInvoice} />
+          {Array.isArray(invoices) && invoices.length > 0 ? (
+            <BillTable invoices={invoices} isLoading={isInvoicesLoading} onOpenInvoice={onOpenInvoice} />
           ) : (
             <EmptyMount
               label="No invoices match the current filters"
@@ -349,7 +370,6 @@ export default function NovaInvoice({
           )}
         </SectionPanel>
 
-        {/* Analytics, Export, Audit */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <SectionPanel title="Billing Analytics" description="Revenue trends and payer mix">
             <EmptyMount
@@ -391,7 +411,6 @@ export default function NovaInvoice({
         </div>
       </main>
 
-      {/* Invoice Creation Mount */}
       {isFormOpen && (
         <div className="fixed inset-0 z-30 bg-[#0F1B2D]/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -406,7 +425,7 @@ export default function NovaInvoice({
             <div className="p-5">
               <BillForm
                 onSubmit={(invoice) => {
-                  onCreateInvoice(invoice);
+                  handleCreateInvoice(invoice);
                   setFormOpen(false);
                 }}
                 onCancel={() => setFormOpen(false)}

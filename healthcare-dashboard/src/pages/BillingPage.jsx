@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { jsPDF } from "jspdf";
-
+import NovaInvoice from "../components/billing/NovaInvoice";
 /* ─────────────────────────────────────────────
    CONFIG
 ───────────────────────────────────────────── */
@@ -13,46 +13,36 @@ const STORAGE_KEY = "billing_invoices";
 /* ─────────────────────────────────────────────
    BACKEND-READY STORAGE LAYER
 ───────────────────────────────────────────── */
-
-const API_BASE = "/api/invoices";
-
-/* ───────────────────────────────
-   Backend API Layer (v10)
-   PostgreSQL-ready
-   ─────────────────────────────── */
-
 const billingAPI = {
   async getAll() {
-    const res = await fetch(API_BASE);
-    if (!res.ok) throw new Error("Failed to fetch invoices");
-    return res.json();
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
   },
 
   async create(invoice) {
-    const res = await fetch(API_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(invoice),
-    });
-    if (!res.ok) throw new Error("Failed to create invoice");
-    return res.json();
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    data.push(invoice);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return invoice;
   },
 
   async update(id, patch) {
-    const res = await fetch(`${API_BASE}/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    if (!res.ok) throw new Error("Failed to update invoice");
-    return res.json();
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+
+    const updated = data.map((bill) =>
+      bill.billId === id ? { ...bill, ...patch } : bill
+    );
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    return patch;
   },
 
   async remove(id) {
-    const res = await fetch(`${API_BASE}/${id}`, {
-      method: "DELETE" });
-    if (!res.ok) throw new Error("Failed to delete invoice");
-    return res.json();
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+
+    const filtered = data.filter((bill) => bill.billId !== id);
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    return true;
   },
 };
 
@@ -180,7 +170,7 @@ export default function BillingPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const data = await billingStore.getAll();
+   const data = await billingAPI.getAll();
     setBills(data);
     setLoading(false);
   }, []);
@@ -221,7 +211,7 @@ export default function BillingPage() {
       validateBill(finalBill);
 
       if (form._mode === "edit") {
-        await billingStore.update(form.billId, {
+      await billingAPI.update(form.billId, {
           ...finalBill,
           updatedAt: new Date().toISOString(),
           version: (form.version || 1) + 1,
@@ -229,7 +219,7 @@ export default function BillingPage() {
 
         showToast("Bill updated successfully");
       } else {
-        await billingStore.create({
+    await billingAPI.create({
           ...finalBill,
           billId: generateBillId(),
           createdAt: new Date().toISOString(),
@@ -248,11 +238,11 @@ export default function BillingPage() {
     setSaving(false);
   }
 
-  async function handleDelete(id) {
-    await billingStore.remove(id);
+ async function handleDelete(id) {
+    await billingAPI.remove(id);
     await loadData();
     showToast("Bill deleted", "warning");
-  }
+}
 
   /* ───────── UI ───────── */
 
@@ -268,7 +258,12 @@ export default function BillingPage() {
       >
         New Bill
       </button>
-
+         {showForm && (
+  <NovaInvoice
+    onSave={handleSave}
+    onClose={() => setShowForm(false)}
+  />
+)}
       {/* LIST */}
       <div className="mt-4 space-y-2">
         {bills.map((b) => (

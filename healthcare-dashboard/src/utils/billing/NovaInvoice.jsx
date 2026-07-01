@@ -5,7 +5,7 @@
 // Integrates: InvoiceExporter, SmartFilter, SignalToast, Chronicle, HorizonMetrics
 
 import { useState, useCallback, useMemo } from "react";
-import { dispatchExport } from "../../utils/billing/InvoiceExporter";
+import { dispatchExport } from "./InvoiceExporter";
 import { applySmartFilter, applySort, buildDefaultCriteria } from "./SmartFilter";
 import SmartFilterBar from "./SmartFilterBar";
 import Chronicle from "./Chronicle";

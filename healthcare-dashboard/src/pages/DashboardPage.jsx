@@ -345,19 +345,9 @@ const completionRate =
           </div>
         </section>
 
-        {/* Appointment Summary */}
-       {userRole !== "Patient" && (
-  <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-    ...
-  </section>
-)}
-
         {/* Doctor Selection */}
         {userRole !== "Patient" && (
   <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
-    ...
-  </section>
-)}
           <h2 className="text-2xl font-bold mb-5">Select Doctor</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <input
@@ -408,14 +398,12 @@ const completionRate =
               </button>
             ))}
           </div>
-        
+  </section>
+)}
 
         {/* Booking Form */}
         {userRole !== "Patient" && (
   <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
-    ...
-  </section>
-)}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
             <h2 className="text-2xl font-bold">Book Appointment</h2>
             {editingId && (
@@ -484,7 +472,8 @@ const completionRate =
               Cancel
             </button>
           </div>
-       
+  </section>
+)}
 
         {/* Appointment Queue */}
         <section className={`${cardClass} border rounded-2xl p-6 mb-8 shadow-xl`}>
