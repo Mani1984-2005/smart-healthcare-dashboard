@@ -1,11 +1,11 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
 
 // Import all route modules
-const authRoutes = require("./authRoutes");
-const patientRoutes = require("./patientRoutes");
-const pharmacyRoutes = require("./pharmacyRoutes");
-const healthRoutes = require("./healthRoutes");
+import authRoutes from "./authRoutes.js";
+import patientRoutes from "./patientRoutes.js";
+import pharmacyRoutes from "./pharmacyRoutes.js";
+import healthRoutes from "./healthRoutes.js";
 
 // Mount routes
 router.use("/auth", authRoutes);
@@ -26,4 +26,4 @@ router.get("/", (req, res) => {
   });
 });
 
-module.exports = router;
+export default router;

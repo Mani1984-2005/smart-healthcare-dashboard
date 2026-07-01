@@ -1,7 +1,7 @@
 // backend/routes/hospitalRoutes.js
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const hospitalController = require("../controllers/hospitalController");
+import * as hospitalController from "../controllers/hospitalController.js";
 
 router.get("/dashboard", hospitalController.getDashboard);
 
@@ -22,4 +22,4 @@ router.delete("/staff/:id", hospitalController.deleteStaff);
 // Assignment
 router.post("/assign-staff", hospitalController.assignStaffToDepartment);
 
-module.exports = router;
+export default router;

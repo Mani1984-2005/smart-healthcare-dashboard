@@ -1,17 +1,8 @@
 // backend/controllers/pharmacyController.js
 // MediCare Pro — Integrated Pharmacy & Prescription Controller
 
-const Medicine = require("../models/Medicine");
-const {
-  createPrescription,
-  addMedicine,
-  getPrescriptionsByPatient,
-  getPrescriptionById,
-  getAllPrescriptions,
-  updatePrescriptionStatus,
-  deleteMedicine,
-  deletePrescription,
-} = require("../models/Prescription");
+import Medicine from "../models/Medicine.js";
+import * as Prescription from "../models/Prescription.js";
 
 // ==============================================================================
 // ─── Drug Interaction Rule Engine ─────────────────────────────────────────────
@@ -101,7 +92,7 @@ const DOSAGE_RULES = {
 // ─── Engine Helper Utilities ──────────────────────────────────────────────────
 // ==============================================================================
 
-const checkInteractions = (medicineList) => {
+const computeInteractions = (medicineList) => {
   const interactions = [];
   const names = medicineList.map((m) => m.medicine_name.toLowerCase().trim());
 
@@ -129,7 +120,7 @@ const checkInteractions = (medicineList) => {
   return interactions;
 };
 
-const getDosageSuggestion = (medicineName) => {
+const getDosageSuggestionForMedicine = (medicineName) => {
   const key = medicineName.toLowerCase().trim();
   if (DOSAGE_RULES[key]) return DOSAGE_RULES[key];
   const found = Object.keys(DOSAGE_RULES).find((k) => key.includes(k) || k.includes(key.split(" ")[0]));
@@ -160,7 +151,7 @@ const generateRxId = () => `RX-${Date.now()}`;
 // ─── Medicine Management Controllers (From File 1) ───────────────────────────
 // ==============================================================================
 
-exports.listMedicines = async (req, res) => {
+export const listMedicines = async (req, res) => {
   try {
     const { search = "", category = "", form = "", page = 1, limit = 20 } = req.query;
     const result = await Medicine.findAll({
@@ -177,7 +168,7 @@ exports.listMedicines = async (req, res) => {
   }
 };
 
-exports.getMedicine = async (req, res) => {
+export const getMedicine = async (req, res) => {
   try {
     const medicine = await Medicine.findById(req.params.id);
     if (!medicine) return res.status(404).json({ success: false, error: "Medicine not found." });
@@ -188,7 +179,7 @@ exports.getMedicine = async (req, res) => {
   }
 };
 
-exports.createMedicine = async (req, res) => {
+export const createMedicine = async (req, res) => {
   try {
     const { name } = req.body;
     if (!name) return res.status(400).json({ success: false, error: "Medicine name is required." });
@@ -200,7 +191,7 @@ exports.createMedicine = async (req, res) => {
   }
 };
 
-exports.updateMedicine = async (req, res) => {
+export const updateMedicine = async (req, res) => {
   try {
     const medicine = await Medicine.update(req.params.id, req.body);
     if (!medicine) return res.status(404).json({ success: false, error: "Medicine not found." });
@@ -211,7 +202,7 @@ exports.updateMedicine = async (req, res) => {
   }
 };
 
-exports.deleteMedicine = async (req, res) => {
+export const deleteMedicine = async (req, res) => {
   try {
     await Medicine.delete(req.params.id);
     res.json({ success: true, message: "Medicine deactivated." });
@@ -221,7 +212,7 @@ exports.deleteMedicine = async (req, res) => {
   }
 };
 
-exports.getCategories = async (req, res) => {
+export const getCategories = async (req, res) => {
   try {
     const categories = await Medicine.getCategories();
     res.json({ success: true, categories });
@@ -231,7 +222,7 @@ exports.getCategories = async (req, res) => {
   }
 };
 
-exports.getLowStock = async (req, res) => {
+export const getLowStock = async (req, res) => {
   try {
     const medicines = await Medicine.getLowStock();
     res.json({ success: true, medicines });
@@ -246,25 +237,25 @@ exports.getLowStock = async (req, res) => {
 // ==============================================================================
 
 // GET /api/pharmacy/dosage-suggestion?name=amoxicillin
-exports.getDosageSuggestion = (req, res) => {
+export const getDosageSuggestion = (req, res) => {
   const { name } = req.query;
   if (!name) return res.status(400).json({ error: "Medicine name required" });
-  const suggestion = getDosageSuggestion(name);
+  const suggestion = getDosageSuggestionForMedicine(name);
   if (!suggestion) return res.status(404).json({ found: false, message: "No dosage rule found for this medicine" });
   return res.json({ found: true, suggestion });
 };
 
 // GET /api/pharmacy/check-interactions
-exports.checkInteractions = (req, res) => {
+export const checkInteractions = (req, res) => {
   const { medicines } = req.body;
   if (!Array.isArray(medicines) || medicines.length === 0)
     return res.status(400).json({ error: "medicines array required" });
-  const interactions = checkInteractions(medicines);
+  const interactions = computeInteractions(medicines);
   return res.json({ interactions, count: interactions.length });
 };
 
 // POST /api/pharmacy/prescriptions — Create prescription + medicines
-exports.createPrescription = async (req, res) => {
+export const createPrescription = async (req, res) => {
   try {
     const {
       patient_id, patient_name, doctor_name, department,
@@ -281,7 +272,7 @@ exports.createPrescription = async (req, res) => {
     const qr_payload = buildQRPayload(tempRx, medicines);
 
     // Create prescription record
-    const prescription = await createPrescription({
+    const prescription = await Prescription.createPrescription({
       prescription_id, patient_id, patient_name, doctor_name,
       department, diagnosis, notes, qr_payload,
     });
@@ -289,10 +280,10 @@ exports.createPrescription = async (req, res) => {
     // Add medicines
     const savedMeds = [];
     for (const med of medicines) {
-      const suggestion = getDosageSuggestion(med.medicine_name);
+      const suggestion = getDosageSuggestionForMedicine(med.medicine_name);
       const interactions = med.interactions || [];
 
-      const saved = await addMedicine({
+      const saved = await Prescription.addMedicine({
         prescription_id,
         medicine_name:   med.medicine_name,
         generic_name:    med.generic_name   || "",
@@ -314,7 +305,7 @@ exports.createPrescription = async (req, res) => {
     }
 
     // Check for interactions across all medicines
-    const detectedInteractions = checkInteractions(
+    const detectedInteractions = computeInteractions(
       medicines.map((m) => ({ medicine_name: m.medicine_name }))
     );
 
@@ -331,9 +322,9 @@ exports.createPrescription = async (req, res) => {
 };
 
 // GET /api/pharmacy/prescriptions — All prescriptions
-exports.getAllPrescriptions = async (req, res) => {
+export const getAllPrescriptions = async (req, res) => {
   try {
-    const prescriptions = await getAllPrescriptions();
+    const prescriptions = await Prescription.getAllPrescriptions();
     return res.json({ prescriptions, total: prescriptions.length });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -341,10 +332,10 @@ exports.getAllPrescriptions = async (req, res) => {
 };
 
 // GET /api/pharmacy/prescriptions/patient/:patientId
-exports.getByPatient = async (req, res) => {
+export const getByPatient = async (req, res) => {
   try {
     const { patientId } = req.params;
-    const prescriptions = await getPrescriptionsByPatient(patientId);
+    const prescriptions = await Prescription.getPrescriptionsByPatient(patientId);
     return res.json({ prescriptions, total: prescriptions.length });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -352,9 +343,9 @@ exports.getByPatient = async (req, res) => {
 };
 
 // GET /api/pharmacy/prescriptions/:rxId
-exports.getPrescriptionById = async (req, res) => {
+export const getPrescriptionById = async (req, res) => {
   try {
-    const rx = await getPrescriptionById(req.params.rxId);
+    const rx = await Prescription.getPrescriptionById(req.params.rxId);
     if (!rx) return res.status(404).json({ error: "Prescription not found" });
     return res.json(rx);
   } catch (err) {
@@ -363,13 +354,13 @@ exports.getPrescriptionById = async (req, res) => {
 };
 
 // PATCH /api/pharmacy/prescriptions/:rxId/status
-exports.updateStatus = async (req, res) => {
+export const updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
     const allowed = ["Active", "Dispensed", "Cancelled", "Expired"];
     if (!allowed.includes(status))
       return res.status(400).json({ error: `Status must be one of: ${allowed.join(", ")}` });
-    const updated = await updatePrescriptionStatus(req.params.rxId, status);
+    const updated = await Prescription.updatePrescriptionStatus(req.params.rxId, status);
     if (!updated) return res.status(404).json({ error: "Prescription not found" });
     return res.json({ success: true, prescription: updated });
   } catch (err) {
@@ -378,9 +369,9 @@ exports.updateStatus = async (req, res) => {
 };
 
 // DELETE /api/pharmacy/prescriptions/:rxId
-exports.deletePrescription = async (req, res) => {
+export const deletePrescription = async (req, res) => {
   try {
-    await deletePrescription(req.params.rxId);
+    await Prescription.deletePrescription(req.params.rxId);
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -388,9 +379,9 @@ exports.deletePrescription = async (req, res) => {
 };
 
 // DELETE /api/pharmacy/medicines/:medicineId
-exports.deletePrescriptionMedicine = async (req, res) => {
+export const deletePrescriptionMedicine = async (req, res) => {
   try {
-    await deleteMedicine(req.params.medicineId);
+    await Prescription.deleteMedicine(req.params.medicineId);
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -398,7 +389,7 @@ exports.deletePrescriptionMedicine = async (req, res) => {
 };
 
 // GET /api/pharmacy/drug-list — Return known drugs for autocomplete
-exports.getDrugList = (req, res) => {
+export const getDrugList = (req, res) => {
   const drugs = Object.keys(DOSAGE_RULES).map((name) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
     ...DOSAGE_RULES[name],

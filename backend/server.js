@@ -2,16 +2,15 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import healthRoutes from "./routes/healthRoutes.js";
+import pharmacyRoutes from "./routes/pharmacyRoutes.js";
 // import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
-const pharmacyRoutes = require("./routes/pharmacyRoutes");
-
-app.use("/api", pharmacyRoutes);
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/api", pharmacyRoutes);
 
 app.get("/", (req, res) => {
   res.json({

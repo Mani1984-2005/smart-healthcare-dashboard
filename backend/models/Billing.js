@@ -1,5 +1,5 @@
 // backend/models/Billing.js
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const BillingItemSchema = new mongoose.Schema(
   {
@@ -126,4 +126,4 @@ const BillingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Billing", BillingSchema);
+export default mongoose.model("Billing", BillingSchema);

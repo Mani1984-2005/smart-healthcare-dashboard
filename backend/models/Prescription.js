@@ -1,8 +1,8 @@
 // backend/models/Prescription.js
 // MediCare Pro — Prescription Model (PostgreSQL)
 
-const pool = require("../config/db");
-const crypto = require("crypto");
+import pool from "../config/db.js";
+import crypto from "crypto";
 
 // ─── Simple dosage rule engine ────────────────────────────────────────────────
 // Returns structured dosage guidance from plain text inputs — no external AI.
@@ -292,4 +292,4 @@ const Prescription = {
   },
 };
 
-module.exports = { Prescription, applyDosageRules, buildPrescriptionQR };
+export { Prescription, applyDosageRules, buildPrescriptionQR };

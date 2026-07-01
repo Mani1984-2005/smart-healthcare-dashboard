@@ -1,7 +1,7 @@
 // backend/models/Medicine.js
 // MediCare Pro — Medicine Model (PostgreSQL)
 
-const pool = require("../db");
+import pool from "../config/db.js";
 
 const Medicine = {
   // Create medicines table
@@ -138,4 +138,4 @@ const Medicine = {
   },
 };
 
-module.exports = Medicine;
+export default Medicine;

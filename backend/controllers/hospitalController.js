@@ -1,8 +1,8 @@
 // backend/controllers/hospitalController.js
-const Department = require("../models/Department");
-const Staff = require("../models/Staff");
+import Department from "../models/Department.js";
+import Staff from "../models/Staff.js";
 
-exports.getDashboard = async (req, res) => {
+export const getDashboard = async (req, res) => {
   try {
     const [departments, staff] = await Promise.all([
       Department.find().sort({ createdAt: -1 }),
@@ -26,7 +26,7 @@ exports.getDashboard = async (req, res) => {
   }
 };
 
-exports.createDepartment = async (req, res) => {
+export const createDepartment = async (req, res) => {
   try {
     const department = await Department.create(req.body);
     res.status(201).json({ success: true, department });
@@ -35,7 +35,7 @@ exports.createDepartment = async (req, res) => {
   }
 };
 
-exports.getDepartments = async (req, res) => {
+export const getDepartments = async (req, res) => {
   try {
     const departments = await Department.find().populate("headStaff").sort({ createdAt: -1 });
     res.json({ success: true, departments });
@@ -44,7 +44,7 @@ exports.getDepartments = async (req, res) => {
   }
 };
 
-exports.getDepartmentById = async (req, res) => {
+export const getDepartmentById = async (req, res) => {
   try {
     const department = await Department.findById(req.params.id).populate("headStaff");
     if (!department) return res.status(404).json({ success: false, message: "Department not found" });
@@ -54,7 +54,7 @@ exports.getDepartmentById = async (req, res) => {
   }
 };
 
-exports.updateDepartment = async (req, res) => {
+export const updateDepartment = async (req, res) => {
   try {
     const department = await Department.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -67,7 +67,7 @@ exports.updateDepartment = async (req, res) => {
   }
 };
 
-exports.deleteDepartment = async (req, res) => {
+export const deleteDepartment = async (req, res) => {
   try {
     const department = await Department.findByIdAndDelete(req.params.id);
     if (!department) return res.status(404).json({ success: false, message: "Department not found" });
@@ -79,7 +79,7 @@ exports.deleteDepartment = async (req, res) => {
   }
 };
 
-exports.createStaff = async (req, res) => {
+export const createStaff = async (req, res) => {
   try {
     const staff = await Staff.create(req.body);
     res.status(201).json({ success: true, staff });
@@ -88,7 +88,7 @@ exports.createStaff = async (req, res) => {
   }
 };
 
-exports.getStaff = async (req, res) => {
+export const getStaff = async (req, res) => {
   try {
     const staff = await Staff.find().populate("department").sort({ createdAt: -1 });
     res.json({ success: true, staff });
@@ -97,7 +97,7 @@ exports.getStaff = async (req, res) => {
   }
 };
 
-exports.getStaffById = async (req, res) => {
+export const getStaffById = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id).populate("department");
     if (!staff) return res.status(404).json({ success: false, message: "Staff not found" });
@@ -107,7 +107,7 @@ exports.getStaffById = async (req, res) => {
   }
 };
 
-exports.updateStaff = async (req, res) => {
+export const updateStaff = async (req, res) => {
   try {
     const staff = await Staff.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -120,7 +120,7 @@ exports.updateStaff = async (req, res) => {
   }
 };
 
-exports.deleteStaff = async (req, res) => {
+export const deleteStaff = async (req, res) => {
   try {
     const staff = await Staff.findByIdAndDelete(req.params.id);
     if (!staff) return res.status(404).json({ success: false, message: "Staff not found" });
@@ -130,7 +130,7 @@ exports.deleteStaff = async (req, res) => {
   }
 };
 
-exports.assignStaffToDepartment = async (req, res) => {
+export const assignStaffToDepartment = async (req, res) => {
   try {
     const { staffId, departmentId } = req.body;
 

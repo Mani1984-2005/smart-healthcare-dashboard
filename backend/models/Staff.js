@@ -1,27 +1,5 @@
 // backend/models/Staff.js
-const mongoose = require("mongoose");
-
-const StaffSchema = new mongoose.Schema(
-  {
-    staffId: { type: String, required: true, unique: true, trim: true },
-    name: { type: String, required: true, trim: true },
-    role: {
-      type: String,
-      required: true,
-      enum: ["Doctor", "Nurse", "Admin"],
-    },
-    department: { type: mongoose.Schema.Types.ObjectId, ref: "Department", default: null },
-    phone: { type: String, default: "" },
-    email: { type: String, default: "" },
-    shift: { type: String, default: "" },
-    isActive: { type: Boolean, default: true },
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model("Staff", StaffSchema);
-// backend/models/Staff.js
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const StaffSchema = new mongoose.Schema(
   {
@@ -100,4 +78,4 @@ const StaffSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Staff", StaffSchema);
+export default mongoose.model("Staff", StaffSchema);
