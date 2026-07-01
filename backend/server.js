@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import healthRoutes from "./routes/healthRoutes.js";
 import pharmacyRoutes from "./routes/pharmacyRoutes.js";
+const billingRoutes = require("./src/routes/billing.routes");
+app.use("/billing", billingRoutes);
 // import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
