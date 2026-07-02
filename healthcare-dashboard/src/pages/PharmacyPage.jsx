@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import BarcodeScanner from "../components/BarcodeScanner";
-import Toast from "../components/Pharmacy/Toast";
-import MetricCard from "../components/Pharmacy/MetricCard";
-import AlertBanner from "../components/Pharmacy/AlertBanner";
-import TableRow from "../components/Pharmacy/TableRow";
-import MedicineViewModal from "../components/Pharmacy/MedicineViewModal";
+import Toast from "../components/pharmacy/Toast";
+import MetricCard from "../components/pharmacy/MetricCard";
+import AlertBanner from "../components/pharmacy/AlertBanner";
+import TableRow from "../components/pharmacy/TableRow";
+import MedicineViewModal from "../components/pharmacy/MedicineViewModal";
 import FormModal from "../components/Pharmacy/FormModal";
 import EmptyState from "../components/Pharmacy/EmptyState";
 import AlertSection from "../components/Pharmacy/AlertSection";
