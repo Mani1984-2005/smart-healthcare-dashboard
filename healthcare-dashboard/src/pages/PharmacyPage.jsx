@@ -5,15 +5,26 @@ import MetricCard from "../components/pharmacy/MetricCard";
 import AlertBanner from "../components/pharmacy/AlertBanner";
 import TableRow from "../components/pharmacy/TableRow";
 import MedicineViewModal from "../components/pharmacy/MedicineViewModal";
-import FormModal from "../components/Pharmacy/FormModal";
-import EmptyState from "../components/Pharmacy/EmptyState";
-import AlertSection from "../components/Pharmacy/AlertSection";
+import FormModal from "../components/pharmacy/FormModal";
+import EmptyState from "../components/pharmacy/EmptyState";
+import AlertSection from "../components/pharmacy/AlertSection";
+
 import {
-  STORAGE_KEY, CATEGORIES, LOW_STOCK_THRESHOLD, EXPIRY_WARNING_DAYS,
-  emptyForm, getStockStatus, getQty, getPrice, getPurchasePrice,
-  formatCurrencyCompact, isExpired, isExpiringSoon,
-  downloadMedicinePDF, exportUtils,
-} from "../components/Pharmacy/pharmacyUtils";
+  STORAGE_KEY,
+  CATEGORIES,
+  LOW_STOCK_THRESHOLD,
+  EXPIRY_WARNING_DAYS,
+  emptyForm,
+  getStockStatus,
+  getQty,
+  getPrice,
+  getPurchasePrice,
+  formatCurrencyCompact,
+  isExpired,
+  isExpiringSoon,
+  downloadMedicinePDF,
+  exportUtils,
+} from "../components/pharmacy/pharmacyUtils";
 
 export default function PharmacyPage() {
   const [showScanner, setShowScanner] = useState(false);
