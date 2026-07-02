@@ -31,8 +31,9 @@ export default function PatientsPage({ darkMode }) {
     catch { return initialPatients; }
   });
 const handleGenerateReport = () => {
-  alert("Generate Report is working!");
-  console.log(selectedPatient);
+  if (!selectedPatient) return;
+
+  generatePatientPDF(selectedPatient);
 };
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");

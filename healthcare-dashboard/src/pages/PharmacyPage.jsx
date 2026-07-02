@@ -8,7 +8,7 @@ import MedicineViewModal from "../components/pharmacy/MedicineViewModal";
 import FormModal from "../components/pharmacy/FormModal";
 import EmptyState from "../components/pharmacy/EmptyState";
 import AlertSection from "../components/pharmacy/AlertSection";
-
+import { generatePatientPDF } from "../utils/patientPDF";
 import {
   STORAGE_KEY,
   CATEGORIES,
