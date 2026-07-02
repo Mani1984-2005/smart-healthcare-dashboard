@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -8,29 +8,27 @@ import {
   useLocation,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
+import Navbar from "./components/Navbar";
+import Toast from "./components/Toast";
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
-
-import Navbar from "./components/Navbar";
-import HomePage from "./pages/HomePage";
-import PatientsPage from "./pages/PatientsPage";
-import LaboratoryPage from "./pages/LaboratoryPage";
-import DoctorsPage from "./pages/DoctorsPage";
-import DashboardPage from "./pages/DashboardPage";
-import StaffPage from "./pages/StaffPage";
-import MedicinesPage from "./pages/MedicinesPage";
-import ComplaintsPage from "./pages/ComplaintsPage";
-import ContactPage from "./pages/ContactPage";
-import BillingPage from "./pages/BillingPage";
-import PharmacyPage from "./pages/PharmacyPage";
-import PharmacyInventoryPage from "./pages/PharmacyInventoryPage";
-import ReportsPage from "./pages/ReportsPage";
-import XRaySharingPage from "./pages/XRaySharingPage";
+const HomePage = lazy(() => import("./pages/HomePage"));
+const PatientsPage = lazy(() => import("./pages/PatientsPage"));
+const LaboratoryPage = lazy(() => import("./pages/LaboratoryPage"));
+const DoctorsPage = lazy(() => import("./pages/DoctorsPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const StaffPage = lazy(() => import("./pages/StaffPage"));
+const MedicinesPage = lazy(() => import("./pages/MedicinesPage"));
+const ComplaintsPage = lazy(() => import("./pages/ComplaintsPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
+const BillingPage = lazy(() => import("./pages/BillingPage"));
+const PharmacyPage = lazy(() => import("./pages/PharmacyPage"));
+const PharmacyInventoryPage = lazy(() => import("./pages/PharmacyInventoryPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const XRaySharingPage = lazy(() => import("./pages/XRaySharingPage"));
 
 import { useToast } from "./hooks/usetoast.jsx";
-import Toast from "./components/Toast";
 
 import { useAuth } from "./context/AuthContext";
 import { signInWithPopup } from "firebase/auth";

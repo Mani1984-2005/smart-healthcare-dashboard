@@ -30,6 +30,10 @@ export default function PatientsPage({ darkMode }) {
     try { return JSON.parse(localStorage.getItem("patients")) || initialPatients; }
     catch { return initialPatients; }
   });
+const handleGenerateReport = () => {
+  alert("Generate Report is working!");
+  console.log(selectedPatient);
+};
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [genderFilter, setGenderFilter] = useState("All");
@@ -212,7 +216,12 @@ export default function PatientsPage({ darkMode }) {
               </div>
               <div className="flex gap-2.5">
                 <ActionButton icon={() => null} label="Edit Record" primary onClick={() => { setForm({ ...selectedPatient }); setShowForm(true); setSelectedPatient(null); }} />
-                <ActionButton icon={() => null} label="Generate Report" variant="ghost" />
+                <ActionButton
+  icon={() => null}
+  label="Generate Report"
+  variant="ghost"
+  onClick={handleGenerateReport}
+/>
               </div>
             </div>
           </div>
