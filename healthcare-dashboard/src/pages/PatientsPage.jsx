@@ -4,6 +4,7 @@ import PatientProfileModal from "../components/patient/PatientProfileModal";
 import DuplicateAlert from "../components/patient/DuplicateAlert";
 import PriorityBadge from "../components/patient/PriorityBadge";
 import { FamilyInfoForm } from "../components/patient/FamilyInfoSection";
+import { generatePatientPDF } from "../utils/patientPDF";
 import {
   calculateAge, calculateBMI, getBMICategory, getRiskLevel, getClinicalAlerts,
   getPatientLabReports, getLatestVisit, getOutstandingBalance, getVisitCount,
