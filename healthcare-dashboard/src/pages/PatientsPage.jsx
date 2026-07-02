@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import jsPDF from "jspdf";
-import PatientProfileModal from "../components/patient/PatientProfileModal";
 import DuplicateAlert from "../components/patient/DuplicateAlert";
 import PriorityBadge from "../components/patient/PriorityBadge";
-import { FamilyInfoForm } from "../components/patient/FamilyInfoSection";
 import { generatePatientPDF } from "../utils/patientPDF";
 import {
   calculateAge, calculateBMI, getBMICategory, getRiskLevel, getClinicalAlerts,
@@ -216,14 +213,27 @@ const handleGenerateReport = () => {
                   </div>
                 ))}
               </div>
+              {selectedPatient.timeline?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Medical Timeline</p>
+                  <div className="relative pl-5 space-y-0 max-h-48 overflow-y-auto">
+                    {selectedPatient.timeline.slice(-10).map((event, i, arr) => (
+                      <div key={event.id} className="relative pb-4 last:pb-0">
+                        {i < arr.length - 1 && <div className="absolute left-[3px] top-3 bottom-0 w-px bg-slate-200" />}
+                        <div className={`absolute left-0 top-1.5 w-2 h-2 rounded-full border-2 ${event.type === "Appointment" ? "border-indigo-500" : event.type === "Registration" ? "border-emerald-500" : "border-amber-500"} bg-white`} />
+                        <div className="text-xs">
+                          <span className="font-semibold text-slate-700">{event.title}</span>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{event.details}</p>
+                          <p className="text-[9px] text-slate-300 mt-0.5">{event.date}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2.5">
                 <ActionButton icon={() => null} label="Edit Record" primary onClick={() => { setForm({ ...selectedPatient }); setShowForm(true); setSelectedPatient(null); }} />
-                <ActionButton
-  icon={() => null}
-  label="Generate Report"
-  variant="ghost"
-  onClick={handleGenerateReport}
-/>
+                <ActionButton icon={() => null} label="Generate Report" variant="ghost" onClick={handleGenerateReport} />
               </div>
             </div>
           </div>

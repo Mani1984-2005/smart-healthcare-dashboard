@@ -102,7 +102,6 @@ function AppLayout() {
         "success"
       );
     } catch (err) {
-      console.log(err);
       addToast("Login failed", "Google sign-in failed", "error");
     }
   };

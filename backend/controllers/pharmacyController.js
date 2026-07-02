@@ -272,7 +272,7 @@ export const createPrescription = async (req, res) => {
     const qr_payload = buildQRPayload(tempRx, medicines);
 
     // Create prescription record
-    const prescription = await Prescription.createPrescription({
+    const prescription = await Prescription.create({
       prescription_id, patient_id, patient_name, doctor_name,
       department, diagnosis, notes, qr_payload,
     });
@@ -335,7 +335,7 @@ export const getAllPrescriptions = async (req, res) => {
 export const getByPatient = async (req, res) => {
   try {
     const { patientId } = req.params;
-    const prescriptions = await Prescription.getPrescriptionsByPatient(patientId);
+    const prescriptions = await Prescription.findByPatient(patientId);
     return res.json({ prescriptions, total: prescriptions.length });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -345,7 +345,7 @@ export const getByPatient = async (req, res) => {
 // GET /api/pharmacy/prescriptions/:rxId
 export const getPrescriptionById = async (req, res) => {
   try {
-    const rx = await Prescription.getPrescriptionById(req.params.rxId);
+    const rx = await Prescription.findById(req.params.rxId);
     if (!rx) return res.status(404).json({ error: "Prescription not found" });
     return res.json(rx);
   } catch (err) {
@@ -360,7 +360,7 @@ export const updateStatus = async (req, res) => {
     const allowed = ["Active", "Dispensed", "Cancelled", "Expired"];
     if (!allowed.includes(status))
       return res.status(400).json({ error: `Status must be one of: ${allowed.join(", ")}` });
-    const updated = await Prescription.updatePrescriptionStatus(req.params.rxId, status);
+    const updated = await Prescription.updateStatus(req.params.rxId, status);
     if (!updated) return res.status(404).json({ error: "Prescription not found" });
     return res.json({ success: true, prescription: updated });
   } catch (err) {
@@ -371,7 +371,7 @@ export const updateStatus = async (req, res) => {
 // DELETE /api/pharmacy/prescriptions/:rxId
 export const deletePrescription = async (req, res) => {
   try {
-    await Prescription.deletePrescription(req.params.rxId);
+    await Prescription.delete(req.params.rxId);
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });

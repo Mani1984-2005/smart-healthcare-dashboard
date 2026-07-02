@@ -235,61 +235,6 @@ function exportMedicinePDF(medicine) {
   doc.save(`${medicine.medicineId || "medicine"}_report.pdf`);
 }
 
-// ─── FUTURE READY HOOKS (Architecture stubs — not implemented) ─────────────────
-// These hooks define the integration points for future features.
-// Implementing them will not require changing the component API.
-
-// eslint-disable-next-line no-unused-vars
-function useBarcodeScanner() {
-  // Future: integrate with camera/USB scanner
-  return { scan: () => {}, scanning: false };
-}
-
-// eslint-disable-next-line no-unused-vars
-function useQRScanner() {
-  // Future: QR code scanning via device camera
-  return { scan: () => {}, scanning: false };
-}
-
-// eslint-disable-next-line no-unused-vars
-function useDrugInteractionChecker() {
-  // Future: check interactions via external API
-  return { check: () => Promise.resolve([]) };
-}
-
-// eslint-disable-next-line no-unused-vars
-function useMedicineRecommendationAI() {
-  // Future: AI-powered recommendation engine
-  return { recommend: () => Promise.resolve([]) };
-}
-
-// eslint-disable-next-line no-unused-vars
-function useInventoryForecasting() {
-  // Future: ML-based stock forecasting
-  return { forecast: () => Promise.resolve(null) };
-}
-
-// eslint-disable-next-line no-unused-vars
-function useSupplierPortal() {
-  // Future: supplier API integration
-  return { fetchSuppliers: () => Promise.resolve([]), createPO: () => Promise.resolve(null) };
-}
-
-// eslint-disable-next-line no-unused-vars
-function usePrescriptionScanner() {
-  // Future: OCR + AI prescription reading
-  return { scan: () => Promise.resolve(null) };
-}
-
-// ─── Export Utilities (Future-ready) ─────────────────────────────────────────
-
-const exportUtils = {
-  pdf: exportMedicinePDF,
-  // Future implementations:
-  excel: (data) => { console.warn("Excel export not yet implemented", data); },
-  csv: (data) => { console.warn("CSV export not yet implemented", data); },
-  print: (data) => { console.warn("Print not yet implemented", data); },
-};
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 

@@ -1,7 +1,9 @@
 // backend/models/Prescription.js
 // MediCare Pro — Prescription Model (PostgreSQL)
 
-import pool from "../config/db.js";
+import { getPool } from "../config/db.js";
+
+const pool = getPool();
 import crypto from "crypto";
 
 // ─── Simple dosage rule engine ────────────────────────────────────────────────

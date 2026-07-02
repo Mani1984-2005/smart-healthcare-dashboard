@@ -125,6 +125,16 @@ export default function DashboardPage({
   const symptomSuggestion = getSymptomSuggestion(formData.symptoms);
   const isPatient = userRole === "Patient";
 
+  const weeklyTrend = useMemo(() => {
+    const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const counts = [0,0,0,0,0,0,0];
+    appointments.forEach((a) => {
+      try { const d = new Date(a.date); counts[d.getDay()]++; } catch {}
+    });
+    const max = Math.max(...counts, 1);
+    return dayNames.map((name, i) => ({ day: name, count: counts[i], pct: counts[i] / max }));
+  }, [appointments]);
+
   const kpiCards = [
     { label: "Today's Patients", value: todayPatients, icon: "👤", color: "indigo", sub: `${patients.length} total registered` },
     { label: "Pending Appointments", value: pendingCount, icon: "⏳", color: "amber", sub: `${confirmedCount} confirmed` },
@@ -199,7 +209,7 @@ export default function DashboardPage({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
@@ -217,6 +227,49 @@ export default function DashboardPage({
                   <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-sm lg:col-span-2">
+            <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              Weekly Trends
+            </h3>
+            <div className="relative h-36">
+              <svg viewBox="0 0 500 120" className="w-full h-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgb(99,102,241)" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="rgb(99,102,241)" stopOpacity="0.02" />
+                  </linearGradient>
+                </defs>
+                {(() => {
+                  const w = 500, h = 100, padT = 8, padB = 8;
+                  const xScale = (i) => (i / (weeklyTrend.length - 1)) * (w - 40) + 20;
+                  const maxVal = Math.max(...weeklyTrend.map((d) => d.count), 1);
+                  const yScale = (v) => h - padB - (v / maxVal) * (h - padT - padB);
+                  const pts = weeklyTrend.map((d, i) => `${xScale(i)},${yScale(d.count)}`).join(" ");
+                  const fillPts = `${xScale(0)},${h - padB} ${pts} ${xScale(weeklyTrend.length - 1)},${h - padB}`;
+                  const gridLines = [0, Math.round(maxVal / 2), maxVal];
+                  return (
+                    <>
+                      {gridLines.map((v) => (
+                        <line key={v} x1={20} y1={yScale(v)} x2={w - 20} y2={yScale(v)} stroke="#e2e8f0" strokeWidth="0.5" />
+                      ))}
+                      <polygon points={fillPts} fill="url(#trendFill)" />
+                      <polyline points={pts} fill="none" stroke="rgb(99,102,241)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                      {weeklyTrend.map((d, i) => (
+                        <circle key={i} cx={xScale(i)} cy={yScale(d.count)} r="3" fill="white" stroke="rgb(99,102,241)" strokeWidth="2" />
+                      ))}
+                    </>
+                  );
+                })()}
+              </svg>
+              <div className="flex justify-between px-1 mt-2">
+                {weeklyTrend.map((d) => (
+                  <span key={d.day} className="text-[10px] text-slate-400">{d.day}</span>
+                ))}
+              </div>
             </div>
           </div>
 

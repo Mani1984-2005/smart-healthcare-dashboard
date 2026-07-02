@@ -1,25 +1,65 @@
-import jsPDF from "jspdf";
+import { createEnterprisePDF } from "./enterprisePDF";
 
 export function generatePatientPDF(patient) {
-  const doc = new jsPDF();
+  const pdf = createEnterprisePDF("Patient Medical Report");
+  const { doc, sectionTitle, infoTable, divider, disclaimer, save, ph } = pdf;
+  let y = 45;
 
-  doc.setFontSize(20);
-  doc.text("MediCare Pro", 20, 20);
+  y = sectionTitle("Patient Information", y);
+  y = infoTable([
+    { label: "Patient ID", value: patient.id },
+    { label: "Name", value: patient.name },
+    { label: "Age", value: patient.age },
+    { label: "Gender", value: patient.gender },
+    { label: "Blood Group", value: patient.bloodGroup || "\u2014" },
+    { label: "Phone", value: patient.phone || "\u2014" },
+    { label: "Email", value: patient.email || "\u2014" },
+    { label: "Disease", value: patient.disease || "\u2014" },
+  ], y);
 
-  doc.setFontSize(14);
-  doc.text("Patient Report", 20, 35);
+  y = divider(y + 8);
+  y = infoTable([
+    { label: "Weight", value: patient.weight ? `${patient.weight} kg` : "\u2014" },
+    { label: "Height", value: patient.height ? `${patient.height} cm` : "\u2014" },
+    { label: "BMI", value: patient.bmi || "\u2014" },
+    { label: "Allergies", value: patient.allergies || "None" },
+    { label: "Address", value: patient.address || "\u2014" },
+  ], y);
 
-  doc.setFontSize(11);
+  if (patient.emergencyContact) {
+    y = divider(y + 8);
+    y = sectionTitle("Emergency Contact", y);
+    y = infoTable([
+      { label: "Name", value: patient.emergencyContact.name || "\u2014" },
+      { label: "Phone", value: patient.emergencyContact.phone || "\u2014" },
+      { label: "Relation", value: patient.emergencyContact.relation || "\u2014" },
+    ], y);
+  }
 
-  doc.text(`Patient ID: ${patient.id || "-"}`, 20, 50);
-  doc.text(`Name: ${patient.name || "-"}`, 20, 60);
-  doc.text(`Age: ${patient.age || "-"}`, 20, 70);
-  doc.text(`Gender: ${patient.gender || "-"}`, 20, 80);
-  doc.text(`Blood Group: ${patient.bloodGroup || "-"}`, 20, 90);
-  doc.text(`Phone: ${patient.phone || "-"}`, 20, 100);
-  doc.text(`Disease: ${patient.disease || "-"}`, 20, 110);
-  doc.text(`Address: ${patient.address || "-"}`, 20, 120);
-  doc.text(`Allergies: ${patient.allergies || "None"}`, 20, 130);
+  if (patient.timeline?.length > 0) {
+    y = divider(y + 4);
+    y = sectionTitle("Medical Timeline", y);
+    const recentEvents = patient.timeline.slice(-10);
+    y = infoTable(recentEvents.map((e) => ({ label: e.date || "\u2014", value: `${e.type}: ${e.title}` })), y, 1);
+  }
 
-  doc.save(`${patient.name}_Report.pdf`);
+  y = disclaimer(Math.max(y + 4, ph - 40));
+  save(`${patient.name || "Patient"}_Medical_Report.pdf`);
+}
+
+export function generatePatientSummary(patients) {
+  const pdf = createEnterprisePDF("Patient Summary Report");
+  const { doc, sectionTitle, table, disclaimer, save, ph } = pdf;
+  let y = 45;
+
+  y = sectionTitle("Patient Summary", y);
+  const headers = ["ID", "Name", "Age", "Gender", "Blood Group", "Status"];
+  const rows = patients.slice(0, 50).map((p) => [
+    p.id || "\u2014", p.name || "\u2014", String(p.age || "\u2014"),
+    p.gender || "\u2014", p.bloodGroup || "\u2014", p.status || "\u2014",
+  ]);
+  y = table(headers, rows, y + 4);
+
+  disclaimer(Math.max(y + 4, ph - 40));
+  save("Patient_Summary_Report.pdf");
 }

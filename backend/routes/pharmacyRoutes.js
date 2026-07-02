@@ -16,9 +16,8 @@ router.delete("/medicines/:medicineId", pharmacy.deletePrescriptionMedicine);
 router.get("/medicines", pharmacy.listMedicines);
 router.get("/medicines/low-stock", pharmacy.getLowStock);
 router.get("/medicines/:id", pharmacy.getMedicine);
+router.get("/categories", pharmacy.getCategories);
 router.post("/medicines", pharmacy.createMedicine);
 router.put("/medicines/:id", pharmacy.updateMedicine);
 router.delete("/medicines/:id", pharmacy.deleteMedicine);
-router.get("/categories", pharmacy.getCategories);
-
 export default router;
