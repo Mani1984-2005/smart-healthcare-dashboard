@@ -1,0 +1,34 @@
+# One-shot migration job — run before rolling out a new backend image:
+#   kubectl apply -f deploy/k8s/40-migrate-job.yaml
+#   kubectl wait --for=condition=complete job/db-migrate -n medicare-pro --timeout=120s
+#   kubectl delete job/db-migrate -n medicare-pro
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: medicare-pro
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: REGISTRY/medicare-pro-backend:__TAG__
+          command: ["node", "src/db/migrate.js"]
+          envFrom:
+            - configMapRef: { name: medicare-pro-config }
+            - secretRef: { name: medicare-pro-secrets }
+---
+# Default-deny between namespaces; only allow frontend->backend->postgres.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-backend-only
+  namespace: medicare-pro
+spec:
+  podSelector: { matchLabels: { app: postgres } }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: backend } } }]
+      ports: [{ protocol: TCP, port: 5432 }]

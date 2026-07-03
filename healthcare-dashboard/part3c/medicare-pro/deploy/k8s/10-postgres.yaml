@@ -1,0 +1,54 @@
+# For hospital-scale deployments, prefer a managed Postgres (RDS, Cloud SQL,
+# Azure Database for PostgreSQL) or an operator (CloudNativePG, Zalando
+# postgres-operator) over this StatefulSet, which is provided as a
+# self-contained baseline for smaller or on-prem clusters.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: medicare-pro
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports: [{ containerPort: 5432 }]
+          env:
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: medicare-pro-secrets, key: PGUSER } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: medicare-pro-secrets, key: PGPASSWORD } }
+            - name: POSTGRES_DB
+              valueFrom: { configMapKeyRef: { name: medicare-pro-config, key: PGDATABASE } }
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "$(POSTGRES_USER)"] }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "1", memory: "1Gi" }
+  volumeClaimTemplates:
+    - metadata: { name: pgdata }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources: { requests: { storage: 20Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: medicare-pro
+spec:
+  clusterIP: None # headless — StatefulSet stable network identity
+  selector: { app: postgres }
+  ports: [{ port: 5432, targetPort: 5432 }]
