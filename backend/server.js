@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import patientRoutes from "./routes/patients.js";
+import healthRoutes from "./routes/healthRoutes.js";
 
 dotenv.config();
 
@@ -15,6 +16,8 @@ app.get("/", (req, res) => {
   res.send("MediCare Pro Backend Running 🚀");
 });
 
+app.use("/health", healthRoutes);
+app.use("/api/health", healthRoutes);
 app.use("/patients", patientRoutes);
 
 const PORT = process.env.PORT || 5000;
