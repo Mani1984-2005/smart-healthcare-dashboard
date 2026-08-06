@@ -1,0 +1,2 @@
+import { LoaderCircle } from "lucide-react";
+export default function LoadingState({ label = "Loading data…", className = "" }: { label?: string; className?: string }) { return <div className={`grid min-h-48 place-items-center rounded-xl border border-slate-200 bg-white p-8 dark:border-slate-800 dark:bg-slate-950 ${className}`} role="status" aria-live="polite"><div className="flex flex-col items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-200"><LoaderCircle className="h-7 w-7 animate-spin text-cyan-700" aria-hidden="true" />{label}</div></div>; }

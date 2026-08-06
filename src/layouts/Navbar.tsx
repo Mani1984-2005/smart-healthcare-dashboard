@@ -1,80 +1,12 @@
-import { useMemo, useState } from "react";
+import { Bell, Menu, Moon, Sun } from "lucide-react";
+import { useState } from "react";
 import { useAuthStore } from "../store/authStore.js";
 import { useUiStore } from "../store/uiStore.js";
-import SearchInput from "../components/common/SearchInput.jsx";
-import Button from "../components/common/Button.jsx";
+import { Avatar, Button, IconButton, SearchField } from "../components/ui";
 
-export default function Navbar({ onMenuToggle }) {
+export default function Navbar({ onMenuToggle }: { onMenuToggle: () => void }) {
   const { user, logout } = useAuthStore();
   const [query, setQuery] = useState("");
   const { isDarkMode, toggleDarkMode } = useUiStore();
-
-  const initials = useMemo(() => {
-    if (!user?.name) return "HP";
-    return user.name
-      .split(" ")
-      .map((segment) => segment[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-  }, [user]);
-
-  return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/95">
-      <div className="mx-auto flex h-20 max-w-[1600px] items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onMenuToggle}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-            aria-label="Toggle sidebar"
-          >
-            ☰
-          </button>
-          <div className="hidden md:block">
-            <p className="text-[0.625rem] uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">MediCare Pro</p>
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Enterprise Healthcare Portal</p>
-          </div>
-        </div>
-
-        <div className="flex flex-1 items-center justify-center px-2 sm:px-6">
-          <SearchInput
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search patients, doctors, reports..."
-            className="max-w-2xl"
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-            aria-label="Toggle dark mode"
-          >
-            {isDarkMode ? "☀️" : "🌙"}
-          </button>
-          <button
-            type="button"
-            className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-            aria-label="Notifications"
-          >
-            <span>🔔</span>
-            <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[0.65rem] font-semibold text-white">3</span>
-          </button>
-          <div className="hidden items-center gap-3 rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 sm:flex">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-600 text-white shadow-sm">{initials}</div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user?.name || "Hospital Partner"}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{user?.role || "Guest"}</p>
-            </div>
-          </div>
-          <Button variant="secondary" onClick={logout} className="hidden sm:inline-flex">
-            Sign out
-          </Button>
-        </div>
-      </div>
-    </header>
-  );
+  return <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"><div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8"><IconButton label="Open navigation" onClick={onMenuToggle} className="lg:hidden"><Menu className="h-5 w-5" /></IconButton><div className="hidden min-w-0 lg:block"><p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Enterprise Healthcare Portal</p><p className="text-xs text-slate-500 dark:text-slate-400">Operational workspace</p></div><div className="flex flex-1 justify-center px-1 sm:px-4"><SearchField value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search patients, doctors, reports…" className="max-w-2xl" /></div><div className="flex items-center gap-2"><IconButton label={isDarkMode ? "Use light theme" : "Use dark theme"} onClick={toggleDarkMode}>{isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</IconButton><IconButton label="Notifications" className="relative"><Bell className="h-4 w-4" /><span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-600" /></IconButton><div className="hidden items-center gap-2 pl-1 sm:flex"><Avatar name={user?.name || "Hospital Partner"} size="sm" /><div className="hidden xl:block"><p className="max-w-36 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{user?.name || "Hospital Partner"}</p><p className="text-xs text-slate-500 dark:text-slate-400">{user?.role || "Guest"}</p></div><Button variant="ghost" onClick={logout} className="hidden xl:inline-flex">Sign out</Button></div></div></div></header>;
 }

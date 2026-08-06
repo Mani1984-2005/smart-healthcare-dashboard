@@ -1,0 +1,4 @@
+import { InputHTMLAttributes } from "react";
+import { Search } from "lucide-react";
+type SearchFieldProps = InputHTMLAttributes<HTMLInputElement> & { label?: string };
+export default function SearchField({ className = "", label = "Search", ...props }: SearchFieldProps) { return <label className={`flex min-h-10 w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-slate-700 transition focus-within:border-cyan-700 focus-within:ring-2 focus-within:ring-cyan-600/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 ${className}`}><Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" /><span className="sr-only">{label}</span><input type="search" aria-label={label} className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400" {...props} /></label>; }
