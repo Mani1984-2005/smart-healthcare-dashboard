@@ -63,4 +63,10 @@ export const ROUTES: AppRoute[] = [
     element: lazy(() => import("../pages/Admin.tsx")),
     roles: [ROLES.ADMIN],
   },
+  {
+    path: "/queue",
+    label: "Queue",
+    element: lazy(() => import("../pages/Queue.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST],
+  },
 ];

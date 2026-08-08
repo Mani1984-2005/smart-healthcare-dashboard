@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Patient {
+  id        String   @id @default(uuid())
+  name      String
+  age       Int
+  gender    String
+  phone     String
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[]
+  queues       Queue[]
+  prescriptions Prescription[]
+  labTests     LabTest[]
+  invoices     Invoice[]
+}
+
+model Doctor {
+  id             String   @id @default(uuid())
+  name           String
+  department     String
+  specialization String
+  phone          String?
+  email          String?  @unique
+  isAvailable    Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  appointments Appointment[]
+  prescriptions Prescription[]
+}
+
+model Appointment {
+  id        String   @id @default(uuid())
+  patientId String
+  doctorId  String
+  date      DateTime
+  timeSlot  String
+  status    String   @default("SCHEDULED") // SCHEDULED, CONFIRMED, ARRIVED, IN_CONSULTATION, COMPLETED, CANCELLED
+  reason    String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+  queues  Queue[]
+
+  @@unique([doctorId, date, timeSlot])
+}
+
+model Queue {
+  id            String   @id @default(uuid())
+  patientId     String
+  appointmentId String
+  doctorId      String
+  status        String   @default("WAITING") // WAITING, IN_PROGRESS, COMPLETED
+  checkInTime   DateTime @default(now())
+  completedTime DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  patient     Patient     @relation(fields: [patientId], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+model Medicine {
+  id          String   @id @default(uuid())
+  name        String
+  category    String
+  stock       Int      @default(0)
+  price       Float    @default(0.0)
+  expiryDate  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  prescriptionItems PrescriptionItem[]
+}
+
+model Prescription {
+  id          String   @id @default(uuid())
+  patientId   String
+  doctorId    String
+  notes       String?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  doctor      Doctor   @relation(fields: [doctorId], references: [id])
+  items       PrescriptionItem[]
+}
+
+model PrescriptionItem {
+  id             String       @id @default(uuid())
+  prescriptionId String
+  medicineId     String
+  dosage         String
+  duration       String
+  quantity       Int
+
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  medicine       Medicine     @relation(fields: [medicineId], references: [id])
+}
+
+model LabTest {
+  id          String   @id @default(uuid())
+  patientId   String
+  testName    String
+  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED
+  result      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     Patient  @relation(fields: [patientId], references: [id])
+}
+
+model Invoice {
+  id          String   @id @default(uuid())
+  patientId   String
+  amount      Float
+  status      String   @default("UNPAID") // UNPAID, PAID, CANCELLED
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     Patient  @relation(fields: [patientId], references: [id])
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+}
+
+model Bed {
+  id          String   @id @default(uuid())
+  ward        String
+  number      String
+  status      String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, MAINTENANCE
+  patientId   String?  // Assuming bed can be assigned to a patient, although foreign key is loose for simplicity
+}

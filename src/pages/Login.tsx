@@ -31,7 +31,14 @@ export default function LoginPage() {
       return;
     }
 
-    login({ id: crypto.randomUUID(), name: name.trim(), email: email.trim(), role, hospitalId: "hospital-01" });
+    login({ 
+      id: crypto.randomUUID(), 
+      name: name.trim(), 
+      email: email.trim(), 
+      role, 
+      hospitalId: "hospital-01",
+      token: `test-token-${role}`
+    });
     navigate(from, { replace: true });
   };
 

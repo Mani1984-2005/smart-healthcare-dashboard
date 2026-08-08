@@ -21,11 +21,15 @@ export const useAuthStore = create((set) => ({
   isAuthenticated: Boolean(loadUser()),
   login(user) {
     persistUser(user);
+    if (typeof window !== "undefined" && user.token) {
+      window.localStorage.setItem("medicare_auth_token", user.token);
+    }
     set({ user, isAuthenticated: true });
   },
   logout() {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(storageKey);
+      window.localStorage.removeItem("medicare_auth_token");
     }
     set({ user: null, isAuthenticated: false });
   },
