@@ -6,26 +6,78 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model Patient {
-  id        String   @id @default(uuid())
-  name      String
-  age       Int
-  gender    String
-  phone     String
-  email     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int             @id @default(autoincrement())
+  name           String?         @db.VarChar(100)
+  age            Int?
+  gender         String?         @db.VarChar(10)
+  phone          String?         @db.VarChar(15)
+  email          String?
+  bloodGroup     String?
+  address        String?
+  medicalHistory String[]
+  status         String          @default("Active")
+  createdAt      DateTime?       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime?       @updatedAt
 
   appointments Appointment[]
   queues       Queue[]
-  prescriptions Prescription[]
   labTests     LabTest[]
   invoices     Invoice[]
+  
+  // Existing DB relations
+  billing       billing[]
+  lab_reports   lab_reports[]
+  prescriptions prescriptions[]
+
+  @@map("patients")
 }
+
+model billing {
+  id         Int       @id @default(autoincrement())
+  patient_id Int?
+  amount     Decimal?  @db.Decimal(10, 2)
+  status     String?   @db.VarChar(20)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  patients   Patient?  @relation(fields: [patient_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model doctors {
+  id             Int             @id @default(autoincrement())
+  name           String          @db.VarChar(100)
+  specialization String?         @db.VarChar(100)
+  phone          String?         @db.VarChar(15)
+  email          String?         @db.VarChar(100)
+  created_at     DateTime?       @default(now()) @db.Timestamp(6)
+  prescriptions  prescriptions[]
+}
+
+model lab_reports {
+  id         Int       @id @default(autoincrement())
+  patient_id Int?
+  test_name  String?   @db.VarChar(100)
+  result     String?
+  file_url   String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  patients   Patient?  @relation(fields: [patient_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model prescriptions {
+  id          Int       @id @default(autoincrement())
+  patient_id  Int?
+  doctor_id   Int?
+  diagnosis   String?
+  medicines   String?
+  ai_analysis Json?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  doctors     doctors?  @relation(fields: [doctor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  patients    Patient?  @relation(fields: [patient_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+// Below are the new tables defined in the original schema.prisma that don't exist in the DB yet
 
 model Doctor {
   id             String   @id @default(uuid())
@@ -39,12 +91,13 @@ model Doctor {
   updatedAt      DateTime @updatedAt
 
   appointments Appointment[]
-  prescriptions Prescription[]
+  // prescriptions prescriptions[] -> We have a legacy prescriptions table and legacy doctors table.
+  // To prevent conflicts, we keep the original schema names.
 }
 
 model Appointment {
   id        String   @id @default(uuid())
-  patientId String
+  patientId Int
   doctorId  String
   date      DateTime
   timeSlot  String
@@ -63,7 +116,7 @@ model Appointment {
 
 model Queue {
   id            String   @id @default(uuid())
-  patientId     String
+  patientId     Int
   appointmentId String
   doctorId      String
   status        String   @default("WAITING") // WAITING, IN_PROGRESS, COMPLETED
@@ -85,39 +138,11 @@ model Medicine {
   expiryDate  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  prescriptionItems PrescriptionItem[]
-}
-
-model Prescription {
-  id          String   @id @default(uuid())
-  patientId   String
-  doctorId    String
-  notes       String?
-  status      String   @default("ACTIVE")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  patient     Patient  @relation(fields: [patientId], references: [id])
-  doctor      Doctor   @relation(fields: [doctorId], references: [id])
-  items       PrescriptionItem[]
-}
-
-model PrescriptionItem {
-  id             String       @id @default(uuid())
-  prescriptionId String
-  medicineId     String
-  dosage         String
-  duration       String
-  quantity       Int
-
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
-  medicine       Medicine     @relation(fields: [medicineId], references: [id])
 }
 
 model LabTest {
   id          String   @id @default(uuid())
-  patientId   String
+  patientId   Int
   testName    String
   status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED
   result      String?
@@ -129,7 +154,7 @@ model LabTest {
 
 model Invoice {
   id          String   @id @default(uuid())
-  patientId   String
+  patientId   Int
   amount      Float
   status      String   @default("UNPAID") // UNPAID, PAID, CANCELLED
   dueDate     DateTime?
@@ -150,5 +175,5 @@ model Bed {
   ward        String
   number      String
   status      String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, MAINTENANCE
-  patientId   String?  // Assuming bed can be assigned to a patient, although foreign key is loose for simplicity
+  patientId   String? 
 }

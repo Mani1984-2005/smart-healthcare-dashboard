@@ -28,11 +28,15 @@ if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
       initializeApp({ credential });
       console.log("Firebase Admin SDK initialised");
     } catch (error) {
-      console.error("\n[CRITICAL] Firebase Admin Initialization Failed!");
-      console.error("The provided Firebase credentials appear to be invalid or malformed.");
-      console.error("Error details:", error.message, "\n");
-      // Exit or throw a clean error
-      throw new Error("Invalid Firebase Admin credentials. Please check your .env file.");
+      if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development") {
+        console.warn("[WARN] Firebase Admin SDK initialization failed. Ignoring due to local dev/test environment.");
+      } else {
+        console.error("\n[CRITICAL] Firebase Admin Initialization Failed!");
+        console.error("The provided Firebase credentials appear to be invalid or malformed.");
+        console.error("Error details:", error.message, "\n");
+        // Exit or throw a clean error
+        throw new Error("Invalid Firebase Admin credentials. Please check your .env file.");
+      }
     }
   }
 }

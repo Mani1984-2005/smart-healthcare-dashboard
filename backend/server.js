@@ -18,7 +18,7 @@ app.get("/", (req, res) => {
 
 app.use("/health", healthRoutes);
 app.use("/api/health", healthRoutes);
-app.use("/patients", patientRoutes);
+app.use("/api/v1/patients", patientRoutes);
 
 const PORT = process.env.PORT || 5000;
 

@@ -1,493 +1,304 @@
 import express from "express";
 import prisma from "../db.js";
+import authenticate from "../middleware/authMiddleware.js";
 import { validate } from "../middleware/validate.js";
 import { patientSchema } from "../validators/index.js";
 
 const router = express.Router();
 
-<<<<<<< HEAD
+/**
+ * All patient endpoints require authentication.
+ * Authorization is enforced server-side.
+ */
+router.use(authenticate);
+
+/**
+ * Convert and validate a patient ID.
+ *
+ * Returns:
+ * - positive integer when valid
+ * - null when invalid
+ */
+function parsePatientId(value) {
+  const patientId = Number(value);
+
+  if (!Number.isInteger(patientId) || patientId <= 0) {
+    return null;
+  }
+
+  return patientId;
+}
+
+/**
+ * Safely log backend errors without exposing
+ * internal database details to API consumers.
+ */
+function logPatientError(operation, error) {
+  console.error(`[Patients] ${operation} failed`, {
+    name: error?.name,
+    code: error?.code,
+    message: error?.message,
+  });
+}
+
+/**
+ * Standard server-error response.
+ */
+function serverError(res, message) {
+  return res.status(500).json({
+    error: message,
+  });
+}
+
+/**
+ * GET /patients
+ *
+ * Returns all patients.
+ */
 router.get("/", async (req, res) => {
   try {
     const patients = await prisma.patient.findMany({
       include: {
         appointments: true,
         queues: true,
-      }
+      },
+      orderBy: {
+        id: "desc",
+      },
     });
-    res.json(patients);
+
+    return res.status(200).json({
+      data: patients,
+    });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch patients" });
+    logPatientError("fetch patients", error);
+
+    return serverError(res, "Failed to fetch patients");
   }
 });
 
-router.post("/", validate(patientSchema), async (req, res) => {
-  try {
-    const { name, age, gender, phone, email, address } = req.body;
-    const patient = await prisma.patient.create({
-      data: { name, age, gender, phone, email, address },
-    });
-    res.json(patient);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create patient" });
-  }
-});
-
+/**
+ * GET /patients/:id
+ *
+ * Returns one patient by ID.
+ */
 router.get("/:id", async (req, res) => {
+  const patientId = parsePatientId(req.params.id);
+
+  if (patientId === null) {
+    return res.status(400).json({
+      error: "Invalid patient id",
+    });
+  }
+
   try {
     const patient = await prisma.patient.findUnique({
-      where: { id: req.params.id },
-      include: { appointments: { include: { doctor: true } } }
+      where: {
+        id: patientId,
+      },
+      include: {
+        appointments: true,
+        queues: true,
+      },
     });
-    if (!patient) return res.status(404).json({ error: "Patient not found" });
-    res.json(patient);
+
+    if (!patient) {
+      return res.status(404).json({
+        error: "Patient not found",
+      });
+    }
+
+    return res.status(200).json({
+      data: patient,
+    });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch patient" });
+    logPatientError("fetch patient", error);
+
+    return serverError(res, "Failed to fetch patient");
   }
-=======
-function normalizeGender(value) {
-  const gender = String(value || "Other").trim();
+});
 
-  if (
-    gender === "Female" ||
-    gender === "Male" ||
-    gender === "Other"
-  ) {
-    return gender;
+/**
+ * POST /patients
+ *
+ * Creates a new patient.
+ */
+router.post(
+  "/",
+  validate(patientSchema),
+  async (req, res) => {
+    try {
+      const {
+        name,
+        age,
+        gender,
+        phone,
+        email,
+        address,
+        bloodGroup,
+        medicalHistory,
+        status,
+      } = req.body;
+
+      const patient = await prisma.patient.create({
+        data: {
+          name,
+          age,
+          gender,
+          phone,
+          email,
+          address,
+          bloodGroup,
+          medicalHistory: Array.isArray(medicalHistory) ? medicalHistory : [],
+          status: status || "Active",
+        },
+      });
+
+      return res.status(201).json({
+        data: patient,
+      });
+    } catch (error) {
+      logPatientError("create patient", error);
+
+      /*
+       * Prisma unique constraint violation.
+       */
+      if (error?.code === "P2002") {
+        return res.status(409).json({
+          error: "A patient with the supplied unique information already exists",
+        });
+      }
+
+      return serverError(res, "Failed to create patient");
+    }
   }
+);
 
-  return "Other";
-}
+/**
+ * PUT /patients/:id
+ *
+ * Updates an existing patient.
+ */
+router.put(
+  "/:id",
+  validate(patientSchema),
+  async (req, res) => {
+    const patientId = parsePatientId(req.params.id);
 
+    if (patientId === null) {
+      return res.status(400).json({
+        error: "Invalid patient id",
+      });
+    }
 
-function normalizeStatus(value) {
-  const status = String(value || "Active").trim();
+    try {
+      const {
+        name,
+        age,
+        gender,
+        phone,
+        email,
+        address,
+        bloodGroup,
+        medicalHistory,
+        status,
+      } = req.body;
 
-  const allowed = [
-    "Active",
-    "Inactive",
-    "Discharged",
-    "Under Observation",
-    "Critical"
-  ];
+      const patient = await prisma.patient.update({
+        where: {
+          id: patientId,
+        },
+        data: {
+          name,
+          age,
+          gender,
+          phone,
+          email,
+          address,
+          bloodGroup,
+          medicalHistory: Array.isArray(medicalHistory) ? medicalHistory : [],
+          status: status || "Active",
+        },
+      });
 
-  return allowed.includes(status)
-    ? status
-    : "Active";
-}
+      return res.status(200).json({
+        data: patient,
+      });
+    } catch (error) {
+      logPatientError("update patient", error);
 
+      /*
+       * Prisma record-not-found error.
+       */
+      if (error?.code === "P2025") {
+        return res.status(404).json({
+          error: "Patient not found",
+        });
+      }
 
-function normalizeDate(value) {
+      /*
+       * Prisma unique constraint violation.
+       */
+      if (error?.code === "P2002") {
+        return res.status(409).json({
+          error: "A patient with the supplied unique information already exists",
+        });
+      }
 
-  if (!value) {
-    return new Date()
-      .toISOString()
-      .split("T")[0];
+      return serverError(res, "Failed to update patient");
+    }
   }
+);
 
+/**
+ * DELETE /patients/:id
+ *
+ * Deletes an existing patient.
+ */
+router.delete("/:id", async (req, res) => {
+  const patientId = parsePatientId(req.params.id);
+
+  if (patientId === null) {
+    return res.status(400).json({
+      error: "Invalid patient id",
+    });
+  }
 
   try {
-
-    return new Date(value)
-      .toISOString()
-      .split("T")[0];
-
-  } catch {
-
-    return new Date()
-      .toISOString()
-      .split("T")[0];
-
-  }
-
-}
-
-
-
-function normalizePatient(record) {
-
-  return {
-
-    id: String(record.id),
-
-    fullName:
-      record.full_name ||
-      record.fullName ||
-      record.name ||
-      "Unnamed Patient",
-
-
-    age:
-      Number(record.age ?? 0),
-
-
-    gender:
-      normalizeGender(record.gender),
-
-
-    phone:
-      record.phone || "",
-
-
-    email:
-      record.email || "",
-
-
-    bloodGroup:
-      record.blood_group ||
-      record.bloodGroup ||
-      "",
-
-
-    address:
-      record.address ||
-      "",
-
-
-
-    medicalHistory:
-
-      Array.isArray(record.medical_history)
-
-        ? record.medical_history
-
-
-        : Array.isArray(record.medicalHistory)
-
-          ? record.medicalHistory
-
-
-          : record.medicalHistory
-
-            ? String(record.medicalHistory)
-                .split(",")
-                .map(item => item.trim())
-                .filter(Boolean)
-
-            : [],
-
-
-
-    registrationDate:
-
-      normalizeDate(
-        record.registration_date ||
-        record.created_at
-      ),
-
-
-
-    status:
-      normalizeStatus(record.status)
-
-  };
-
-}
-
-
-
-
-// GET ALL PATIENTS
-
-router.get("/", async (req,res)=>{
-
-  try {
-
-    const result = await pool.query(
-      "SELECT * FROM patients ORDER BY id DESC"
-    );
-
-
-    res.json(
-      result.rows.map(normalizePatient)
-    );
-
-
-  } catch(error){
-
-    res.status(500).json({
-      message:error.message
+    await prisma.patient.delete({
+      where: {
+        id: patientId,
+      },
     });
 
+    return res.status(200).json({
+      success: true,
+      message: "Patient deleted successfully",
+    });
+  } catch (error) {
+    logPatientError("delete patient", error);
+
+    /*
+     * Patient does not exist.
+     */
+    if (error?.code === "P2025") {
+      return res.status(404).json({
+        error: "Patient not found",
+      });
+    }
+
+    /*
+     * Patient may be referenced by related records.
+     * Do not expose Prisma/database details.
+     */
+    if (error?.code === "P2003") {
+      return res.status(409).json({
+        error: "Patient cannot be deleted because related records exist",
+      });
+    }
+
+    return serverError(res, "Failed to delete patient");
   }
-
 });
-
-
-
-
-
-// GET SINGLE PATIENT
-
-router.get("/:id", async(req,res)=>{
-
-try{
-
-
-const patientId = Number(req.params.id);
-
-
-if(!Number.isInteger(patientId)){
-return res.status(400).json({
-message:"Invalid patient id"
-});
-}
-
-
-
-const result = await pool.query(
-
-"SELECT * FROM patients WHERE id=$1",
-
-[patientId]
-
-);
-
-
-
-if(!result.rows[0]){
-
-return res.status(404).json({
-message:"Patient not found"
->>>>>>> origin/feature/frontend-enterprise-cleanup
-});
-
-}
-
-
-
-res.json(
-normalizePatient(result.rows[0])
-);
-
-
-
-}catch(error){
-
-res.status(500).json({
-message:error.message
-});
-
-}
-
-
-});
-
-
-
-
-
-// CREATE PATIENT
-
-router.post("/", async(req,res)=>{
-
-
-try{
-
-
-const payload=req.body || {};
-
-
-const result = await pool.query(
-
-`
-INSERT INTO patients
-(name,age,gender,phone)
-VALUES($1,$2,$3,$4)
-RETURNING *
-`,
-
-[
-
-payload.fullName ||
-payload.name ||
-"Unnamed Patient",
-
-
-Number(payload.age) || 0,
-
-
-normalizeGender(payload.gender),
-
-
-payload.phone || ""
-
-]
-
-);
-
-
-
-res.status(201).json(
-
-normalizePatient(result.rows[0])
-
-);
-
-
-
-}catch(error){
-
-
-res.status(500).json({
-message:error.message
-});
-
-
-}
-
-
-
-});
-
-
-
-
-
-// UPDATE PATIENT
-
-
-router.put("/:id", async(req,res)=>{
-
-
-try{
-
-
-const patientId = Number(req.params.id);
-
-
-const payload=req.body;
-
-
-const result = await pool.query(
-
-`
-UPDATE patients
-
-SET
-
-name=$1,
-age=$2,
-gender=$3,
-phone=$4
-
-WHERE id=$5
-
-RETURNING *
-
-`,
-
-[
-
-payload.fullName ||
-payload.name,
-
-Number(payload.age),
-
-normalizeGender(payload.gender),
-
-payload.phone || "",
-
-patientId
-
-]
-
-);
-
-
-
-if(!result.rows[0]){
-
-return res.status(404).json({
-message:"Patient not found"
-});
-
-}
-
-
-
-res.json(
-
-normalizePatient(result.rows[0])
-
-);
-
-
-
-}catch(error){
-
-res.status(500).json({
-message:error.message
-});
-
-}
-
-
-
-});
-
-
-
-
-
-// DELETE PATIENT
-
-
-router.delete("/:id", async(req,res)=>{
-
-
-try{
-
-
-const patientId = Number(req.params.id);
-
-
-
-const result = await pool.query(
-
-"DELETE FROM patients WHERE id=$1 RETURNING id",
-
-[patientId]
-
-);
-
-
-
-if(!result.rows[0]){
-
-return res.status(404).json({
-message:"Patient not found"
-});
-
-}
-
-
-
-res.json({
-
-success:true,
-
-message:"Patient deleted"
-
-});
-
-
-
-}catch(error){
-
-
-res.status(500).json({
-message:error.message
-});
-
-
-}
-
-
-
-});
-
-
-
-
 
 export default router;
