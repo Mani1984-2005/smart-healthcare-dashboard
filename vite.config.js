@@ -4,6 +4,13 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   server: {
+    watch: {
+      ignored: [
+        "**/_inspect_tmp/**",
+        "**/_fe_extract/**",
+        "**/need to mereg medicrae-pro/**",
+      ],
+    },
     proxy: {
       "/api": {
         target: "http://localhost:5000",
