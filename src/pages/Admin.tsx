@@ -1,14 +1,37 @@
-import EmptyState from "../components/common/EmptyState.jsx";
+import { useEffect } from "react";
+import { PageHeader } from "../components/ui";
+import { useAdminStore } from "../stores/adminStore.ts";
+import HospitalProfileForm from "../components/admin/HospitalProfileForm.tsx";
+import DepartmentsPanel from "../components/admin/DepartmentsPanel.tsx";
+import ServiceChargesPanel from "../components/admin/ServiceChargesPanel.tsx";
+import StaffRolesPanel from "../components/admin/StaffRolesPanel.tsx";
 
 export default function Admin() {
+  const { hospitalProfile, error, loadAdminData, updateHospitalProfile } = useAdminStore();
+
+  useEffect(() => {
+    loadAdminData();
+  }, [loadAdminData]);
+
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Administration</h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Control users, roles, and system settings for enterprise deployment.</p>
-      </section>
+      <PageHeader
+        eyebrow="Administration"
+        title="Admin control center"
+        description="Hospital branding, departments, billing defaults, and staff role assignments."
+      />
 
-      <EmptyState title="Admin console" description="Role-based management and audit controls will appear here soon." />
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950 dark:text-rose-100">
+          <p className="font-semibold">Sync issue</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
+
+      <HospitalProfileForm profile={hospitalProfile} onSave={updateHospitalProfile} />
+      <DepartmentsPanel />
+      <ServiceChargesPanel />
+      <StaffRolesPanel />
     </div>
   );
 }

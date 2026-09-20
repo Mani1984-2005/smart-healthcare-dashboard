@@ -22,16 +22,34 @@ export const ROUTES: AppRoute[] = [
     roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST],
   },
   {
-    path: "/doctors",
-    label: "Doctors",
-    element: lazy(() => import("../pages/Doctors.tsx")),
-    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST],
-  },
-  {
     path: "/appointments",
     label: "Appointments",
     element: lazy(() => import("../pages/Appointments.tsx")),
     roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST, ROLES.PATIENT],
+  },
+  {
+    path: "/queue",
+    label: "Queue",
+    element: lazy(() => import("../pages/Queue.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST],
+  },
+  {
+    path: "/clinical",
+    label: "Clinical",
+    element: lazy(() => import("../pages/Clinical.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
+  },
+  {
+    path: "/clinical-encounter",
+    label: "Clinical Encounter",
+    element: lazy(() => import("../pages/ClinicalEncounter.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
+  },
+  {
+    path: "/doctors",
+    label: "Doctors",
+    element: lazy(() => import("../pages/Doctors.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST],
   },
   {
     path: "/laboratory",
@@ -52,21 +70,33 @@ export const ROUTES: AppRoute[] = [
     roles: [ROLES.ADMIN, ROLES.BILLING, ROLES.RECEPTIONIST],
   },
   {
+    path: "/payments",
+    label: "Payments",
+    element: lazy(() => import("../pages/Payments.tsx")),
+    roles: [ROLES.ADMIN, ROLES.BILLING, ROLES.RECEPTIONIST],
+  },
+  {
+    path: "/analytics",
+    label: "Analytics",
+    element: lazy(() => import("../pages/Analytics.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST],
+  },
+  {
     path: "/reports",
     label: "Reports",
     element: lazy(() => import("../pages/Reports.tsx")),
     roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
   },
   {
+    path: "/notifications",
+    label: "Notifications",
+    element: lazy(() => import("../pages/Notifications.tsx")),
+    roles: Object.values(ROLES),
+  },
+  {
     path: "/admin",
     label: "Admin",
     element: lazy(() => import("../pages/Admin.tsx")),
     roles: [ROLES.ADMIN],
-  },
-  {
-    path: "/queue",
-    label: "Queue",
-    element: lazy(() => import("../pages/Queue.tsx")),
-    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST],
   },
 ];

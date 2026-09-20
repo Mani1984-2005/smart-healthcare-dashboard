@@ -11,3 +11,7 @@ export async function createLaboratoryTest(payload) {
 export async function updateLaboratoryTest(id, payload) {
   return api.put(`/laboratory/tests/${id}`, payload).then((res) => res.data);
 }
+
+export async function deleteLaboratoryTest(id) {
+  return api.delete(`/laboratory/tests/${id}`).then((res) => res.data);
+}

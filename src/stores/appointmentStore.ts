@@ -35,7 +35,9 @@ export const useAppointmentStore = create<AppointmentState>((set) => ({
       const response = await api.get("/appointments");
       set({ appointments: response.data, isLoading: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      const message = error?.message || "Failed to load appointments";
+      set({ error: message, isLoading: false });
+      throw new Error(message, { cause: error });
     }
   },
   bookAppointment: async (data) => {
@@ -44,20 +46,23 @@ export const useAppointmentStore = create<AppointmentState>((set) => ({
       const response = await api.post("/appointments", data);
       set((state) => ({ appointments: [...state.appointments, response.data], isLoading: false }));
     } catch (error: any) {
-      set({ error: error.response?.data?.error || error.message, isLoading: false });
-      throw new Error(error.response?.data?.error || error.message);
+      const message = error?.response?.data?.error || error?.message || "Failed to book appointment";
+      set({ error: message, isLoading: false });
+      throw new Error(message, { cause: error });
     }
   },
   updateStatus: async (id, status) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.put(`/appointments/${id}/status`, { status });
+      await api.put(`/appointments/${id}/status`, { status });
       set((state) => ({
         appointments: state.appointments.map(a => a.id === id ? { ...a, status } : a),
         isLoading: false
       }));
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      const message = error?.message || "Failed to update appointment status";
+      set({ error: message, isLoading: false });
+      throw new Error(message, { cause: error });
     }
   }
 }));

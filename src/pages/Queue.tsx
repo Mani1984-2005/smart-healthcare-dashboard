@@ -28,6 +28,7 @@ export default function Queue() {
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Live Queue & Check-In</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Manage patient arrivals and consultation progress.</p>
+        {isLoading && <p className="mt-3 text-xs font-medium uppercase tracking-wide text-blue-600">Updating queue…</p>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

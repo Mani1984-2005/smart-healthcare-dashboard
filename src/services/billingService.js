@@ -15,3 +15,7 @@ export async function createInvoice(payload) {
 export async function updateInvoice(id, payload) {
   return api.put(`/billing/invoices/${id}`, payload).then((res) => res.data);
 }
+
+export async function deleteInvoice(id) {
+  return api.delete(`/billing/invoices/${id}`).then((res) => res.data);
+}

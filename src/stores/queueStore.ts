@@ -32,7 +32,9 @@ export const useQueueStore = create<QueueState>((set) => ({
       const response = await api.get("/queue");
       set({ queues: response.data, isLoading: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      const message = error?.message || "Failed to load queue";
+      set({ error: message, isLoading: false });
+      throw new Error(message, { cause: error });
     }
   },
   checkIn: async (data) => {
@@ -41,20 +43,23 @@ export const useQueueStore = create<QueueState>((set) => ({
       const response = await api.post("/queue/checkin", data);
       set((state) => ({ queues: [...state.queues, response.data], isLoading: false }));
     } catch (error: any) {
-      set({ error: error.response?.data?.error || error.message, isLoading: false });
-      throw new Error(error.response?.data?.error || error.message);
+      const message = error?.response?.data?.error || error?.message || "Failed to check in patient";
+      set({ error: message, isLoading: false });
+      throw new Error(message, { cause: error });
     }
   },
   updateStatus: async (id, status) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.put(`/queue/${id}/status`, { status });
+      await api.put(`/queue/${id}/status`, { status });
       set((state) => ({
         queues: state.queues.map(q => q.id === id ? { ...q, status } : q),
         isLoading: false
       }));
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      const message = error?.message || "Failed to update queue status";
+      set({ error: message, isLoading: false });
+      throw new Error(message, { cause: error });
     }
   }
 }));

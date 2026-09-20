@@ -4,12 +4,23 @@
 
 :root {
   color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   background-color: #f8fafc;
   color: #0f172a;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --brand-primary: #2563eb;
+  --brand-strong: #0f172a;
+  --brand-soft: #e0f2fe;
+  --brand-success: #16a34a;
+  --brand-warning: #d97706;
+  --brand-danger: #dc2626;
+  --brand-info: #0891b2;
+  --surface-base: #f8fafc;
+  --surface-panel: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --border-soft: rgba(148, 163, 184, 0.35);
 }
 
 html {
@@ -18,6 +29,7 @@ html {
 
 body {
   @apply min-h-screen bg-slate-50 text-slate-900 antialiased;
+  background-image: radial-gradient(circle at top, rgba(37, 99, 235, 0.06), transparent 18%);
 }
 
 body.dark,
@@ -33,15 +45,19 @@ select {
 }
 
 ::selection {
-  background: #0ea5e9;
-  color: #ffffff;
+  background: rgba(37, 99, 235, 0.22);
+  color: #0f172a;
 }
 
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.32);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.24);
 }
 
 .shadow-card {
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 18px 32px -18px rgba(15, 23, 42, 0.14);
+}
+
+#root {
+  min-height: 100vh;
 }
