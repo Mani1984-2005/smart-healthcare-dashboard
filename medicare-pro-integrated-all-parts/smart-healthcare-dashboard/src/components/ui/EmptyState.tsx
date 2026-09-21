@@ -1,0 +1,4 @@
+import { Inbox } from "lucide-react";
+import { ReactNode } from "react";
+type EmptyStateProps = { action?: ReactNode; className?: string; description?: string; icon?: ReactNode; title?: string };
+export default function EmptyState({ action, className = "", description = "No records found.", icon = <Inbox className="h-8 w-8" aria-hidden="true" />, title = "No data available" }: EmptyStateProps) { return <div className={`rounded-xl border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-800 dark:bg-slate-900 ${className}`}><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-200">{icon}</div><h2 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2><p className="mx-auto mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">{description}</p>{action && <div className="mt-5">{action}</div>}</div>; }

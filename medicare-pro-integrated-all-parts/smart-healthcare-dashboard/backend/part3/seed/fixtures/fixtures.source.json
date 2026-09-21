@@ -1,0 +1,45 @@
+[
+  {
+    "id": "rx-p001-2025-03",
+    "title": "Prescription - diabetes & hypertension (Mar 2025)",
+    "docType": "prescription",
+    "patientId": "DEMO-P001",
+    "description": "Printed prescription with two diagnoses and three medications."
+  },
+  {
+    "id": "lab-p001-2025-03",
+    "title": "Laboratory report - biochemistry & haematology (Mar 2025)",
+    "docType": "lab_report",
+    "patientId": "DEMO-P001",
+    "description": "Lab table with values outside the printed range, a row with no reference range, and a non-numeric result."
+  },
+  {
+    "id": "dis-p001-2025-09",
+    "title": "Discharge summary - inferior wall MI (Sep 2025)",
+    "docType": "discharge_summary",
+    "patientId": "DEMO-P001",
+    "description": "Admission/discharge dates, diagnoses, a dated procedure, inline lab results and discharge medications."
+  },
+  {
+    "id": "lab-p001-2025-12",
+    "title": "Follow-up laboratory report (Dec 2025)",
+    "docType": "lab_report",
+    "patientId": "DEMO-P001",
+    "description": "A later report so the timeline spans several documents."
+  },
+  {
+    "id": "rx-p002-undated",
+    "title": "Prescription - no legible date",
+    "docType": "prescription",
+    "patientId": "DEMO-P002",
+    "description": "The date field is blank, so entries stay undated instead of guessing."
+  },
+  {
+    "id": "blank-p002-scan",
+    "title": "Blank scan - no recognisable text",
+    "docType": "other",
+    "patientId": "DEMO-P002",
+    "description": "A blank page: OCR returns no text (empty-result handling).",
+    "blank": true
+  }
+]

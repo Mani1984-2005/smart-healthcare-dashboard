@@ -1,0 +1,21 @@
+SYNTHETIC DEMO DOCUMENT - NOT A REAL PATIENT
+FOR SOFTWARE DEMONSTRATION ONLY
+
+DEMO DIAGNOSTICS LABORATORY (synthetic)
+LABORATORY REPORT - BIOCHEMISTRY AND HAEMATOLOGY
+
+Patient: DEMO PATIENT A          Age/Sex: 54 / M
+Patient ID: DEMO-P001
+Sample collected: 15/03/2025     Report date: 16/03/2025
+
+Test                 Result     Unit       Reference Range
+Hemoglobin           10.8       g/dL       13.0 - 17.0
+Fasting Glucose      146        mg/dL      70 - 100
+HbA1c                7.9        %          4.0 - 5.6
+Serum Creatinine     1.0        mg/dL      0.7 - 1.3
+Total Cholesterol    228        mg/dL      < 200
+Serum Sodium         139        mmol/L     135 - 145
+Vitamin D (25-OH)    18         ng/mL
+Serum Potassium      Sample haemolysed - result not reported
+
+End of report.

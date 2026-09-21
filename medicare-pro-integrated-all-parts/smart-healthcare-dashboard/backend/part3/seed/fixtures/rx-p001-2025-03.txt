@@ -1,0 +1,19 @@
+SYNTHETIC DEMO DOCUMENT - NOT A REAL PATIENT
+FOR SOFTWARE DEMONSTRATION ONLY
+
+DEMO CITY CLINIC (synthetic)
+Dr. Demo Physician, MBBS, MD
+
+Patient: DEMO PATIENT A          Age/Sex: 54 / M
+Patient ID: DEMO-P001
+Date: 12/03/2025
+
+Diagnosis: Type 2 diabetes mellitus; Essential hypertension
+
+Rx
+1. Tab Metformin 500 mg 1-0-1 after meals x 30 days
+2. Tab Amlodipine 5 mg OD in the morning x 30 days
+3. Tab Atorvastatin 10 mg at bedtime x 30 days
+
+Advice: Low salt, low sugar diet. Repeat HbA1c after 3 months.
+Follow-up: 12/06/2025

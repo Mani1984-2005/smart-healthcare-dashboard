@@ -1,0 +1,20 @@
+[33m9b9945b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/frontend-enterprise-cleanup[m[33m, [m[1;31morigin/feature/frontend-enterprise-cleanup[m[33m)[m feat(patients): complete PostgreSQL integration
+[33m965ff6f[m merge: integrate latest patient module and authentication backend
+[33mcb0181f[m feat: integrate enterprise authentication and healthcare APIs
+[33m991adc4[m Integrate MediCare Pro patient module with PostgreSQL backend
+[33m3d02b49[m feat: upgrade <module> to enterprise healthcare workspace
+[33maae3b4e[m feat: implement MediCare Pro enterprise design system foundation
+[33m09df646[m chore: runtime audit validation and frontend build configuration improvements
+[33m9e613b2[m[33m ([m[1;33mtag: [m[1;33mv0.2-patient-module[m[33m)[m feat: implement functional patient management workflow and enterprise frontend foundation
+[33m53b4e7d[m Frontend consolidation complete and production verified
+[33m504b8e3[m chore: consolidate enterprise frontend and remove legacy duplicates
+[33m7784d34[m[33m ([m[1;31morigin/lab-reports-improvements[m[33m, [m[1;32mmain[m[33m)[m Clean backend + frontend integration structure
+[33m6c33e95[m Backend PostgreSQL integration with patients API
+[33m6f77101[m feat: redesign enterprise executive dashboard with modular components
+[33mb699c58[m feat: upgrade enterprise UI, PDF system, and backend improvements
+[33me81bce0[m feat: complete enterprise patient PDF generation system
+[33m0d32eec[m Add patient PDF generator and update report feature
+[33md54e753[m Fix PatientsPage report button and app updates
+[33m915b922[m Fix pharmacy import paths
+[33m5579a46[m Fix pharmacy imports and update UI components
+[33m0f8f369[m Fix auth system, billing module backend, and improve App routing
