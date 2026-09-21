@@ -1,0 +1,15 @@
+SYNTHETIC DEMO DOCUMENT - NOT A REAL PATIENT
+FOR SOFTWARE DEMONSTRATION ONLY
+
+DEMO FAMILY CLINIC (synthetic)
+Dr. Demo Physician B
+
+Patient: DEMO PATIENT B          Age/Sex: 37 / F
+Patient ID: DEMO-P002
+Date: ____________
+
+Diagnosis: Acute pharyngitis
+
+Rx
+1. Tab Paracetamol 650 mg SOS for fever
+2. Tab Cetirizine 10 mg OD at night x 5 days

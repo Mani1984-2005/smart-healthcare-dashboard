@@ -46,6 +46,12 @@ export const ROUTES: AppRoute[] = [
     roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
   },
   {
+    path: "/clinical-intelligence",
+    label: "Clinical Intelligence",
+    element: lazy(() => import("../sih/pages/ClinicalIntelligence.tsx")),
+    roles: [ROLES.DOCTOR, ROLES.NURSE, ROLES.ADMIN],
+  },
+  {
     path: "/doctors",
     label: "Doctors",
     element: lazy(() => import("../pages/Doctors.tsx")),
@@ -98,5 +104,23 @@ export const ROUTES: AppRoute[] = [
     label: "Admin",
     element: lazy(() => import("../pages/Admin.tsx")),
     roles: [ROLES.ADMIN],
+  },
+  {
+    path: "/physician-workspace",
+    label: "Physician Workspace",
+    element: lazy(() => import("../sih/pages/PhysicianWorkspace.tsx")),
+    roles: [ROLES.DOCTOR, ROLES.ADMIN, ROLES.NURSE],
+  },
+  {
+    path: "/medical-documents",
+    label: "Medical Documents",
+    element: lazy(() => import("../sih/part3/pages/MedicalDocumentsPage.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
+  },
+  {
+    path: "/medical-documents/:documentId",
+    label: "Medical Document",
+    element: lazy(() => import("../sih/part3/pages/DocumentWorkspacePage.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
   },
 ];

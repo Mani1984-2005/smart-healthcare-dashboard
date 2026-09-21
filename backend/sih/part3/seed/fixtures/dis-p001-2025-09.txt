@@ -1,0 +1,30 @@
+SYNTHETIC DEMO DOCUMENT - NOT A REAL PATIENT
+FOR SOFTWARE DEMONSTRATION ONLY
+
+DEMO GENERAL HOSPITAL (synthetic)
+DISCHARGE SUMMARY
+
+Patient: DEMO PATIENT A          Age/Sex: 54 / M
+Patient ID: DEMO-P001
+Date of Admission: 02/09/2025
+Date of Discharge: 06/09/2025
+
+Diagnosis:
+1. Acute inferior wall myocardial infarction
+2. Type 2 diabetes mellitus
+
+Procedure: Percutaneous coronary intervention (PCI) to right coronary artery on 03/09/2025
+
+Investigations:
+Troponin I: 2.4 ng/mL (Ref: < 0.04)
+Random Blood Sugar: 212 mg/dL
+LDL Cholesterol: 141 mg/dL (Ref: < 100)
+
+Medications at discharge:
+1. Tab Aspirin 75 mg OD after food
+2. Tab Clopidogrel 75 mg OD
+3. Tab Atorvastatin 40 mg HS
+4. Tab Metoprolol 25 mg BD
+
+Condition at discharge: Stable.
+Follow-up: 20/09/2025

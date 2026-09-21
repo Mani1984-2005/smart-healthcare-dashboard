@@ -27,6 +27,9 @@ const groupByPath: Record<string, string> = {
   "/queue": "Patient Care",
   "/clinical": "Patient Care",
   "/clinical-encounter": "Patient Care",
+  "/clinical-intelligence": "Patient Care",
+  "/physician-workspace": "Patient Care",
+  "/medical-documents": "Patient Care",
   "/doctors": "Patient Care",
   "/laboratory": "Diagnostics",
   "/pharmacy": "Diagnostics",
@@ -45,6 +48,9 @@ const iconByPath = {
   "/queue": Activity,
   "/clinical": Stethoscope,
   "/clinical-encounter": AlertCircle,
+  "/clinical-intelligence": BarChart3,
+  "/physician-workspace": Stethoscope,
+  "/medical-documents": ReceiptText,
   "/doctors": Stethoscope,
   "/laboratory": FlaskConical,
   "/pharmacy": Pill,
@@ -119,6 +125,25 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               );
             })}
           </nav>
+
+          <div className="mt-4 space-y-2">
+            <NavLink
+              to="/kiosk"
+              onClick={onClose}
+              className="flex min-h-10 items-center gap-3 rounded-xl border border-dashed border-cyan-300 px-3 py-2 text-sm font-medium text-cyan-800 transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 dark:border-cyan-800 dark:text-cyan-200 dark:hover:bg-cyan-950/40"
+            >
+              <Activity className="h-4 w-4" aria-hidden="true" />
+              Start Kiosk Intake
+            </NavLink>
+            <NavLink
+              to="/part6"
+              onClick={onClose}
+              className="flex min-h-10 items-center gap-3 rounded-xl border border-dashed border-cyan-300 px-3 py-2 text-sm font-medium text-cyan-800 transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 dark:border-cyan-800 dark:text-cyan-200 dark:hover:bg-cyan-950/40"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+              Part 6 · ABDM / FHIR / Consent
+            </NavLink>
+          </div>
 
           <div className="mt-4 rounded-2xl border border-cyan-100 bg-cyan-50/80 p-4 dark:border-cyan-900/40 dark:bg-cyan-950/30">
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Connected care workflow</p>
