@@ -16,7 +16,7 @@
 import crypto from "node:crypto";
 import * as IntakeSessionModel from "../models/IntakeSession.js";
 import * as ClinicalHistoryModel from "../models/ClinicalHistory.js";
-import pool from "../db.js";
+import prisma from "../../db.js";
 import { getNextQuestion, findQuestionById, inferCertaintyFromText, computeCompletion } from "./questionEngine.js";
 import { assembleClinicalHistory, ClinicalDataSafetyError } from "./clinicalHistoryService.js";
 import { generateSessionToken, hashSessionToken, verifySessionToken } from "./sessionToken.js";
@@ -27,8 +27,15 @@ export class IntakeAuthError extends Error {}
 
 const defaultPatientRepo = {
   async exists(patientId) {
-    const { rows } = await pool.query("SELECT 1 FROM patients WHERE id = $1", [patientId]);
-    return rows.length > 0;
+    // Phase 3 — Patient relationship: validated against the EXISTING
+    // MediCare Pro `patients` table via the shared Prisma client. No
+    // duplicate patient table and no fake records are introduced; a
+    // non-integer id simply cannot match the integer PK and resolves to
+    // false, exactly as the old parameterised query would have.
+    const n = typeof patientId === "number" ? patientId : Number(patientId);
+    if (!Number.isInteger(n)) return false;
+    const patient = await prisma.patient.findUnique({ where: { id: n }, select: { id: true } });
+    return patient !== null;
   },
 };
 

@@ -37,16 +37,20 @@ try {
   console.error("Part 6 was not mounted:", error);
 }
 
+const intakeContextProvider = new IntakeContextProvider();
 try {
-  const clinicalIntelligence = createClinicalIntelligenceModule();
+  const clinicalIntelligence = createClinicalIntelligenceModule({ contextProvider: intakeContextProvider });
   app.use(["/clinical-intelligence", "/api/clinical-intelligence"], clinicalIntelligence.router);
+  configureClinicalIntelligenceStore(clinicalIntelligence.store);
 } catch (error) {
   console.error("Clinical intelligence module was not mounted:", error);
 }
 
 try {
-  const { router: part3Router } = createPart3Router();
+  const { router: part3Router, context: part3Context } = createPart3Router();
   app.use(["/part3", "/api/part3"], part3Router);
+  configureDocumentsStore(part3Context.store);
+  intakeContextProvider.setPart3Store(part3Context.store);
 } catch (error) {
   console.error("Part 3 module was not mounted:", error);
 }

@@ -26,6 +26,8 @@ model Patient {
   billing        billing[]
   lab_reports    lab_reports[]
   prescriptions  prescriptions[]
+  intakeSessions    IntakeSession[]
+  clinicalHistories ClinicalHistory[]
 
   @@map("patients")
 }
@@ -161,4 +163,104 @@ model Bed {
   number    String
   status    String  @default("AVAILABLE")
   patientId String?
+}
+
+// ===========================================================================
+// SIH26047 — Phase 2 database foundation (ADDITIVE ONLY).
+//
+// These four models are the minimum persistence actually required by the
+// existing SIH code today: Part 1 (AI Clinical Intake) is the only SIH part
+// that already talks to PostgreSQL, through backend/sih/models/IntakeSession.js
+// and backend/sih/models/ClinicalHistory.js, which read/write the snake_case
+// tables/columns defined below. Parts 3/4/5/6 currently persist to
+// in-memory/JSON stores and are intentionally NOT given database models in
+// this phase (see docs/SIH26047_FINAL_INTEGRATION.md and the Phase 2 report).
+//
+// No MediCare Pro model above this line is renamed, redesigned, or removed.
+// `patientId` uses Int because MediCare Pro Patient.id is Int (serial): the
+// earlier reference SQL stored patient_id as TEXT only because that type was
+// unverified at the time; it is now verified, so the correct compatible type
+// is used and no duplicate patient table is introduced.
+// ===========================================================================
+
+model IntakeSession {
+  id                String    @id @db.Uuid
+  patientId         Int       @map("patient_id")
+  encounterId       String?   @map("encounter_id")
+  status            String    @default("CREATED")
+  language          String?
+  interactionMode   String?   @map("interaction_mode")
+  intakeMode        String    @default("STANDARD") @map("intake_mode")
+  consentGiven      Boolean   @default(false) @map("consent_given")
+  consentCapturedAt DateTime? @map("consent_captured_at") @db.Timestamptz(6)
+  sessionTokenHash  String?   @map("session_token_hash")
+  createdByStaffUid String?   @map("created_by_staff_uid")
+  startedAt         DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  messages        ConversationMessage[]
+  answers         IntakeAnswer[]
+  clinicalHistory ClinicalHistory?
+
+  @@index([patientId])
+  @@index([status])
+  @@map("intake_sessions")
+}
+
+model ConversationMessage {
+  id         String   @id @db.Uuid
+  sessionId  String   @map("session_id") @db.Uuid
+  role       String
+  content    String
+  inputMode  String?  @map("input_mode")
+  language   String?
+  questionId String?  @map("question_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session       IntakeSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sourceAnswers IntakeAnswer[]
+
+  @@index([sessionId])
+  @@map("conversation_messages")
+}
+
+model IntakeAnswer {
+  id              String   @id @db.Uuid
+  sessionId       String   @map("session_id") @db.Uuid
+  questionId      String   @map("question_id")
+  section         String
+  answerType      String   @map("answer_type")
+  rawValue        Json     @map("raw_value")
+  certainty       String
+  source          String
+  sourceMessageId String?  @map("source_message_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  session       IntakeSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sourceMessage ConversationMessage? @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([sessionId, questionId])
+  @@index([sessionId])
+  @@map("intake_answers")
+}
+
+model ClinicalHistory {
+  id               String    @id @db.Uuid
+  sessionId        String    @unique @map("session_id") @db.Uuid
+  patientId        Int       @map("patient_id")
+  historyJson      Json      @map("history_json")
+  completionStatus String    @default("INCOMPLETE") @map("completion_status")
+  version          Int       @default(1)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  session IntakeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  patient Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([patientId])
+  @@map("clinical_histories")
 }
