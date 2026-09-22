@@ -18,6 +18,12 @@ import { createPart6 } from "./sih/part6/createPart6.js";
 import { createPart6Router } from "./sih/part6/routes/index.js";
 import { createClinicalIntelligenceModule } from "./sih/clinical-intelligence/index.js";
 import { createPart3Router } from "./sih/part3/index.js";
+// Phase 1 — existing cross-part integration mechanisms (all three already ship in
+// backend/sih/*; nothing new is implemented here, they are only wired into the host
+// server the same way backend/sih/server.js wires them).
+import { IntakeContextProvider } from "./sih/integration/intakeToClinicalIntelligenceProvider.js";
+import { configureClinicalIntelligenceStore } from "./sih/services/physicianWorkspace/clinicalIntelligenceAdapter.js";
+import { configureDocumentsStore } from "./sih/services/physicianWorkspace/part3DocumentsAdapter.js";
 
 export const app = express();
 

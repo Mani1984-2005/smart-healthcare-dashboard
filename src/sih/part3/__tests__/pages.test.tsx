@@ -10,7 +10,7 @@ import MedicalDocumentsPage from "../pages/MedicalDocumentsPage";
 import { useAuthStore } from "../../store/authStore.js";
 
 interface Backend { baseUrl: string; close: () => Promise<void>; context: { store: { resetAll: () => void; listDocuments: () => { total: number } } } }
-const HELPERS = "../../../backend/part3/__tests__/helpers.js";
+const HELPERS = "../../../../backend/sih/part3/__tests__/helpers.js";
 let backend: Backend;
 
 beforeAll(async () => { backend = await (await import(/* @vite-ignore */ HELPERS)).startTestServer(); });
@@ -142,7 +142,7 @@ describe("Medical documents — failure paths", () => {
   });
 
   it("uploading the downloaded synthetic sample through the upload form works end to end (as the docs describe)", async () => {
-    const bytes = readFileSync(join(process.cwd(), "backend/part3/seed/fixtures/rx-p001-2025-03.png")); // (jsdom replaces the global URL, so build a plain path)
+    const bytes = readFileSync(join(process.cwd(), "backend/sih/part3/seed/fixtures/rx-p001-2025-03.png")); // (jsdom replaces the global URL, so build a plain path)
     renderApp("/medical-documents?view=add");
     await userEvent.selectOptions(await screen.findByLabelText("Document type", {}, SLOW), "lab_report"); // wrong on purpose: a recognised synthetic file keeps its own type
     await userEvent.upload(screen.getByLabelText("File"), new File([new Uint8Array(bytes)], "sample.png", { type: "image/png" }));

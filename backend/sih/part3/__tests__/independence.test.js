@@ -55,7 +55,12 @@ describe("backend independence", () => {
     }
   });
 
-  it("boots and completes the whole workflow with ONLY backend/part3 present (no other repo folders, no database, no Firebase)", { timeout: 30000 }, async () => {
+  // NOTE (root-layout harness accommodation, Phase 1 — SIH integration): this test copies
+  // `backend/node_modules` (394 MB / 22.6k files) into a temp dir before spawning the isolated
+  // server. In the original reference build `backend/` was only the small SIH backend; in the
+  // merged root repository it is the full host backend, so the copy alone can exceed 30s on
+  // Windows. The timeout was raised so the test's actual assertions still run unchanged.
+  it("boots and completes the whole workflow with ONLY backend/part3 present (no other repo folders, no database, no Firebase)", { timeout: 180000 }, async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "part3-isolated-"));
     fs.cpSync(part3Backend, path.join(dir, "part3"), { recursive: true, filter: (src) => !src.includes(`${path.sep}.data`) && !src.includes(`${path.sep}__tests__`) });
 
