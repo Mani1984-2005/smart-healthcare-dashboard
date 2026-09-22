@@ -7,8 +7,10 @@ import dotenv from "dotenv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, ".env") });
+dotenv.config({ path: path.join(__dirname, ".env.local") });
 
 import patientRoutes from "./routes/patients.js";
+import routeIndex from "./routes/index.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import intakeRoutes from "./sih/routes/intakeRoutes.js";
 import physicianWorkspaceRoutes from "./sih/routes/physicianWorkspaceRoutes.js";
@@ -17,9 +19,7 @@ import { createPart6Router } from "./sih/part6/routes/index.js";
 import { createClinicalIntelligenceModule } from "./sih/clinical-intelligence/index.js";
 import { createPart3Router } from "./sih/part3/index.js";
 
-dotenv.config();
-
-const app = express();
+export const app = express();
 
 app.use(cors());
 app.use(express.json());
@@ -51,13 +51,15 @@ app.get("/", (req, res) => {
 
 app.use("/health", healthRoutes);
 app.use("/api/health", healthRoutes);
-app.use("/api/v1/patients", patientRoutes);
+app.use("/api/v1", routeIndex);
 app.use("/patients", patientRoutes);
 app.use("/intake", intakeRoutes);
 app.use("/physician-workspace", physicianWorkspaceRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}

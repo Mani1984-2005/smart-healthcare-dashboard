@@ -1,6 +1,6 @@
 import express from "express";
 import prisma from "../db.js";
-import authenticate from "../middleware/authMiddleware.js";
+import authenticate, { authorize } from "../middleware/authMiddleware.js";
 import { validate } from "../middleware/validate.js";
 import { patientSchema } from "../validators/index.js";
 
@@ -11,6 +11,25 @@ const router = express.Router();
  * Authorization is enforced server-side.
  */
 router.use(authenticate);
+
+function normalizeUserRole(role) {
+  return typeof role === "string" ? role.trim().toUpperCase() : "";
+}
+
+function getPatientAccessError(res) {
+  return res.status(403).json({ error: "Forbidden: patient can only access their own patient record" });
+}
+
+function allowPatientSelfOnly(req, patientId) {
+  const role = normalizeUserRole(req.user?.role);
+  if (role === "PATIENT") {
+    const userPatientId = Number(req.user?.patientId ?? req.user?.id);
+    if (!Number.isInteger(userPatientId) || userPatientId !== Number(patientId)) {
+      return false;
+    }
+  }
+  return true;
+}
 
 /**
  * Convert and validate a patient ID.
@@ -57,6 +76,17 @@ function serverError(res, message) {
  */
 router.get("/", async (req, res) => {
   try {
+    const role = normalizeUserRole(req.user?.role);
+    if (role === "PATIENT") {
+      const patientId = Number(req.user?.patientId ?? req.user?.id);
+      const patient = await prisma.patient.findUnique({
+        where: { id: patientId },
+        include: { appointments: true, queues: true },
+      });
+
+      return res.status(200).json({ data: patient ? [patient] : [] });
+    }
+
     const patients = await prisma.patient.findMany({
       include: {
         appointments: true,
@@ -89,6 +119,10 @@ router.get("/:id", async (req, res) => {
     return res.status(400).json({
       error: "Invalid patient id",
     });
+  }
+
+  if (!allowPatientSelfOnly(req, patientId)) {
+    return getPatientAccessError(res);
   }
 
   try {
@@ -125,6 +159,8 @@ router.get("/:id", async (req, res) => {
  */
 router.post(
   "/",
+  authenticate,
+  authorize(["ADMIN", "RECEPTIONIST", "DOCTOR", "NURSE"]),
   validate(patientSchema),
   async (req, res) => {
     try {
@@ -181,6 +217,12 @@ router.post(
  */
 router.put(
   "/:id",
+  (req, res, next) => {
+    if (normalizeUserRole(req.user?.role) === "PATIENT" && !allowPatientSelfOnly(req, req.params.id)) {
+      return getPatientAccessError(res);
+    }
+    return next();
+  },
   validate(patientSchema),
   async (req, res) => {
     const patientId = parsePatientId(req.params.id);

@@ -15,8 +15,18 @@ export const authenticate = async (req, res, next) => {
   const idToken = authHeader.split("Bearer ")[1];
 
   if ((process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development") && idToken.startsWith("test-token-")) {
-    const role = idToken.split("-")[2] || "PATIENT";
-    req.user = { uid: "test-user", role };
+    const tokenParts = idToken.replace(/^test-token-/, "").split("-");
+    const role = tokenParts[0]?.toUpperCase() || "PATIENT";
+    const subjectId = tokenParts.slice(1).join("-");
+    const userId = subjectId || "test-user";
+
+    req.user = {
+      uid: userId,
+      id: userId,
+      role,
+      patientId: role === "PATIENT" && Number.isInteger(Number(userId)) ? Number(userId) : null,
+      doctorId: role === "DOCTOR" && userId ? userId : null,
+    };
     return next();
   }
 
@@ -35,6 +45,18 @@ export const authenticate = async (req, res, next) => {
   }
 };
 
+function normalizeRole(value) {
+  if (Array.isArray(value)) {
+    return value.map((role) => normalizeRole(role)).filter(Boolean);
+  }
+
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().toUpperCase();
+}
+
 // RBAC Middleware
 export const authorize = (allowedRoles = []) => {
   return (req, res, next) => {
@@ -43,11 +65,13 @@ export const authorize = (allowedRoles = []) => {
       return res.status(401).json({ success: false, message: "Unauthorised: User not found in request" });
     }
 
-    // Role could be embedded in custom claims or passed in some other way for dev
-    // We will assume `req.user.role` or `req.user.roles` is available
-    const userRole = req.user.role || (req.user.roles && req.user.roles[0]) || "PATIENT"; // Defaulting to PATIENT for safety if no role is explicitly assigned
+    const normalizedAllowedRoles = normalizeRole(allowedRoles);
+    const userRoles = normalizeRole(req.user.roles || req.user.role || ["PATIENT"]);
+    const userRole = Array.isArray(userRoles) ? userRoles[0] : userRoles || "PATIENT";
 
-    if (!allowedRoles.includes(userRole) && userRole !== "ADMIN") {
+    const hasPermission = normalizedAllowedRoles.includes(userRole) || userRole === "ADMIN";
+
+    if (!hasPermission) {
       if (req.log) req.log.warn(`Forbidden: User role ${userRole} attempted to access restricted route.`);
       return res.status(403).json({ success: false, message: "Forbidden: Insufficient permissions" });
     }

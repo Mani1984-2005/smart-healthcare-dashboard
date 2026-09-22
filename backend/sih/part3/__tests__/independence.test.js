@@ -8,8 +8,16 @@ import { describe, expect, it } from "vitest";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const part3Backend = path.resolve(here, "..");
-const repoRoot = path.resolve(part3Backend, "../..");
-const part3Frontend = path.join(repoRoot, "src/part3");
+const repoRoot = path.resolve(here, "../../../..");
+const part3FrontendCandidates = [
+  path.join(repoRoot, "src/part3"),
+  path.join(repoRoot, "src/sih/part3"),
+].filter((p) => fs.existsSync(p));
+const part3Frontend = part3FrontendCandidates[0] || path.join(repoRoot, "src/sih/part3");
+const backendNodeModules = [
+  path.join(repoRoot, "backend/node_modules"),
+  path.join(repoRoot, "node_modules"),
+].find((p) => fs.existsSync(p));
 
 function sourceFiles(dir, exts) {
   const out = [];
@@ -47,10 +55,18 @@ describe("backend independence", () => {
     }
   });
 
-  it("boots and completes the whole workflow with ONLY backend/part3 present (no other repo folders, no database, no Firebase)", async () => {
+  it("boots and completes the whole workflow with ONLY backend/part3 present (no other repo folders, no database, no Firebase)", { timeout: 30000 }, async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "part3-isolated-"));
     fs.cpSync(part3Backend, path.join(dir, "part3"), { recursive: true, filter: (src) => !src.includes(`${path.sep}.data`) && !src.includes(`${path.sep}__tests__`) });
-    fs.symlinkSync(path.join(repoRoot, "backend/node_modules"), path.join(dir, "node_modules"));
+
+    const nodeModulesTarget = path.join(dir, "node_modules");
+    const sourceNodeModules = backendNodeModules || path.join(repoRoot, "backend/node_modules");
+    if (process.platform === "win32") {
+      fs.cpSync(sourceNodeModules, nodeModulesTarget, { recursive: true, force: true });
+    } else {
+      fs.symlinkSync(sourceNodeModules, nodeModulesTarget);
+    }
+
     fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ type: "module" }));
     expect(fs.readdirSync(dir).sort()).toEqual(["node_modules", "package.json", "part3"]);
 
@@ -81,8 +97,17 @@ describe("backend independence", () => {
       expect((await j("POST", `/documents/${document.id}/timeline`, { token })).events.length).toBe(9);
       expect((await j("GET", "/patients/DEMO-P001/timeline", { token })).events.length).toBe(9);
     } finally {
-      child.kill();
-      fs.rmSync(dir, { recursive: true, force: true });
+      if (!child.killed) {
+        child.kill("SIGTERM");
+      }
+      await new Promise((resolve) => {
+        const timer = setTimeout(resolve, 1000);
+        child.once("exit", () => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 });
