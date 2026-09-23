@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "seed:dev-doctors": "node scripts/seed-dev-doctors.js",
     "test": "npm --prefix ./sih test"
   },
   "keywords": [],

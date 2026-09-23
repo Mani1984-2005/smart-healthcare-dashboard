@@ -18,6 +18,7 @@ import { createPart6 } from "./sih/part6/createPart6.js";
 import { createPart6Router } from "./sih/part6/routes/index.js";
 import { createClinicalIntelligenceModule } from "./sih/clinical-intelligence/index.js";
 import { createPart3Router } from "./sih/part3/index.js";
+import { ensureDevDoctorSeed } from "./scripts/seed-dev-doctors.js";
 // Phase 1 — existing cross-part integration mechanisms (all three already ship in
 // backend/sih/*; nothing new is implemented here, they are only wired into the host
 // server the same way backend/sih/server.js wires them).
@@ -69,6 +70,13 @@ app.use("/physician-workspace", physicianWorkspaceRoutes);
 const PORT = process.env.PORT || 5000;
 
 if (process.env.NODE_ENV !== "test") {
+  try {
+    const doctorSeedResult = await ensureDevDoctorSeed();
+    console.log(`[server] doctor seed -> created=${doctorSeedResult.created} total=${doctorSeedResult.total} skipped=${Boolean(doctorSeedResult.skipped)}`);
+  } catch (error) {
+    console.warn("[server] doctor seed skipped due to startup issue:", error?.message || error);
+  }
+
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
