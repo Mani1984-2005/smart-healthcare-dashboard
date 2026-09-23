@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AlertTriangle, ClipboardList, Lock, Stethoscope } from "lucide-react";
+import api from "../services/api.js";
+import { describeWorkflowContext, hasLiveContext, resolveWorkflowContext } from "../utils/workflowContext";
 import {
   clinicalEncounters as seedEncounters,
   type ClinicalEncounter,
@@ -19,10 +21,32 @@ const STEPS = ["Patient", "Encounter", "Diagnosis", "Treatment", "Prescription",
 export default function Clinical() {
   const navigate = useNavigate();
   const location = useLocation();
-  const liveContext = (location.state as Record<string, unknown> | null) ?? {};
+  const workflow = resolveWorkflowContext(location.state as Record<string, unknown> | null);
+  const liveActive = hasLiveContext(workflow);
   const [encounters, setEncounters] = useState<ClinicalEncounter[]>(() =>
     seedEncounters.map((e) => ({ ...e, prescriptions: [...e.prescriptions] }))
   );
+  const [liveEncounters, setLiveEncounters] = useState<Array<Record<string, any>>>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    setLiveLoading(true);
+    api.get("/encounters")
+      .then((res) => {
+        if (!active) return;
+        const list = res?.data?.encounters ?? res?.data?.data ?? [];
+        setLiveEncounters(Array.isArray(list) ? list : []);
+        setLiveError(null);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setLiveEncounters([]);
+        setLiveError(err instanceof Error ? err.message : "Live encounters unavailable");
+      })
+      .finally(() => { if (active) setLiveLoading(false); });
+    return () => { active = false; };
+  }, []);
   const [selectedId, setSelectedId] = useState<string>(encounters[0]?.id ?? "");
   const selected = encounters.find((e) => e.id === selectedId) ?? null;
   const locked = Boolean(selected?.locked || selected?.status === "SIGNED_OFF");
@@ -75,11 +99,43 @@ export default function Clinical() {
       <div className="flex items-start gap-3 rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950 dark:border-cyan-900/50 dark:bg-cyan-950/30 dark:text-cyan-100">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <p>
-          {liveContext.appointmentId || liveContext.patientId || liveContext.doctorId || liveContext.encounterId
-            ? `Live workflow context active: appointment ${String(liveContext.appointmentId ?? "—")}, patient ${String(liveContext.patientId ?? "—")}, doctor ${String(liveContext.doctorId ?? "—")}, encounter ${String(liveContext.encounterId ?? "—")}.`
-            : "Prototype clinical UI — Part 4 API not connected in this workspace; demo data only."}
+          {liveActive
+            ? `Live workflow context active: ${describeWorkflowContext(workflow)}.`
+            : "No live workflow context — showing demo encounters below. Start from Appointments → Start Consultation for a live encounter."}
         </p>
       </div>
+
+      <Section
+        title="Live encounters"
+        description="Real backend encounters (same patient / doctor / appointment)"
+        action={<Badge variant="info">Live</Badge>}
+      >
+        {liveLoading ? (
+          <p className="text-sm text-slate-500">Loading live encounters…</p>
+        ) : liveError ? (
+          <EmptyState title="Live encounters unavailable" description={liveError} />
+        ) : liveEncounters.length === 0 ? (
+          <EmptyState title="No live encounters" description="No real encounters yet. Book an appointment and choose Start Consultation." />
+        ) : (
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {liveEncounters.slice(0, 8).map((e: Record<string, any>) => (
+              <li key={String(e.id)} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {(e.patient as any)?.name ?? e.patientName ?? `Patient ${e.patientId ?? "—"}`}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {String(e.id)} · patient {String(e.patientId ?? "—")} · doctor {String((e.doctor as any)?.name ?? e.doctorId ?? "—")} · appt {String(e.appointmentId ?? "—")} · {String(e.status ?? "")}
+                  </p>
+                </div>
+                <Button variant="secondary" onClick={() => navigate(`/clinical-encounter/${String(e.id)}`, { state: { appointmentId: e.appointmentId ?? workflow.appointmentId, patientId: e.patientId ?? workflow.patientId, doctorId: e.doctorId ?? workflow.doctorId, encounterId: e.id } })}>
+                  Open live encounter
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Section title="Active" description="In progress or draft">
@@ -107,9 +163,8 @@ export default function Clinical() {
                   <button
                     type="button"
                     onClick={() => setSelectedId(enc.id)}
-                    className={`flex w-full flex-col gap-2 px-3 py-4 text-left transition hover:bg-slate-50 dark:hover:bg-slate-900 ${
-                      selectedId === enc.id ? "bg-cyan-50/80 dark:bg-cyan-950/40" : ""
-                    }`}
+                    className={`flex w-full flex-col gap-2 px-3 py-4 text-left transition hover:bg-slate-50 dark:hover:bg-slate-900 ${selectedId === enc.id ? "bg-cyan-50/80 dark:bg-cyan-950/40" : ""
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>

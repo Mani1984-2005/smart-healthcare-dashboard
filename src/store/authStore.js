@@ -56,6 +56,11 @@ function clearPatientSessionState() {
 export const useAuthStore = create((set) => ({
   user: loadUser(),
   isAuthenticated: Boolean(loadUser()),
+  hydrate() {
+    const restored = loadUser();
+    set({ user: restored, isAuthenticated: Boolean(restored) });
+    return restored;
+  },
   login(user) {
     const normalized = normalizeUser(user);
     persistUser(normalized);
