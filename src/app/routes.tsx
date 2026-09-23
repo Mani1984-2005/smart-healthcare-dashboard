@@ -40,8 +40,20 @@ export const ROUTES: AppRoute[] = [
     roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
   },
   {
+    path: "/clinical/:id",
+    label: "Clinical Encounter Detail",
+    element: lazy(() => import("../pages/ClinicalEncounter.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
+  },
+  {
     path: "/clinical-encounter",
     label: "Clinical Encounter",
+    element: lazy(() => import("../pages/ClinicalEncounter.tsx")),
+    roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
+  },
+  {
+    path: "/clinical-encounter/:id",
+    label: "Live Clinical Encounter",
     element: lazy(() => import("../pages/ClinicalEncounter.tsx")),
     roles: [ROLES.ADMIN, ROLES.DOCTOR, ROLES.NURSE],
   },

@@ -12,6 +12,7 @@ const Part6App = lazy(() => import("./sih/part6/Part6App.tsx"));
 const KioskEntry = lazy(() => import("./sih/pages/kiosk/KioskEntry.tsx"));
 const IntakeFlow = lazy(() => import("./sih/pages/kiosk/IntakeFlow.tsx"));
 const VoiceInteractionPage = lazy(() => import("./sih/modules/voice/pages/VoiceInteractionPage.tsx"));
+const LazyClinicalEncounter = lazy(() => import("./pages/ClinicalEncounter.tsx"));
 
 export default function App() {
   const isDarkMode = useUiStore((state) => state.isDarkMode);
@@ -56,6 +57,22 @@ export default function App() {
             element={
               <PermissionGuard roles={["ADMIN", "DOCTOR", "NURSE", "RECEPTIONIST"]}>
                 <PatientDetails />
+              </PermissionGuard>
+            }
+          />
+          <Route
+            path="clinical/:id"
+            element={
+              <PermissionGuard roles={["ADMIN", "DOCTOR", "NURSE"]}>
+                <LazyClinicalEncounter />
+              </PermissionGuard>
+            }
+          />
+          <Route
+            path="clinical-encounter/:id"
+            element={
+              <PermissionGuard roles={["ADMIN", "DOCTOR", "NURSE"]}>
+                <LazyClinicalEncounter />
               </PermissionGuard>
             }
           />

@@ -63,19 +63,14 @@ const [newAppt, setNewAppt] = useState({
       let payload: Record<string, unknown>;
 
       if (bookingType === "myself") {
-        // MYSELF: use the authenticated patient's own resolved profile.
-        // Never re-enter name/age/gender/phone — the backend enforces
-        // that the appointment belongs to this exact patient.
-        const patientId = (user as any)?.patientId;
-        if (!patientId) {
+        const patientId = Number((user as any)?.patientId ?? (user as any)?.id);
+        if (!Number.isInteger(patientId) || patientId <= 0) {
           throw new Error("Your patient profile was not resolved — sign out and sign in again.");
         }
         payload = { ...newAppt, patientId, patientName: "" };
       } else if (selectedOther) {
-        // SOMEONE ELSE — an existing patient selected via lookup.
         payload = { ...newAppt, bookForOther: true, patientId: selectedOther.id, patientName: "" };
       } else {
-        // SOMEONE ELSE — create a new patient record for the person being booked.
         if (!newAppt.patientName.trim()) {
           throw new Error("Select an existing patient or enter a name to create one.");
         }
@@ -83,7 +78,13 @@ const [newAppt, setNewAppt] = useState({
         delete (payload as any).patientId;
       }
 
-      await bookAppointment(payload);
+      const appointment = await bookAppointment(payload);
+      if (appointment?.id) {
+        window.localStorage.setItem(
+          "medicare_selected_appointment",
+          JSON.stringify({ id: appointment.id, patientId: appointment.patientId ?? payload.patientId, doctorId: appointment.doctorId ?? payload.doctorId })
+        );
+      }
       setShowModal(false);
       setBookingType(null);
       setNewAppt({ patientId: "", patientName: "", doctorId: "", date: "", timeSlot: "", reason: "" });
@@ -147,13 +148,29 @@ const [newAppt, setNewAppt] = useState({
                     {appt.status !== "COMPLETED" && appt.status !== "CANCELLED" && (
                       <button onClick={() => updateStatus(appt.id, "COMPLETED")} className="text-green-600 hover:text-green-900">Complete</button>
                     )}
-                    {["DOCTOR", "ADMIN"].includes((user as any)?.role || "") && appt.status !== "CANCELLED" && (
+                    {[
+                      "DOCTOR",
+                      "ADMIN",
+                    ].includes((user as any)?.role || "") && appt.status !== "CANCELLED" && (
                       <button
                         onClick={async () => {
                           try {
                             const response = await api.post("/encounters", { appointmentId: appt.id });
-                            const patientId = response?.data?.encounter?.patientId ?? appt.patientId;
-                            window.location.assign(`/patients/${patientId}`);
+                            const encounter = response?.data?.encounter ?? response?.data?.data?.encounter ?? null;
+                            const encounterId = encounter?.id ?? null;
+                            const patientId = encounter?.patientId ?? appt.patientId;
+                            const doctorId = encounter?.doctorId ?? appt.doctorId;
+
+                            if (!encounterId) {
+                              window.location.assign(`/patients/${patientId}`);
+                              return;
+                            }
+
+                            window.localStorage.setItem(
+                              "medicare_selected_encounter",
+                              JSON.stringify({ id: encounterId, appointmentId: appt.id, patientId, doctorId })
+                            );
+                            window.location.assign(`/clinical-encounter/${encounterId}`);
                           } catch (err) {
                             alert(err instanceof Error ? err.message : "Unable to start encounter");
                           }

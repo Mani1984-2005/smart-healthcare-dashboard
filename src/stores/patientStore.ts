@@ -1,6 +1,4 @@
 import { create } from "zustand";
-import { demoPatients } from "../demo/prototypeData.ts";
-import { isBackendUnavailableError, withDemoFallback } from "../services/demoAware";
 import { createPatient, deletePatient as deletePatientService, fetchPatientById, fetchPatients, updatePatient as updatePatientService } from "../services/patientService.js";
 
 export type PatientStatus = "Active" | "Inactive" | "Discharged" | "Under Observation" | "Critical";
@@ -61,12 +59,12 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
   async loadPatients() {
     set({ loading: true, error: null, demoMode: false, demoMessage: null });
     try {
-      const { data, usedDemo } = await withDemoFallback(fetchPatients, () => demoPatients);
+      const data = await fetchPatients();
       set({
         patients: data,
         loading: false,
-        demoMode: usedDemo,
-        demoMessage: usedDemo ? "Demo mode — backend unavailable" : null,
+        demoMode: false,
+        demoMessage: null,
         error: null,
       });
     } catch (error) {
@@ -82,27 +80,33 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
     const state = get();
     const existing = state.patients.find((patient) => patient.id === id);
     if (existing) {
-      set({ selectedPatient: existing, error: null, demoMode: state.demoMode, demoMessage: state.demoMessage });
+      set({ selectedPatient: existing, error: null, demoMode: false, demoMessage: null });
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("medicare_selected_patient", JSON.stringify({ id: existing.id, patientId: existing.id }));
+      }
       return;
     }
 
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, demoMode: false, demoMessage: null });
     try {
-      const { data, usedDemo } = await withDemoFallback(
-        () => fetchPatientById(id),
-        () => demoPatients.find((patient) => patient.id === id) ?? null,
-      );
+      const data = await fetchPatientById(id);
       if (!data) {
-        set({ selectedPatient: null, loading: false, error: "Patient not found", demoMode: usedDemo, demoMessage: usedDemo ? "Demo mode — backend unavailable" : null });
+        set({ selectedPatient: null, loading: false, error: "Patient not found", demoMode: false, demoMessage: null });
         return;
       }
-      set({ selectedPatient: data, loading: false, demoMode: usedDemo, demoMessage: usedDemo ? "Demo mode — backend unavailable" : null, error: null });
+      set({ selectedPatient: data, loading: false, demoMode: false, demoMessage: null, error: null });
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("medicare_selected_patient", JSON.stringify({ id: data.id, patientId: data.id }));
+      }
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Patient not found", loading: false, demoMode: false, demoMessage: null });
     }
   },
   clearSelectedPatient() {
     set({ selectedPatient: null });
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("medicare_selected_patient");
+    }
   },
   async addPatient(payload) {
     set({ loading: true, error: null });
@@ -110,9 +114,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
       const patient = await createPatient(payload);
       set((state) => ({ patients: [patient, ...state.patients], loading: false }));
     } catch (error) {
-      const unavailable = isBackendUnavailableError(error);
       set({
-        error: unavailable ? "This action requires the live backend." : error instanceof Error ? error.message : "Failed to add patient",
+        error: error instanceof Error ? error.message : "Failed to add patient",
         loading: false,
       });
     }
@@ -127,9 +130,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
         loading: false,
       }));
     } catch (error) {
-      const unavailable = isBackendUnavailableError(error);
       set({
-        error: unavailable ? "This action requires the live backend." : error instanceof Error ? error.message : "Failed to update patient",
+        error: error instanceof Error ? error.message : "Failed to update patient",
         loading: false,
       });
     }
@@ -144,9 +146,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
         loading: false,
       }));
     } catch (error) {
-      const unavailable = isBackendUnavailableError(error);
       set({
-        error: unavailable ? "This action requires the live backend." : error instanceof Error ? error.message : "Failed to delete patient",
+        error: error instanceof Error ? error.message : "Failed to delete patient",
         loading: false,
       });
     }

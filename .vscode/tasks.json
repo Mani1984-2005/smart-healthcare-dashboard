@@ -1,0 +1,29 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "frontend-sync-validation",
+			"type": "shell",
+			"command": "npx vitest run src/store/__tests__/authSession.test.ts src/services/__tests__/patientService.test.ts",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "frontend-sync-tests",
+			"type": "shell",
+			"command": "powershell -ExecutionPolicy Bypass -Command \"cd 'e:\\smart-healthcare-dashboard'; npx vitest run src/store/__tests__/authSession.test.ts src/services/__tests__/patientService.test.ts --reporter=basic\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "frontend-sync-tests",
+			"type": "shell",
+			"command": "node .\\node_modules\\vitest\\vitest.mjs run src/store/__tests__/authSession.test.ts src/services/__tests__/patientService.test.ts --reporter=basic",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

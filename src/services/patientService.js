@@ -29,24 +29,36 @@ function mapPatient(patient) {
   };
 }
 
+function unwrapPayload(payload) {
+  if (payload && typeof payload === "object" && "data" in payload) {
+    return payload.data;
+  }
+  return payload;
+}
+
 export async function fetchPatients() {
   const response = await api.get("/patients");
-  return response.data.map(mapPatient);
+  const payload = unwrapPayload(response.data);
+  const patients = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+  return patients.map(mapPatient);
 }
 
 export async function fetchPatientById(patientId) {
   const response = await api.get(`/patients/${patientId}`);
-  return mapPatient(response.data);
+  const payload = unwrapPayload(response.data);
+  return mapPatient(payload ?? null);
 }
 
 export async function createPatient(patient) {
   const response = await api.post("/patients", patient);
-  return mapPatient(response.data);
+  const payload = unwrapPayload(response.data);
+  return mapPatient(payload ?? null);
 }
 
 export async function updatePatient(patientId, patient) {
   const response = await api.put(`/patients/${patientId}`, patient);
-  return mapPatient(response.data);
+  const payload = unwrapPayload(response.data);
+  return mapPatient(payload ?? null);
 }
 
 export async function deletePatient(patientId) {

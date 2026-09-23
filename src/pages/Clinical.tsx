@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AlertTriangle, ClipboardList, Lock, Stethoscope } from "lucide-react";
 import {
   clinicalEncounters as seedEncounters,
@@ -18,6 +18,8 @@ const STEPS = ["Patient", "Encounter", "Diagnosis", "Treatment", "Prescription",
 
 export default function Clinical() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const liveContext = (location.state as Record<string, unknown> | null) ?? {};
   const [encounters, setEncounters] = useState<ClinicalEncounter[]>(() =>
     seedEncounters.map((e) => ({ ...e, prescriptions: [...e.prescriptions] }))
   );
@@ -72,7 +74,11 @@ export default function Clinical() {
 
       <div className="flex items-start gap-3 rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950 dark:border-cyan-900/50 dark:bg-cyan-950/30 dark:text-cyan-100">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <p>Prototype clinical UI — Part 4 API not connected in this workspace; demo data only.</p>
+        <p>
+          {liveContext.appointmentId || liveContext.patientId || liveContext.doctorId || liveContext.encounterId
+            ? `Live workflow context active: appointment ${String(liveContext.appointmentId ?? "—")}, patient ${String(liveContext.patientId ?? "—")}, doctor ${String(liveContext.doctorId ?? "—")}, encounter ${String(liveContext.encounterId ?? "—")}.`
+            : "Prototype clinical UI — Part 4 API not connected in this workspace; demo data only."}
+        </p>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

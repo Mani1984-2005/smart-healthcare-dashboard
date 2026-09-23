@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, Lock } from "lucide-react";
+import api from "../services/api.js";
 import {
   clinicalEncounters as seedEncounters,
   type ClinicalEncounter as DemoClinicalEncounter,
@@ -18,22 +19,76 @@ function cloneSeed(): DemoClinicalEncounter[] {
 export default function ClinicalEncounter() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const liveContext = (location.state as Record<string, unknown> | null) ?? {};
   const [encounters, setEncounters] = useState(cloneSeed);
+  const [liveEncounter, setLiveEncounter] = useState<Record<string, any> | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("Overview");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const encounter = encounters.find((e) => e.id === id) ?? null;
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+
+    api.get(`/encounters/${id}`)
+      .then((response) => {
+        if (!active) return;
+        const encounterData = response?.data?.encounter ?? response?.data?.data ?? null;
+        setLiveEncounter(encounterData);
+        setLiveError(null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLiveEncounter(null);
+        setLiveError("This encounter is not available from the live backend yet.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const resolvedEncounter = useMemo(() => {
+    const source = liveEncounter ?? encounters.find((e) => e.id === id) ?? null;
+    if (!source) return null;
+
+    return {
+      ...source,
+      id: source.id ?? id ?? "",
+      patientName: source.patientName ?? source.patient?.name ?? "Patient",
+      patientId: source.patientId ?? source.patient?.id ?? liveContext.patientId ?? "",
+      doctorName: source.doctorName ?? source.doctor?.name ?? "Doctor",
+      doctorId: source.doctorId ?? source.doctor?.id ?? liveContext.doctorId ?? "",
+      appointmentId: source.appointmentId ?? source.appointment?.id ?? String(liveContext.appointmentId ?? ""),
+      status: source.status ?? "IN_PROGRESS",
+      diagnosis: source.diagnosis ?? "",
+      treatmentPlan: source.treatmentPlan ?? "",
+      prescriptions: Array.isArray(source.prescriptions)
+        ? source.prescriptions.map((rx: string | { name?: string } | null) => typeof rx === "string" ? rx : rx?.name ?? "")
+        : [],
+      followUpDate: source.followUpDate ?? null,
+      notes: source.notes ?? "",
+      signedOffAt: source.signedOffAt ?? null,
+      locked: Boolean(source.locked),
+      chiefComplaint: source.chiefComplaint ?? "",
+      createdAt: source.createdAt ?? new Date().toISOString(),
+      updatedAt: source.updatedAt ?? new Date().toISOString(),
+    } satisfies DemoClinicalEncounter;
+  }, [encounters, id, liveContext.appointmentId, liveContext.doctorId, liveContext.patientId, liveEncounter]);
+
+  const encounter = resolvedEncounter;
   const locked = Boolean(encounter?.locked || encounter?.status === "SIGNED_OFF");
 
   const history = useMemo(() => {
-    if (!encounter) return [];
+    if (!encounter || liveEncounter) return [];
     return encounters
       .filter((e) => e.patientId === encounter.patientId && e.id !== encounter.id)
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
-  }, [encounter, encounters]);
+  }, [encounter, encounters, liveEncounter]);
 
   const patch = (updates: Partial<DemoClinicalEncounter>) => {
-    if (!encounter || locked) return;
+    if (!encounter || locked || liveEncounter) return;
     setEncounters((prev) =>
       prev.map((e) =>
         e.id === encounter.id
@@ -49,7 +104,7 @@ export default function ClinicalEncounter() {
   };
 
   const confirmSignOff = () => {
-    if (!encounter || locked) return;
+    if (!encounter || locked || liveEncounter) return;
     if (!encounter.diagnosis.trim() || !encounter.treatmentPlan.trim()) {
       setConfirmOpen(false);
       window.alert("Diagnosis and treatment plan are required before sign-off.");
@@ -67,10 +122,10 @@ export default function ClinicalEncounter() {
   if (!encounter) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Clinical" title="Encounter not found" description="This encounter ID is not in the demo dataset." />
+        <PageHeader eyebrow="Clinical" title="Encounter not found" description={liveError || "This encounter ID is not available from the live backend."} />
         <EmptyState
           title="Unknown encounter"
-          description={`No prototype encounter matches “${id}”.`}
+          description={liveError || `No encounter matches “${id}”.`}
           action={<Button onClick={() => navigate("/clinical")}>Back to clinical list</Button>}
         />
       </div>
@@ -98,7 +153,11 @@ export default function ClinicalEncounter() {
 
       <div className="flex items-start gap-3 rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950 dark:border-cyan-900/50 dark:bg-cyan-950/30 dark:text-cyan-100">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <p>Prototype clinical UI — Part 4 API not connected in this workspace; demo data only.</p>
+        <p>
+          {liveContext.appointmentId || liveContext.patientId || liveContext.doctorId || liveContext.encounterId
+            ? `Live workflow context active: appointment ${String(liveContext.appointmentId ?? "—")}, patient ${String(liveContext.patientId ?? "—")}, doctor ${String(liveContext.doctorId ?? "—")}, encounter ${String(liveContext.encounterId ?? "—")}.`
+            : "Prototype clinical UI — Part 4 API not connected in this workspace; demo data only."}
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
