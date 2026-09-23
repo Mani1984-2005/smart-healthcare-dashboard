@@ -1,46 +1,72 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, Bell, Mail, MessageSquare, Smartphone } from "lucide-react";
-import { notifications as seedNotifications, type DemoNotification } from "../demo/prototypeData";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, MessageSquare } from "lucide-react";
 import { Badge, Button, EmptyState, MetricCard, PageHeader, Section } from "../components/ui";
+import api from "../services/api.js";
 
-type ChannelFilter = "All" | "SMS" | "Email" | "In-app";
 type ReadFilter = "All" | "Unread" | "Read";
 
-const channelIcon = {
-  SMS: Smartphone,
-  Email: Mail,
-  "In-app": MessageSquare,
-} as const;
-
-function priorityVariant(p: DemoNotification["priority"]): "neutral" | "info" | "warning" | "critical" {
-  if (p === "critical") return "critical";
-  if (p === "high") return "warning";
-  if (p === "low") return "neutral";
-  return "info";
+interface AppNotification {
+  id: string;
+  userId: string;
+  userRole: string;
+  type: string;
+  title: string;
+  message: string;
+  data?: unknown;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export default function Notifications() {
-  const [items, setItems] = useState<DemoNotification[]>(() => seedNotifications.map((n) => ({ ...n })));
-  const [channel, setChannel] = useState<ChannelFilter>("All");
+  const [items, setItems] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [readFilter, setReadFilter] = useState<ReadFilter>("All");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await api.get("/notifications");
+      setItems(response?.data?.data ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load notifications");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const filtered = useMemo(() => {
     return items.filter((n) => {
-      if (channel !== "All" && n.channel !== channel) return false;
-      if (readFilter === "Unread" && n.read) return false;
-      if (readFilter === "Read" && !n.read) return false;
+      if (readFilter === "Unread" && n.isRead) return false;
+      if (readFilter === "Read" && !n.isRead) return false;
       return true;
     });
-  }, [items, channel, readFilter]);
+  }, [items, readFilter]);
 
-  const unreadCount = items.filter((n) => !n.read).length;
+  const unreadCount = items.filter((n) => !n.isRead).length;
 
-  const markRead = (id: string) => {
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  const markRead = async (id: string) => {
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    try {
+      await api.put(`/notifications/${id}/read`);
+    } catch {
+      // Reload to reflect server truth if the write failed.
+      load();
+    }
   };
 
-  const markAllRead = () => {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await api.put("/notifications/read-all");
+    } catch {
+      load();
+    }
   };
 
   return (
@@ -48,7 +74,7 @@ export default function Notifications() {
       <PageHeader
         eyebrow="Communications"
         title="Notification center"
-        description="Review operational alerts across SMS, email, and in-app channels."
+        description="In-app notifications for your account across appointments, lab, pharmacy, and billing."
         actions={
           <Button variant="secondary" onClick={markAllRead} disabled={unreadCount === 0}>
             Mark all read
@@ -57,19 +83,22 @@ export default function Notifications() {
       />
 
       <div className="flex items-start gap-3 rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950 dark:border-cyan-900/50 dark:bg-cyan-950/30 dark:text-cyan-100">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <p>Live notification API is reserved for backend integration. This center uses prototype data only.</p>
+        <MessageSquare className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <p>
+          These are local, in-app notifications stored in the system database. SMS, email, and WhatsApp delivery are
+          not configured and are not performed.
+        </p>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-3">
         <MetricCard label="Unread" value={unreadCount} description="Requiring attention" icon={<Bell className="h-5 w-5" />} />
-        <MetricCard label="Total" value={items.length} description="In demo inbox" />
-        <MetricCard label="Critical / high" value={items.filter((n) => n.priority === "critical" || n.priority === "high").length} description="Priority alerts" />
+        <MetricCard label="Total" value={items.length} description="Delivered to you" />
+        <MetricCard label="Types" value={new Set(items.map((n) => n.type)).size} description="Event categories" />
       </section>
 
       <Section
         title="Filters"
-        description="Client-side filters over demo notifications"
+        description="Filter by read state"
         action={
           <div className="flex flex-wrap gap-2">
             {(["All", "Unread", "Read"] as ReadFilter[]).map((f) => (
@@ -80,47 +109,43 @@ export default function Notifications() {
           </div>
         }
       >
-        <div className="flex flex-wrap gap-2">
-          {(["All", "SMS", "Email", "In-app"] as ChannelFilter[]).map((c) => (
-            <Button key={c} variant={channel === c ? "primary" : "ghost"} className="min-h-8 px-3 text-xs" onClick={() => setChannel(c)}>
-              {c}
-            </Button>
-          ))}
-        </div>
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Showing {filtered.length} of {items.length} notifications.
+        </p>
       </Section>
 
-      <Section title="Inbox" description={`${filtered.length} notification${filtered.length === 1 ? "" : "s"}`} action={<Badge variant="neutral">Demo</Badge>}>
-        {filtered.length === 0 ? (
+      <Section title="Inbox" description={`${filtered.length} notification${filtered.length === 1 ? "" : "s"}`} action={<Badge variant="info">In-app</Badge>}>
+        {loading ? (
+          <div className="p-8 text-center text-sm text-slate-500">Loading notifications…</div>
+        ) : error ? (
+          <EmptyState title="Unable to load notifications" description={error} icon={<Bell className="h-8 w-8" />} />
+        ) : filtered.length === 0 ? (
           <EmptyState title="No notifications" description="Nothing matches the current filters." icon={<Bell className="h-8 w-8" />} />
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {filtered.map((n) => {
-              const Icon = channelIcon[n.channel];
-              return (
-                <li key={n.id} className={`flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between ${n.read ? "opacity-70" : ""}`}>
-                  <div className="flex gap-3">
-                    <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200">
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{n.title}</p>
-                        {!n.read && <Badge variant="info">Unread</Badge>}
-                        <Badge variant={priorityVariant(n.priority)}>{n.priority}</Badge>
-                        <Badge variant="neutral">{n.channel}</Badge>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{n.body}</p>
-                      <p className="mt-1 text-xs text-slate-500">{new Date(n.createdAt).toLocaleString("en-IN")}</p>
-                    </div>
+            {filtered.map((n) => (
+              <li key={n.id} className={`flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between ${n.isRead ? "opacity-70" : ""}`}>
+                <div className="flex gap-3">
+                  <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200">
+                    <MessageSquare className="h-4 w-4" aria-hidden="true" />
                   </div>
-                  {!n.read && (
-                    <Button variant="secondary" className="shrink-0" onClick={() => markRead(n.id)}>
-                      Mark read
-                    </Button>
-                  )}
-                </li>
-              );
-            })}
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{n.title}</p>
+                      {!n.isRead && <Badge variant="info">Unread</Badge>}
+                      <Badge variant="neutral">{n.type}</Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{n.message}</p>
+                    <p className="mt-1 text-xs text-slate-500">{new Date(n.createdAt).toLocaleString("en-IN")}</p>
+                  </div>
+                </div>
+                {!n.isRead && (
+                  <Button variant="secondary" className="shrink-0" onClick={() => markRead(n.id)}>
+                    Mark read
+                  </Button>
+                )}
+              </li>
+            ))}
           </ul>
         )}
       </Section>

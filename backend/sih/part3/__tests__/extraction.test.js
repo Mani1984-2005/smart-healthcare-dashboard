@@ -195,6 +195,7 @@ describe("fabrication safeguards", () => {
 describe("synthetic documents (end-to-end extraction expectations)", () => {
   it("prescription", () => {
     const r = run(transcript("rx-p001-2025-03"), "prescription");
+    console.log(r.warnings);
     expect(r.stats).toMatchObject({ medications: 3, diagnoses: 2, investigations: 0 });
     expect(r.documentDate.isoDate).toBe("2025-03-12");
   });

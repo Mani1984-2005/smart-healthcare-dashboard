@@ -79,6 +79,9 @@ router.get("/", async (req, res) => {
     const role = normalizeUserRole(req.user?.role);
     if (role === "PATIENT") {
       const patientId = Number(req.user?.patientId ?? req.user?.id);
+      if (!Number.isInteger(patientId) || patientId <= 0) {
+        return res.status(403).json({ error: "Forbidden: patient identity not resolved" });
+      }
       const patient = await prisma.patient.findUnique({
         where: { id: patientId },
         include: { appointments: true, queues: true },
@@ -104,6 +107,107 @@ router.get("/", async (req, res) => {
     logPatientError("fetch patients", error);
 
     return serverError(res, "Failed to fetch patients");
+  }
+});
+
+/**
+ * POST /patients/me
+ *
+ * Resolves (finds or creates) the Patient row that belongs to the
+ * authenticated PATIENT, so login can attach a stable patientId to the
+ * session token. PATIENT-only: a patient can never claim another
+ * patient's record by supplying a different id.
+ */
+router.post("/me", async (req, res) => {
+  if (normalizeUserRole(req.user?.role) !== "PATIENT") {
+    return res.status(403).json({ error: "Forbidden: only patients may resolve their own profile" });
+  }
+
+  const { name, email, phone } = req.body || {};
+  if (typeof email !== "string" || !email.trim()) {
+    return res.status(400).json({ error: "email is required to resolve the patient profile" });
+  }
+
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+    let patient = await prisma.patient.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+    });
+
+    if (!patient) {
+      if (typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ error: "name is required to create the patient profile" });
+      }
+      patient = await prisma.patient.create({
+        data: {
+          name: name.trim(),
+          email: normalizedEmail,
+          phone: typeof phone === "string" && phone.trim() ? phone.trim() : null,
+          status: "Active",
+        },
+      });
+    }
+
+    return res.status(200).json({
+      data: {
+        id: patient.id,
+        name: patient.name,
+        email: patient.email,
+        phone: patient.phone,
+        age: patient.age,
+        gender: patient.gender,
+      },
+    });
+  } catch (error) {
+    logPatientError("resolve patient profile", error);
+    if (error?.code === "P2002") {
+      // Concurrent create for the same email — re-read.
+      const existing = await prisma.patient.findFirst({
+        where: { email: { equals: email.trim().toLowerCase(), mode: "insensitive" } },
+      });
+      if (existing) {
+        return res.status(200).json({
+          data: { id: existing.id, name: existing.name, email: existing.email, phone: existing.phone, age: existing.age, gender: existing.gender },
+        });
+      }
+    }
+    return serverError(res, "Failed to resolve patient profile");
+  }
+});
+
+/**
+ * GET /patients/booking-lookup?phone=... or ?name=...
+ *
+ * Booking-scoped lookup used by the "book for someone else" flow. Returns
+ * ONLY minimal identity fields (id, name, age, gender, phone) — never
+ * demographics beyond that, medical history, or any clinical data. Exact
+ * phone match or exact name match, limited to 5 rows.
+ */
+router.get("/booking-lookup", async (req, res) => {
+  const { phone, name } = req.query;
+  const where = [];
+
+  if (typeof phone === "string" && phone.trim()) {
+    where.push({ phone: { equals: phone.trim() } });
+  }
+  if (typeof name === "string" && name.trim()) {
+    where.push({ name: { equals: name.trim(), mode: "insensitive" } });
+  }
+  if (where.length === 0) {
+    return res.status(400).json({ error: "Provide phone or name to look up a patient" });
+  }
+
+  try {
+    const matches = await prisma.patient.findMany({
+      where: { OR: where },
+      select: { id: true, name: true, age: true, gender: true, phone: true },
+      take: 5,
+      orderBy: { id: "desc" },
+    });
+    return res.status(200).json({ data: matches });
+  } catch (error) {
+    logPatientError("booking lookup", error);
+    return serverError(res, "Failed to look up patient");
   }
 });
 

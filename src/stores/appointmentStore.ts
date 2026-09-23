@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import axios from "axios";
+import api from "../services/api.js";
 
 interface Appointment {
   id: string;
@@ -22,8 +22,6 @@ interface AppointmentState {
   bookAppointment: (data: any) => Promise<void>;
   updateStatus: (id: string, status: string) => Promise<void>;
 }
-
-const api = axios.create({ baseURL: "/api" });
 
 export const useAppointmentStore = create<AppointmentState>((set) => ({
   appointments: [],

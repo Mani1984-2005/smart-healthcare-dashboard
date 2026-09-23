@@ -57,6 +57,35 @@ function normalizeRole(value) {
   return value.trim().toUpperCase();
 }
 
+/**
+ * Canonical aliases so legacy backend names and frontend role names resolve
+ * to the same value (e.g. LAB_TECH vs LAB_TECHNICIAN).
+ */
+const ROLE_ALIASES = {
+  LAB_TECH: "LAB_TECHNICIAN",
+  SUPERUSER: "SUPER_ADMIN",
+};
+
+/**
+ * The five top-level roles are PATIENT, DOCTOR, HOSPITAL_STAFF,
+ * HOSPITAL_ADMIN, SUPER_ADMIN. Department-level staff (receptionist,
+ * laboratory technician, pharmacist, nurse, billing) remain HOSPITAL_STAFF.
+ * Routes may authorize either a concrete legacy role or the top-level group.
+ */
+const HOSPITAL_STAFF_ROLES = ["NURSE", "RECEPTIONIST", "LAB_TECHNICIAN", "PHARMACIST", "BILLING"];
+
+function canonicalRole(role) {
+  const upper = typeof role === "string" ? role.trim().toUpperCase() : "";
+  return ROLE_ALIASES[upper] || upper;
+}
+
+function roleMatches(userRole, allowedRole) {
+  if (userRole === allowedRole) return true;
+  if (allowedRole === "HOSPITAL_STAFF") return HOSPITAL_STAFF_ROLES.includes(userRole);
+  if (allowedRole === "HOSPITAL_ADMIN") return userRole === "ADMIN";
+  return false;
+}
+
 // RBAC Middleware
 export const authorize = (allowedRoles = []) => {
   return (req, res, next) => {
@@ -65,11 +94,17 @@ export const authorize = (allowedRoles = []) => {
       return res.status(401).json({ success: false, message: "Unauthorised: User not found in request" });
     }
 
-    const normalizedAllowedRoles = normalizeRole(allowedRoles);
-    const userRoles = normalizeRole(req.user.roles || req.user.role || ["PATIENT"]);
-    const userRole = Array.isArray(userRoles) ? userRoles[0] : userRoles || "PATIENT";
+    const normalizedAllowedRoles = normalizeRole(allowedRoles).map(canonicalRole);
+    const rawUserRoles = normalizeRole(req.user.roles || req.user.role || ["PATIENT"]);
+    const userRole =
+      canonicalRole((Array.isArray(rawUserRoles) ? rawUserRoles[0] : rawUserRoles) || "PATIENT") || "PATIENT";
 
-    const hasPermission = normalizedAllowedRoles.includes(userRole) || userRole === "ADMIN";
+    // SUPER_ADMIN passes every authorize() check.
+    // ADMIN (HOSPITAL_ADMIN) keeps its existing unrestricted access.
+    const hasPermission =
+      userRole === "SUPER_ADMIN" ||
+      userRole === "ADMIN" ||
+      normalizedAllowedRoles.some((allowed) => roleMatches(userRole, allowed));
 
     if (!hasPermission) {
       if (req.log) req.log.warn(`Forbidden: User role ${userRole} attempted to access restricted route.`);

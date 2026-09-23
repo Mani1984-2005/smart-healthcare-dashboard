@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import axios from "axios";
+import api from "../services/api.js";
 
 interface QueueItem {
   id: string;
@@ -19,8 +19,6 @@ interface QueueState {
   checkIn: (data: { patientId: string, appointmentId: string, doctorId: string }) => Promise<void>;
   updateStatus: (id: string, status: string) => Promise<void>;
 }
-
-const api = axios.create({ baseURL: "/api" });
 
 export const useQueueStore = create<QueueState>((set) => ({
   queues: [],

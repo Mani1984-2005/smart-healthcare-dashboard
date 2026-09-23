@@ -28,6 +28,8 @@ model Patient {
   prescriptions  prescriptions[]
   intakeSessions    IntakeSession[]
   clinicalHistories ClinicalHistory[]
+  encounters        Encounter[]
+  prescriptionRecords Prescription[]
 
   @@map("patients")
 }
@@ -84,6 +86,7 @@ model Doctor {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   appointments   Appointment[]
+  encounters     Encounter[]
 }
 
 model Appointment {
@@ -100,6 +103,7 @@ model Appointment {
   doctor    Doctor   @relation(fields: [doctorId], references: [id])
   patient   Patient  @relation(fields: [patientId], references: [id])
   queues    Queue[]
+  encounter Encounter?
 
   @@unique([doctorId, date, timeSlot])
 }
@@ -119,36 +123,59 @@ model Queue {
 }
 
 model Medicine {
-  id         String    @id @default(uuid())
-  name       String
-  category   String
-  stock      Int       @default(0)
-  price      Float     @default(0.0)
-  expiryDate DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  name               String
+  genericName        String?
+  category           String
+  manufacturer       String?
+  form               String?
+  dosage             String?
+  unit               String?
+  stock              Int       @default(0)
+  reorderLevel       Int       @default(10)
+  price              Float     @default(0.0)
+  unitPrice          Float?
+  isPrescriptionOnly Boolean   @default(false)
+  batchNumber        String?
+  expiryDate         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  prescriptionItems  PrescriptionItem[]
 }
 
 model LabTest {
-  id        String   @id @default(uuid())
-  patientId Int
-  testName  String
-  status    String   @default("PENDING")
-  result    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  patient   Patient  @relation(fields: [patientId], references: [id])
+  id           String    @id @default(uuid())
+  patientId    Int
+  encounterId  String?
+  testName     String
+  testCategory String?
+  priority     String    @default("NORMAL")
+  status       String    @default("PENDING")
+  result       String?
+  notes        String?
+  orderedBy    String?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  encounter    Encounter? @relation(fields: [encounterId], references: [id])
 }
 
 model Invoice {
-  id        String    @id @default(uuid())
-  patientId Int
-  amount    Float
-  status    String    @default("UNPAID")
-  dueDate   DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  patient   Patient   @relation(fields: [patientId], references: [id])
+  id            String    @id @default(uuid())
+  patientId     Int
+  appointmentId String?
+  encounterId   String?
+  amount        Float
+  tax           Float     @default(0)
+  discount      Float     @default(0)
+  total         Float?
+  status        String    @default("UNPAID")
+  dueDate       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  patient       Patient   @relation(fields: [patientId], references: [id])
+  encounter     Encounter? @relation(fields: [encounterId], references: [id])
 }
 
 model Department {
@@ -163,6 +190,74 @@ model Bed {
   number    String
   status    String  @default("AVAILABLE")
   patientId String?
+}
+
+model Encounter {
+  id            String    @id @default(uuid())
+  appointmentId String?   @unique
+  patientId     Int
+  doctorId      String
+  status        String    @default("IN_PROGRESS")
+  chiefComplaint String?
+  diagnosis     String?
+  notes         String?
+  vitalSigns    Json?
+  anatomyData   Json?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  patient       Patient   @relation(fields: [patientId], references: [id])
+  doctor        Doctor    @relation(fields: [doctorId], references: [id])
+  prescriptions Prescription[]
+  labTests      LabTest[]
+  invoices      Invoice[]
+}
+
+model Prescription {
+  id            String    @id @default(uuid())
+  patientId     Int
+  doctorId      String
+  encounterId   String?
+  appointmentId String?
+  notes         String?
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  patient       Patient   @relation(fields: [patientId], references: [id])
+  encounter     Encounter? @relation(fields: [encounterId], references: [id])
+  items         PrescriptionItem[]
+}
+
+model PrescriptionItem {
+  id             String    @id @default(uuid())
+  prescriptionId String
+  medicineId     String?
+  medicineName   String?
+  dosage         String?
+  frequency      String?
+  duration       String?
+  quantity       Int       @default(0)
+  instructions   String?
+  createdAt      DateTime  @default(now())
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicine       Medicine?    @relation(fields: [medicineId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  userRole  String
+  type      String
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead])
 }
 
 // ===========================================================================

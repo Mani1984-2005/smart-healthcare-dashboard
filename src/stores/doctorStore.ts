@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import axios from "axios";
+import api from "../services/api.js";
 
 interface Doctor {
   id: string;
@@ -18,8 +18,6 @@ interface DoctorState {
   fetchDoctors: () => Promise<void>;
   addDoctor: (doctor: Omit<Doctor, "id" | "isAvailable">) => Promise<void>;
 }
-
-const api = axios.create({ baseURL: "/api" });
 
 export const useDoctorStore = create<DoctorState>((set) => ({
   doctors: [],

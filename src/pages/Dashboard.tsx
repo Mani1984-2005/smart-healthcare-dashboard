@@ -40,6 +40,39 @@ export default function Dashboard() {
   const dateContext = useMemo(() => new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date()), []);
   const greeting = user?.name ? `Good day, ${user.name}` : "Good day";
 
+  if (user?.role === "PATIENT") {
+    return (
+      <div className="space-y-6">
+       <PageHeader
+  title="Patient Dashboard"
+  description="Manage your appointments, reports, and medical history."
+          action={
+            <Button variant="primary" onClick={() => navigate("/appointments")}>
+              Book Appointment
+            </Button>
+          }
+        />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h3 className="text-lg font-semibold mb-2">My Appointments</h3>
+              <p className="text-slate-600 mb-4">View or schedule your upcoming visits.</p>
+              <Button variant="secondary" className="w-full" onClick={() => navigate("/appointments")}>View Appointments</Button>
+           </div>
+           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h3 className="text-lg font-semibold mb-2">Clinical History</h3>
+              <p className="text-slate-600 mb-4">Access your previous records and prescriptions.</p>
+              <Button variant="secondary" className="w-full" onClick={() => navigate("/clinical")}>View Records</Button>
+           </div>
+           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h3 className="text-lg font-semibold mb-2">AI Intake Kiosk</h3>
+              <p className="text-slate-600 mb-4">Start your structured clinical intake.</p>
+              <Button variant="secondary" className="w-full" onClick={() => navigate("/kiosk")}>Start Intake</Button>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
   const metrics = [
     { label: "Total patients", value: "1,283", description: "Registered patient base", trend: "+4.2% this month", icon: <UsersRound className="h-5 w-5" aria-hidden="true" /> },
     { label: "Today's appointments", value: "56", description: "48 confirmed", trend: "8 awaiting check-in", icon: <CalendarDays className="h-5 w-5" aria-hidden="true" /> },

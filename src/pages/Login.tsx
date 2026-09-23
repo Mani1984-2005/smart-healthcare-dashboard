@@ -3,6 +3,7 @@ import { Activity, ArrowRight, HeartPulse, ShieldCheck, Stethoscope } from "luci
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/authStore.js";
 import { ROLES } from "../app/roles.js";
+import api from "../services/api.js";
 
 const defaultRoles = [
   ROLES.PATIENT,
@@ -25,21 +26,50 @@ export default function LoginPage() {
 
   const from = location.state?.from?.pathname || "/dashboard";
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
     if (!name.trim() || !email.trim()) {
       setError("Name and email are required.");
       return;
     }
 
-    login({
+    const baseUser = {
       id: crypto.randomUUID(),
       name: name.trim(),
       email: email.trim(),
       role,
       hospitalId: "hospital-01",
       token: `test-token-${role}`,
-    });
+    };
+
+    // PATIENT sessions get a stable, real Patient.id resolved server-side so
+    // booking ("myself") and all patient-scoped APIs work without asking the
+    // patient to re-enter their own identity.
+    login(baseUser);
+
+    if (role === ROLES.PATIENT) {
+      try {
+        const response = await api.post("/patients/me", {
+          name: baseUser.name,
+          email: baseUser.email,
+        });
+        const patientId = response?.data?.data?.id;
+        if (patientId) {
+          login({
+            ...baseUser,
+            id: String(patientId),
+            patientId,
+            token: `test-token-PATIENT-${patientId}`,
+          });
+        }
+      } catch (resolveError) {
+        // Profile resolution needs the backend; sign-in still succeeds but
+        // patient-scoped actions will report the missing identity clearly.
+        console.warn("Patient profile could not be resolved:", resolveError);
+      }
+    }
+
     navigate(from, { replace: true });
   };
 

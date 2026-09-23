@@ -1,4 +1,5 @@
 import prisma from "../db.js";
+import { notify } from "../services/notificationService.js";
 
 export const getMedicines = async (req, res, next) => {
   try {
@@ -64,8 +65,18 @@ export const deleteMedicine = async (req, res, next) => {
 // Prescriptions
 export const getPrescriptions = async (req, res, next) => {
   try {
+    const where = {};
+    if (req.query.patientId !== undefined) {
+      const patientId = Number(req.query.patientId);
+      if (!Number.isInteger(patientId) || patientId <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid patientId" });
+      }
+      where.patientId = patientId;
+    }
     const prescriptions = await prisma.prescription.findMany({
-      include: { items: true },
+      where,
+      include: { items: { include: { medicine: true } }, patient: { select: { id: true, name: true } } },
+      orderBy: { createdAt: "desc" },
     });
     res.json({ success: true, prescriptions });
   } catch (error) {
@@ -88,22 +99,50 @@ export const getPrescriptionById = async (req, res, next) => {
 
 export const createPrescription = async (req, res, next) => {
   try {
-    const { patientId, doctorId, appointmentId, notes, status, items } = req.body;
+    const { patientId: rawPatientId, doctorId, appointmentId, encounterId, notes, status, items } = req.body;
+
+    const patientId = Number(rawPatientId);
+    if (!Number.isInteger(patientId) || patientId <= 0) {
+      return res.status(400).json({ success: false, message: "Valid patientId is required" });
+    }
+    if (!doctorId) {
+      return res.status(400).json({ success: false, message: "doctorId is required" });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: "At least one prescription item is required" });
+    }
+
     const prescription = await prisma.prescription.create({
       data: {
         patientId,
         doctorId,
-        appointmentId,
+        appointmentId: appointmentId || null,
+        encounterId: encounterId || null,
         notes,
         status: status || "PENDING",
         items: {
-          create: items // array of { medicineId, dosage, frequency, duration, quantity, instructions }
+          create: items // array of { medicineId, medicineName, dosage, frequency, duration, quantity, instructions }
         }
       },
       include: { items: true }
     });
+
+    // In-app notification to the patient that a prescription is available
+    // (local only — no SMS/email/WhatsApp configured).
+    await notify({
+      userId: patientId,
+      userRole: "PATIENT",
+      type: "PRESCRIPTION_CREATED",
+      title: "Prescription issued",
+      message: "A new prescription has been issued by your doctor and sent to the pharmacy.",
+      data: { prescriptionId: prescription.id, encounterId: prescription.encounterId || null },
+    });
+
     res.status(201).json({ success: true, prescription });
   } catch (error) {
+    if (error?.code === "P2003") {
+      return res.status(400).json({ success: false, message: "Invalid patient, encounter, or appointment reference" });
+    }
     next(error);
   }
 };
@@ -151,6 +190,16 @@ export const dispensePrescription = async (req, res, next) => {
       });
 
       return updated;
+    });
+
+    // Pharmacy status change → in-app notification to the patient.
+    await notify({
+      userId: result.patientId,
+      userRole: "PATIENT",
+      type: "PHARMACY_STATUS",
+      title: "Prescription dispensed",
+      message: "Your prescription has been dispensed and is ready for pickup.",
+      data: { prescriptionId: result.id, status: result.status },
     });
 
     res.json({ success: true, message: "Prescription dispensed successfully", prescription: result });
