@@ -1,0 +1,3145 @@
+From c4c18cd59854aeea9c09d4a1b067583f755d0e7b Mon Sep 17 00:00:00 2001
+From: Manikanta Dindawar <manikantadindawar21@gmail.com>
+Date: Sat, 10 Oct 2026 12:44:21 +0000
+Subject: [PATCH] feat: sync AI Studio navigation improvements
+
+---
+ backend/tests/navigationConsolidation.test.js | 141 ++++
+ src/App.jsx                                   | 256 +++++++
+ src/components/Navbar.jsx                     | 207 ++++++
+ src/components/layout/AppShell.jsx            |  92 +++
+ src/components/layout/Sidebar.jsx             | 158 ++++
+ src/components/layout/Topbar.jsx              |  79 ++
+ src/pages/LaboratoryPage.jsx                  | 692 ++++++++++++++++++
+ src/pages/PatientRelationsPage.jsx            | 277 +++++++
+ src/pages/PharmacyPage.jsx                    | 501 +++++++++++++
+ src/pages/pharmacy/PrescriptionPage.jsx       | 645 ++++++++++++++++
+ 10 files changed, 3048 insertions(+)
+ create mode 100644 backend/tests/navigationConsolidation.test.js
+ create mode 100644 src/App.jsx
+ create mode 100644 src/components/Navbar.jsx
+ create mode 100644 src/components/layout/AppShell.jsx
+ create mode 100644 src/components/layout/Sidebar.jsx
+ create mode 100644 src/components/layout/Topbar.jsx
+ create mode 100644 src/pages/LaboratoryPage.jsx
+ create mode 100644 src/pages/PatientRelationsPage.jsx
+ create mode 100644 src/pages/PharmacyPage.jsx
+ create mode 100644 src/pages/pharmacy/PrescriptionPage.jsx
+
+diff --git a/backend/tests/navigationConsolidation.test.js b/backend/tests/navigationConsolidation.test.js
+new file mode 100644
+index 0000000..d081724
+--- /dev/null
++++ b/backend/tests/navigationConsolidation.test.js
+@@ -0,0 +1,141 @@
++// backend/tests/navigationConsolidation.test.js
++// Regression test suite for MediCare Pro Consolidated Navigation & Module Integration
++import { test, describe } from 'node:test';
++import assert from 'node:assert/strict';
++import fs from 'node:fs';
++import path from 'node:path';
++
++describe('MediCare Pro Navigation Consolidation Verification Suite', () => {
++  const rootDir = process.cwd().endsWith('backend')
++    ? path.resolve(process.cwd(), '..')
++    : process.cwd();
++
++  test('1. Verify Phase 2 Queue Security and Workflow files remain preserved and intact', () => {
++    const requiredPhase2Files = [
++      'backend/routes/queue.js',
++      'backend/controllers/queueController.js',
++      'backend/services/queueService.js',
++      'backend/middleware/authMiddleware.js',
++      'backend/config/firebaseAdmin.js',
++      'backend/tests/queueWorkflow.test.js',
++      'backend/tests/queueHttp.test.js',
++    ];
++
++    for (const relPath of requiredPhase2Files) {
++      const fullPath = path.join(rootDir, relPath);
++      assert.ok(fs.existsSync(fullPath), `Phase 2 file must exist: ${relPath}`);
++      const content = fs.readFileSync(fullPath, 'utf8');
++      assert.ok(content.length > 50, `Phase 2 file must not be empty: ${relPath}`);
++    }
++  });
++
++  test('2. Verify Navbar.jsx consolidated role-based navigation entries', () => {
++    const navbarPath = path.join(rootDir, 'src/components/Navbar.jsx');
++    assert.ok(fs.existsSync(navbarPath), 'Navbar.jsx must exist');
++    const content = fs.readFileSync(navbarPath, 'utf8');
++
++    // Confirm obsolete primary entries are purged from roleLinks
++    const obsoletePrimaryEntries = [
++      '"Medicines"',
++      '"Inventory"',
++      '"Reports"',
++      '"Complaints"',
++      '"Contact"',
++      '"X-Ray"',
++    ];
++
++    for (const obsolete of obsoletePrimaryEntries) {
++      assert.ok(
++        !content.includes(obsolete),
++        `Navbar.jsx must not contain obsolete unbundled primary entry: ${obsolete}`
++      );
++    }
++
++    // Confirm consolidated primary entries are present
++    assert.ok(content.includes('"Pharmacy"'), 'Navbar.jsx must include unified "Pharmacy"');
++    assert.ok(content.includes('"Laboratory"'), 'Navbar.jsx must include unified "Laboratory"');
++    assert.ok(content.includes('"Patient Relations"'), 'Navbar.jsx must include unified "Patient Relations"');
++  });
++
++  test('3. Verify Sidebar.jsx consolidated NAV_GROUPS', () => {
++    const sidebarPath = path.join(rootDir, 'src/components/layout/Sidebar.jsx');
++    assert.ok(fs.existsSync(sidebarPath), 'Sidebar.jsx must exist');
++    const content = fs.readFileSync(sidebarPath, 'utf8');
++
++    // Primary items in Sidebar must be consolidated
++    assert.ok(content.includes('to: "/pharmacy"'), 'Sidebar must link to /pharmacy');
++    assert.ok(content.includes('to: "/laboratory"'), 'Sidebar must link to /laboratory');
++    assert.ok(content.includes('to: "/patient-relations"'), 'Sidebar must link to /patient-relations');
++
++    // Verify duplicate standalone entries are removed from primary sidebar
++    assert.ok(!content.includes('to: "/pharmacy-inventory"'), 'Sidebar must not have separate /pharmacy-inventory link');
++    assert.ok(!content.includes('to: "/medicines"'), 'Sidebar must not have separate /medicines link');
++    assert.ok(!content.includes('to: "/xray"'), 'Sidebar must not have separate /xray link');
++    assert.ok(!content.includes('to: "/complaints"'), 'Sidebar must not have separate /complaints link');
++  });
++
++  test('4. Verify Pharmacy module provides internal navigation for all 4 subviews', () => {
++    const pharmacyPath = path.join(rootDir, 'src/pages/PharmacyPage.jsx');
++    assert.ok(fs.existsSync(pharmacyPath), 'PharmacyPage.jsx must exist');
++    const content = fs.readFileSync(pharmacyPath, 'utf8');
++
++    assert.ok(content.includes('id: "overview"'), 'Pharmacy must define Overview tab');
++    assert.ok(content.includes('id: "medicines"'), 'Pharmacy must define Medicines Catalogue tab');
++    assert.ok(content.includes('id: "inventory"'), 'Pharmacy must define Inventory Management tab');
++    assert.ok(content.includes('id: "dispensing"'), 'Pharmacy must define Dispensing tab');
++
++    // Confirm existing components are cleanly reused
++    assert.ok(content.includes('MedicinesPage'), 'PharmacyPage must reuse MedicinesPage');
++    assert.ok(content.includes('PharmacyInventoryPage'), 'PharmacyPage must reuse PharmacyInventoryPage');
++    assert.ok(content.includes('PrescriptionPage'), 'PharmacyPage must reuse PrescriptionPage');
++  });
++
++  test('5. Verify Patient Relations module provides internal navigation for Overview, Reports, Complaints, Contact', () => {
++    const relationsPath = path.join(rootDir, 'src/pages/PatientRelationsPage.jsx');
++    assert.ok(fs.existsSync(relationsPath), 'PatientRelationsPage.jsx must exist');
++    const content = fs.readFileSync(relationsPath, 'utf8');
++
++    assert.ok(content.includes('id: "overview"'), 'PatientRelations must define Overview tab');
++    assert.ok(content.includes('id: "reports"'), 'PatientRelations must define Reports tab');
++    assert.ok(content.includes('id: "complaints"'), 'PatientRelations must define Complaints tab');
++    assert.ok(content.includes('id: "contact"'), 'PatientRelations must define Contact tab');
++
++    // Confirm existing components are cleanly reused
++    assert.ok(content.includes('ReportsPage'), 'PatientRelationsPage must reuse ReportsPage');
++    assert.ok(content.includes('ComplaintsPage'), 'PatientRelationsPage must reuse ComplaintsPage');
++    assert.ok(content.includes('ContactPage'), 'PatientRelationsPage must reuse ContactPage');
++  });
++
++  test('6. Verify Laboratory module integrates X-Ray without breaking existing test workflows', () => {
++    const labPath = path.join(rootDir, 'src/pages/LaboratoryPage.jsx');
++    assert.ok(fs.existsSync(labPath), 'LaboratoryPage.jsx must exist');
++    const content = fs.readFileSync(labPath, 'utf8');
++
++    assert.ok(content.includes('XRaySharingPage'), 'LaboratoryPage must import and embed XRaySharingPage');
++    assert.ok(content.includes('handleTabChange("lab")'), 'LaboratoryPage must provide Lab tab trigger');
++    assert.ok(content.includes('handleTabChange("xray")'), 'LaboratoryPage must provide X-Ray tab trigger');
++  });
++
++  test('7. Verify App.jsx preserves backward-compatible deep links to consolidated subviews', () => {
++    const appPath = path.join(rootDir, 'src/App.jsx');
++    assert.ok(fs.existsSync(appPath), 'App.jsx must exist');
++    const content = fs.readFileSync(appPath, 'utf8');
++
++    // Deep links for Pharmacy
++    assert.ok(content.includes('path="/pharmacy"'), 'App.jsx must mount /pharmacy');
++    assert.ok(content.includes('path="/medicines"'), 'App.jsx must preserve /medicines deep link');
++    assert.ok(content.includes('path="/inventory"'), 'App.jsx must preserve /inventory deep link');
++    assert.ok(content.includes('path="/dispensing"'), 'App.jsx must preserve /dispensing deep link');
++
++    // Deep links for Laboratory
++    assert.ok(content.includes('path="/laboratory"'), 'App.jsx must mount /laboratory');
++    assert.ok(content.includes('path="/x-ray"'), 'App.jsx must preserve /x-ray deep link');
++    assert.ok(content.includes('path="/xray"'), 'App.jsx must preserve /xray deep link');
++
++    // Deep links for Patient Relations
++    assert.ok(content.includes('path="/patient-relations"'), 'App.jsx must mount /patient-relations');
++    assert.ok(content.includes('path="/reports"'), 'App.jsx must preserve /reports deep link');
++    assert.ok(content.includes('path="/complaints"'), 'App.jsx must preserve /complaints deep link');
++    assert.ok(content.includes('path="/contact"'), 'App.jsx must preserve /contact deep link');
++  });
++});
+diff --git a/src/App.jsx b/src/App.jsx
+new file mode 100644
+index 0000000..61cefcf
+--- /dev/null
++++ b/src/App.jsx
+@@ -0,0 +1,256 @@
++import { useState, useEffect, lazy, Suspense } from "react";
++import {
++  BrowserRouter,
++  Routes,
++  Route,
++  Navigate,
++  useNavigate,
++  useLocation,
++} from "react-router-dom";
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import Navbar from "./components/Navbar";
++import Toast from "./components/Toast";
++const queryClient = new QueryClient({
++  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
++});
++const HomePage = lazy(() => import("./pages/HomePage"));
++const PatientsPage = lazy(() => import("./pages/PatientsPage"));
++const LaboratoryPage = lazy(() => import("./pages/LaboratoryPage"));
++const DoctorsPage = lazy(() => import("./pages/DoctorsPage"));
++const DashboardPage = lazy(() => import("./pages/DashboardPage"));
++const StaffPage = lazy(() => import("./pages/StaffPage"));
++const MedicinesPage = lazy(() => import("./pages/MedicinesPage"));
++const ComplaintsPage = lazy(() => import("./pages/ComplaintsPage"));
++const ContactPage = lazy(() => import("./pages/ContactPage"));
++const BillingPage = lazy(() => import("./pages/BillingPage"));
++const PharmacyPage = lazy(() => import("./pages/PharmacyPage"));
++const PharmacyInventoryPage = lazy(() => import("./pages/PharmacyInventoryPage"));
++const ReportsPage = lazy(() => import("./pages/ReportsPage"));
++const XRaySharingPage = lazy(() => import("./pages/XRaySharingPage"));
++const PatientRelationsPage = lazy(() => import("./pages/PatientRelationsPage"));
++
++import { useToast } from "./hooks/usetoast.jsx";
++
++import { useAuth } from "./context/AuthContext";
++import { signInWithPopup } from "firebase/auth";
++import { auth, googleProvider } from "./firebase";
++
++function LoginScreen({ darkMode, onLogin }) {
++  const roles = ["Patient", "Doctor", "Receptionist", "Admin", "Hospital"];
++
++  return (
++    <div
++      className={`min-h-screen flex flex-col items-center justify-center p-4 transition-all ${
++        darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-950"
++      }`}
++    >
++      <div className={`w-full max-w-md p-8 rounded-2xl shadow-xl border ${
++        darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
++      } text-center`}>
++        <div className="text-4xl mb-2">🏥</div>
++        <h1 className="text-3xl font-bold">MediCare Pro</h1>
++        <p className="mt-2 text-sm text-slate-500">Smart Healthcare Management System</p>
++        <p className="mt-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Select Role to Enter</p>
++
++        <div className="mt-4 flex flex-col gap-2.5">
++          {roles.map((role) => (
++            <button
++              key={role}
++              onClick={() => onLogin(role)}
++              className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-all shadow-sm hover:shadow"
++            >
++              Continue as {role}
++            </button>
++          ))}
++        </div>
++      </div>
++    </div>
++  );
++}
++
++function AppLayout() {
++  const { user, logout, loginAsGuest, loading } = useAuth();
++
++  const { toasts, addToast, removeToast } = useToast();
++
++  const [darkMode, setDarkMode] = useState(
++    () => localStorage.getItem("theme") !== "light"
++  );
++
++  const [userRole, setUserRole] = useState(
++    () => localStorage.getItem("role") || "Admin"
++  );
++
++  const [appointments, setAppointments] = useState([]);
++  const [selectedDoctorFromPage, setSelectedDoctorFromPage] = useState(null);
++
++  const navigate = useNavigate();
++  const location = useLocation();
++
++  useEffect(() => {
++    localStorage.setItem("theme", darkMode ? "dark" : "light");
++  }, [darkMode]);
++
++  useEffect(() => {
++    localStorage.setItem("role", userRole);
++  }, [userRole]);
++
++  // ✅ LOGIN FUNCTION WITH GRACEFUL FALLBACK FOR PREVIEW IFRAME
++  const handleLogin = async (role) => {
++    try {
++      const result = await signInWithPopup(auth, googleProvider);
++
++      localStorage.setItem("role", role);
++      setUserRole(role);
++
++      addToast(
++        "Login successful",
++        `Welcome ${result.user?.displayName || role}`,
++        "success"
++      );
++    } catch (err) {
++      console.warn("Google popup sign-in blocked or unavailable in iframe, using role session:", err);
++      loginAsGuest(role);
++      localStorage.setItem("role", role);
++      setUserRole(role);
++      addToast(
++        "Logged in as " + role,
++        "Welcome to MediCare Pro",
++        "success"
++      );
++    }
++  };
++
++  // ✅ LOGOUT FIXED
++  const handleLogout = async () => {
++    await logout();
++    addToast("Logged out", "You have been signed out.", "info");
++  };
++
++  const formatCurrentPage = (path) => {
++    if (path === "/" || path === "") return "Home";
++    const cleaned = path.replace(/^\//, "").split("?")[0];
++    if (
++      cleaned === "patient-relations" ||
++      cleaned === "reports" ||
++      cleaned === "complaints" ||
++      cleaned === "contact"
++    ) {
++      return "Patient Relations";
++    }
++    if (
++      cleaned === "pharmacy" ||
++      cleaned === "medicines" ||
++      cleaned === "inventory" ||
++      cleaned === "pharmacy-inventory" ||
++      cleaned === "dispensing" ||
++      cleaned === "prescriptions"
++    ) {
++      return "Pharmacy";
++    }
++    if (cleaned === "laboratory" || cleaned === "x-ray" || cleaned === "xray") {
++      return "Laboratory";
++    }
++    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
++  };
++  const page = formatCurrentPage(location.pathname);
++
++  const handleNavigatePage = (p) => {
++    if (p === "Home") navigate("/");
++    else if (p === "Patient Relations") navigate("/patient-relations");
++    else navigate(`/${p.toLowerCase().replace(/\s+/g, "-")}`);
++  };
++
++  const pageProps = {
++    darkMode,
++    userRole,
++    appointments,
++    setAppointments,
++    addToast,
++    preselectedDoctor: selectedDoctorFromPage,
++    clearPreselectedDoctor: () => setSelectedDoctorFromPage(null),
++  };
++
++  // ⛔ LOADING
++  if (loading) {
++    return <div className="p-10 text-white">Loading...</div>;
++  }
++
++  // ⛔ NOT LOGGED IN
++  if (!user) {
++    return <LoginScreen darkMode={darkMode} onLogin={handleLogin} />;
++  }
++
++  return (
++    <div className={darkMode ? "dark" : ""}>
++      <Navbar
++        page={page}
++        setPage={handleNavigatePage}
++        darkMode={darkMode}
++        setDarkMode={setDarkMode}
++        user={{
++          name: user?.name || user?.email || "Mani",
++          role: userRole,
++        }}
++        onLogout={handleLogout}
++      />
++
++      <Toast toasts={toasts} removeToast={removeToast} />
++
++      <Suspense fallback={<div className="p-10 text-center text-slate-400">Loading module...</div>}>
++        <Routes>
++          <Route path="/" element={<HomePage {...pageProps} />} />
++          <Route path="/dashboard" element={<DashboardPage {...pageProps} />} />
++          <Route path="/patients" element={<PatientsPage darkMode={darkMode} />} />
++          <Route path="/doctors" element={<DoctorsPage {...pageProps} />} />
++
++          {/* Unified Pharmacy Module with backward-compatible deep links */}
++          <Route path="/pharmacy" element={<PharmacyPage darkMode={darkMode} />} />
++          <Route path="/medicines" element={<PharmacyPage darkMode={darkMode} initialTab="medicines" />} />
++          <Route path="/inventory" element={<PharmacyPage darkMode={darkMode} initialTab="inventory" />} />
++          <Route path="/pharmacy-inventory" element={<PharmacyPage darkMode={darkMode} initialTab="inventory" />} />
++          <Route path="/dispensing" element={<PharmacyPage darkMode={darkMode} initialTab="dispensing" />} />
++          <Route path="/prescriptions" element={<PharmacyPage darkMode={darkMode} initialTab="dispensing" />} />
++
++          {/* Unified Laboratory Module with X-Ray integration */}
++          <Route path="/laboratory" element={<LaboratoryPage darkMode={darkMode} />} />
++          <Route path="/x-ray" element={<LaboratoryPage darkMode={darkMode} initialTab="xray" />} />
++          <Route path="/xray" element={<LaboratoryPage darkMode={darkMode} initialTab="xray" />} />
++
++          <Route path="/billing" element={<BillingPage />} />
++          <Route path="/staff" element={<StaffPage darkMode={darkMode} />} />
++
++          {/* Unified Patient Relations Module with legacy deep links */}
++          <Route
++            path="/patient-relations"
++            element={<PatientRelationsPage darkMode={darkMode} appointments={appointments} addToast={addToast} />}
++          />
++          <Route
++            path="/reports"
++            element={<PatientRelationsPage darkMode={darkMode} appointments={appointments} addToast={addToast} initialTab="reports" />}
++          />
++          <Route
++            path="/complaints"
++            element={<PatientRelationsPage darkMode={darkMode} appointments={appointments} addToast={addToast} initialTab="complaints" />}
++          />
++          <Route
++            path="/contact"
++            element={<PatientRelationsPage darkMode={darkMode} appointments={appointments} addToast={addToast} initialTab="contact" />}
++          />
++
++          <Route path="*" element={<Navigate to="/" replace />} />
++        </Routes>
++      </Suspense>
++    </div>
++  );
++}
++
++export default function App() {
++  return (
++    <QueryClientProvider client={queryClient}>
++      <BrowserRouter>
++        <AppLayout />
++      </BrowserRouter>
++    </QueryClientProvider>
++  );
++}
+\ No newline at end of file
+diff --git a/src/components/Navbar.jsx b/src/components/Navbar.jsx
+new file mode 100644
+index 0000000..b35b879
+--- /dev/null
++++ b/src/components/Navbar.jsx
+@@ -0,0 +1,207 @@
++import { useState } from "react";
++
++export default function Navbar({
++  page,
++  setPage,
++  darkMode,
++  setDarkMode,
++  user,
++  onLogout,
++}) {
++  const [menuOpen, setMenuOpen] = useState(false);
++
++  const role = user?.role || "Admin";
++
++  const roleLinks = {
++    Patient: [
++      "Home",
++      "Dashboard",
++      "Doctors",
++      "Patient Relations",
++    ],
++    Receptionist: [
++      "Home",
++      "Dashboard",
++      "Patients",
++      "Doctors",
++      "Billing",
++      "Patient Relations",
++    ],
++    Doctor: [
++      "Home",
++      "Dashboard",
++      "Patients",
++      "Laboratory",
++      "Patient Relations",
++    ],
++    Admin: [
++      "Home",
++      "Dashboard",
++      "Patients",
++      "Doctors",
++      "Pharmacy",
++      "Billing",
++      "Laboratory",
++      "Staff",
++      "Patient Relations",
++    ],
++    Hospital: [
++      "Home",
++      "Dashboard",
++      "Patients",
++      "Doctors",
++      "Pharmacy",
++      "Billing",
++      "Laboratory",
++      "Staff",
++      "Patient Relations",
++    ],
++  };
++  const navLinks = roleLinks[role] || roleLinks.Admin;
++
++  const handleNavigate = (item) => {
++    setPage(item);
++    setMenuOpen(false);
++  };
++
++  return (
++    <nav
++      className={`sticky top-0 z-40 shadow-lg border-b ${
++        darkMode
++          ? "bg-slate-950 border-slate-800"
++          : "bg-white border-slate-200"
++      }`}
++    >
++      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
++        <div
++          className="flex items-center gap-3 cursor-pointer"
++          onClick={() => handleNavigate("Home")}
++        >
++          <div className="text-2xl">🏥</div>
++
++          <div>
++            <div
++              className={`font-bold text-lg leading-tight ${
++                darkMode ? "text-white" : "text-slate-900"
++              }`}
++            >
++              MediCare Pro
++            </div>
++            <div className="text-xs text-cyan-500 leading-tight">
++              Smart Hospital Management
++            </div>
++          </div>
++        </div>
++
++        <div className="hidden lg:flex items-center gap-2">
++          {navLinks.map((item) => (
++            <button
++              key={item}
++              onClick={() => handleNavigate(item)}
++              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
++                page === item
++                  ? "bg-cyan-600 text-white shadow"
++                  : darkMode
++                  ? "text-slate-300 hover:bg-slate-800 hover:text-white"
++                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
++              }`}
++            >
++              {item}
++            </button>
++          ))}
++
++          <button
++            onClick={() => setDarkMode((prev) => !prev)}
++            className={`ml-2 px-3 py-2 rounded-lg transition-all ${
++              darkMode
++                ? "bg-slate-800 text-yellow-300 hover:bg-slate-700"
++                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
++            }`}
++          >
++            {darkMode ? "☀ Light" : "🌙 Dark"}
++          </button>
++
++       <div
++  className={`ml-2 px-3 py-2 rounded-lg text-sm ${
++    darkMode
++      ? "bg-slate-800 text-slate-200"
++      : "bg-slate-100 text-slate-700"
++  }`}
++>
++  {user?.name || "Mani"} ({role})
++</div>
++
++          <button
++            onClick={onLogout}
++            className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-all"
++          >
++            Logout
++          </button>
++        </div>
++
++        <div className="lg:hidden flex items-center gap-2">
++          <button
++            onClick={() => setDarkMode((prev) => !prev)}
++            className={`p-2 rounded-lg ${
++              darkMode
++                ? "bg-slate-800 text-yellow-300"
++                : "bg-slate-100 text-slate-700"
++            }`}
++          >
++            {darkMode ? "☀" : "🌙"}
++          </button>
++
++          <button
++            onClick={() => setMenuOpen((prev) => !prev)}
++            className={`p-2 rounded-lg ${
++              darkMode ? "text-white" : "text-slate-900"
++            }`}
++          >
++            {menuOpen ? "✕" : "☰"}
++          </button>
++        </div>
++      </div>
++
++      {menuOpen && (
++        <div
++          className={`lg:hidden px-4 pb-4 flex flex-col gap-2 ${
++            darkMode ? "bg-slate-950" : "bg-white"
++          }`}
++        >
++          {navLinks.map((item) => (
++            <button
++              key={item}
++              onClick={() => handleNavigate(item)}
++              className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all ${
++                page === item
++                  ? "bg-cyan-600 text-white"
++                  : darkMode
++                  ? "text-slate-300 hover:bg-slate-800"
++                  : "text-slate-700 hover:bg-slate-100"
++              }`}
++            >
++              {item}
++            </button>
++          ))}
++
++          <div
++            className={`px-3 py-2 rounded-lg text-sm ${
++              darkMode
++                ? "bg-slate-800 text-slate-200"
++                : "bg-slate-100 text-slate-700"
++            }`}
++          >
++            {user?.name || "Mani"} ({role})
++          </div>
++
++          <button
++            onClick={onLogout}
++            className="px-3 py-2 rounded-lg text-sm font-medium text-left bg-red-600 text-white"
++          >
++            Logout
++          </button>
++        </div>
++      )}
++    </nav>
++  );
++}
+\ No newline at end of file
+diff --git a/src/components/layout/AppShell.jsx b/src/components/layout/AppShell.jsx
+new file mode 100644
+index 0000000..bcc9c55
+--- /dev/null
++++ b/src/components/layout/AppShell.jsx
+@@ -0,0 +1,92 @@
++// FILE PATH: src/components/layout/AppShell.jsx
++// CREATE this new file.
++//
++// Top-level layout wrapper: Sidebar (left) + Topbar (top) + routed page
++// content (right/below). This is what replaces standalone <Navbar />
++// at the App.jsx level.
++//
++// HOW TO WIRE THIS IN (App.jsx):
++//
++//   import AppShell from "./components/layout/AppShell";
++//
++//   <BrowserRouter>
++//     <AppShell>
++//       <Routes>
++//         <Route path="/dashboard" element={<DashboardPage />} />
++//         ...all your existing routes, completely unchanged...
++//       </Routes>
++//     </AppShell>
++//   </BrowserRouter>
++//
++// This is a MINIMAL change to App.jsx: wrap your existing <Routes> block
++// in <AppShell>...</AppShell>. No routes are added, removed, or modified.
++// Your Home/Login pages (which likely shouldn't show the sidebar) can be
++// excluded — see the `noShellRoutes` note at the bottom of this file.
++
++import { useState } from "react";
++import { useLocation } from "react-router-dom";
++import Sidebar from "./Sidebar";
++import Topbar from "./Topbar";
++
++// Routes that should render WITHOUT the sidebar/topbar shell
++// (e.g. landing page, login page — full-bleed layouts).
++// Add/remove paths here as needed; does not affect routing itself.
++const NO_SHELL_ROUTES = ["/", "/login"];
++
++// Optional: map route paths to a friendly page title shown in the Topbar.
++// Falls back to no title if a route isn't listed — safe to leave incomplete.
++const PAGE_TITLES = {
++  "/dashboard": "Dashboard",
++  "/patients": "Patients",
++  "/doctors": "Doctors",
++  "/staff": "Staff",
++  "/pharmacy": "Pharmacy",
++  "/pharmacy-inventory": "Pharmacy",
++  "/medicines": "Pharmacy",
++  "/laboratory": "Laboratory",
++  "/billing": "Billing",
++  "/receipts": "Patient Receipts",
++  "/patient-relations": "Patient Relations",
++  "/reports": "Patient Relations",
++  "/xray": "Laboratory",
++  "/x-ray": "Laboratory",
++  "/complaints": "Patient Relations",
++  "/contact": "Patient Relations",
++  "/settings": "Settings",
++};
++
++export default function AppShell({ children }) {
++  const location = useLocation();
++  const [collapsed, setCollapsed] = useState(false);
++  const [mobileOpen, setMobileOpen] = useState(false);
++
++  const skipShell = NO_SHELL_ROUTES.includes(location.pathname);
++
++  if (skipShell) {
++    // Render children with no sidebar/topbar — e.g. Home/Login full-bleed pages
++    return <>{children}</>;
++  }
++
++  const pageTitle = PAGE_TITLES[location.pathname];
++
++  return (
++    <div className="flex min-h-screen bg-neutral-50">
++      <Sidebar
++        collapsed={collapsed}
++        onToggleCollapse={() => setCollapsed((v) => !v)}
++        mobileOpen={mobileOpen}
++        onCloseMobile={() => setMobileOpen(false)}
++      />
++
++      <div className="flex-1 min-w-0 flex flex-col">
++        <Topbar
++          onOpenMobileSidebar={() => setMobileOpen(true)}
++          pageTitle={pageTitle}
++        />
++        <main className="flex-1 min-w-0">
++          {children}
++        </main>
++      </div>
++    </div>
++  );
++}
+\ No newline at end of file
+diff --git a/src/components/layout/Sidebar.jsx b/src/components/layout/Sidebar.jsx
+new file mode 100644
+index 0000000..580a0cf
+--- /dev/null
++++ b/src/components/layout/Sidebar.jsx
+@@ -0,0 +1,158 @@
++// FILE PATH: src/components/layout/Sidebar.jsx
++// CREATE this new file.
++//
++// Replaces the horizontal Navbar with a left sidebar — standard, trustworthy
++// healthcare SaaS pattern, with room for grouped sections and an active-state
++// pill (avoids the generic "row of pills" competitor look).
++//
++// All routes from every module built in this project are preserved below.
++// If you have routes not listed here, add them to NAV_GROUPS — nothing
++// about routing logic changes, this is purely the navigation UI.
++//
++// Collapsible on desktop (icon-only mode), slide-over drawer on mobile.
++
++import { NavLink } from "react-router-dom";
++import {
++  LayoutDashboard, Users, Stethoscope, UserCog, Pill, Warehouse,
++  FlaskConical, Receipt, FileText, BarChart3, ScanLine, MessageSquareWarning,
++  Phone, Settings, ChevronsLeft, ChevronsRight, X, HeartPulse,
++} from "lucide-react";
++
++// ── Nav structure — grouped by clinical area ─────────────────────────────────
++// Edit labels/icons freely; routes (`to`) match what's been built so far.
++
++const NAV_GROUPS = [
++  {
++    label: "Overview",
++    items: [
++      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
++    ],
++  },
++  {
++    label: "People",
++    items: [
++      { to: "/patients", label: "Patients", icon: Users },
++      { to: "/doctors", label: "Doctors", icon: Stethoscope },
++      { to: "/staff", label: "Staff", icon: UserCog },
++    ],
++  },
++  {
++    label: "Clinical & Diagnostics",
++    items: [
++      { to: "/laboratory", label: "Laboratory", icon: FlaskConical },
++    ],
++  },
++  {
++    label: "Pharmacy",
++    items: [
++      { to: "/pharmacy", label: "Pharmacy", icon: Pill },
++    ],
++  },
++  {
++    label: "Billing",
++    items: [
++      { to: "/billing", label: "Invoicing", icon: Receipt },
++    ],
++  },
++  {
++    label: "Patient Services",
++    items: [
++      { to: "/patient-relations", label: "Patient Relations", icon: HeartPulse },
++      { to: "/settings", label: "Settings", icon: Settings },
++    ],
++  },
++];
++
++export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }) {
++  return (
++    <>
++      {/* Mobile overlay backdrop */}
++      {mobileOpen && (
++        <div
++          className="fixed inset-0 z-40 bg-neutral-900/40 backdrop-blur-[2px] md:hidden"
++          onClick={onCloseMobile}
++        />
++      )}
++
++      <aside
++        className={`
++          fixed md:sticky top-0 left-0 z-50 md:z-auto
++          h-screen bg-white border-r border-neutral-200/70
++          flex flex-col
++          transition-all duration-200
++          ${collapsed ? "md:w-18" : "md:w-64"}
++          w-72
++          ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
++        `}
++      >
++        {/* ── Brand ──────────────────────────────────────────────────────── */}
++        <div className="flex items-center justify-between h-16 px-4 border-b border-neutral-100 shrink-0">
++          <div className="flex items-center gap-2.5 min-w-0">
++            <div className="w-9 h-9 rounded-md bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shrink-0">
++              <HeartPulse size={18} className="text-white" />
++            </div>
++            {!collapsed && (
++              <div className="min-w-0">
++                <p className="text-h3 text-neutral-800 leading-none truncate">MediCare Pro</p>
++                <p className="text-tiny text-neutral-400 mt-0.5">Smart Healthcare</p>
++              </div>
++            )}
++          </div>
++
++          {/* Mobile close button */}
++          <button
++            onClick={onCloseMobile}
++            className="md:hidden w-8 h-8 inline-flex items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100"
++          >
++            <X size={18} />
++          </button>
++        </div>
++
++        {/* ── Nav groups ─────────────────────────────────────────────────── */}
++        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
++          {NAV_GROUPS.map((group) => (
++            <div key={group.label}>
++              {!collapsed && (
++                <p className="text-tiny font-semibold uppercase tracking-wide text-neutral-400 px-3 mb-1.5">
++                  {group.label}
++                </p>
++              )}
++              <div className="space-y-0.5">
++                {group.items.map((item) => (
++                  <NavLink
++                    key={item.to}
++                    to={item.to}
++                    onClick={onCloseMobile}
++                    title={collapsed ? item.label : undefined}
++                    className={({ isActive }) => `
++                      flex items-center gap-3 px-3 py-2.5 rounded-md
++                      text-small font-medium
++                      transition-colors duration-150
++                      ${collapsed ? "justify-center" : ""}
++                      ${isActive
++                        ? "bg-primary-50 text-primary-700"
++                        : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-800"}
++                    `}
++                  >
++                    <item.icon size={18} className="shrink-0" />
++                    {!collapsed && <span className="truncate">{item.label}</span>}
++                  </NavLink>
++                ))}
++              </div>
++            </div>
++          ))}
++        </nav>
++
++        {/* ── Collapse toggle (desktop only) ────────────────────────────── */}
++        <div className="hidden md:flex items-center justify-center border-t border-neutral-100 p-3 shrink-0">
++          <button
++            onClick={onToggleCollapse}
++            className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600 transition-colors text-small"
++          >
++            {collapsed ? <ChevronsRight size={16} /> : <><ChevronsLeft size={16} /> Collapse</>}
++          </button>
++        </div>
++      </aside>
++    </>
++  );
++}
+\ No newline at end of file
+diff --git a/src/components/layout/Topbar.jsx b/src/components/layout/Topbar.jsx
+new file mode 100644
+index 0000000..aee6774
+--- /dev/null
++++ b/src/components/layout/Topbar.jsx
+@@ -0,0 +1,79 @@
++// FILE PATH: src/components/layout/Topbar.jsx
++// CREATE this new file.
++//
++// Top header bar — sits above page content, to the right of the Sidebar.
++// Holds: mobile menu trigger, page title slot, global search (optional),
++// notifications icon, and a user/profile menu placeholder.
++//
++// No business logic — purely structural. If you don't have a real
++// auth/profile system yet, the profile menu below is just a static
++// display with a "Log out" action that can be wired up later.
++//
++// USAGE: rendered automatically inside AppShell.jsx — you shouldn't need
++// to import this directly in pages.
++
++import { useState } from "react";
++import { Menu, Bell, ChevronDown, LogOut, Settings as SettingsIcon, User } from "lucide-react";
++
++export default function Topbar({ onOpenMobileSidebar, pageTitle }) {
++  const [profileOpen, setProfileOpen] = useState(false);
++
++  return (
++    <header className="sticky top-0 z-30 h-16 bg-white/90 backdrop-blur border-b border-neutral-200/70 flex items-center justify-between px-4 md:px-6 gap-4">
++      {/* Left: mobile menu + page title */}
++      <div className="flex items-center gap-3 min-w-0">
++        <button
++          onClick={onOpenMobileSidebar}
++          className="md:hidden w-9 h-9 inline-flex items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100"
++          aria-label="Open menu"
++        >
++          <Menu size={20} />
++        </button>
++        {pageTitle && (
++          <h1 className="text-h2 text-neutral-800 truncate">{pageTitle}</h1>
++        )}
++      </div>
++
++      {/* Right: notifications + profile */}
++      <div className="flex items-center gap-2 shrink-0">
++        <button
++          className="relative w-9 h-9 inline-flex items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 transition-colors"
++          aria-label="Notifications"
++        >
++          <Bell size={18} />
++          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent-500" />
++        </button>
++
++        <div className="relative">
++          <button
++            onClick={() => setProfileOpen((v) => !v)}
++            className="flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-md hover:bg-neutral-100 transition-colors"
++          >
++            <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-small font-semibold">
++              <User size={16} />
++            </div>
++            <ChevronDown size={14} className="text-neutral-400 hidden sm:block" />
++          </button>
++
++          {profileOpen && (
++            <>
++              {/* Click-outside catcher */}
++              <div className="fixed inset-0 z-10" onClick={() => setProfileOpen(false)} />
++              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lift border border-neutral-100 py-1.5 z-20 animate-fade-in">
++                <button className="w-full flex items-center gap-2.5 px-3.5 py-2 text-small text-neutral-600 hover:bg-neutral-50 transition-colors">
++                  <SettingsIcon size={15} />
++                  Settings
++                </button>
++                <div className="h-px bg-neutral-100 my-1" />
++                <button className="w-full flex items-center gap-2.5 px-3.5 py-2 text-small text-error-500 hover:bg-error-50 transition-colors">
++                  <LogOut size={15} />
++                  Log out
++                </button>
++              </div>
++            </>
++          )}
++        </div>
++      </div>
++    </header>
++  );
++}
+\ No newline at end of file
+diff --git a/src/pages/LaboratoryPage.jsx b/src/pages/LaboratoryPage.jsx
+new file mode 100644
+index 0000000..1ff2cf3
+--- /dev/null
++++ b/src/pages/LaboratoryPage.jsx
+@@ -0,0 +1,692 @@
++import { useState, useEffect, useCallback, useMemo } from "react";
++import { useSearchParams } from "react-router-dom";
++import XRaySharingPage from "./XRaySharingPage";
++import {
++  LAB_MASTER_LIBRARY, TEST_CATEGORIES, STATUS_OPTIONS, PRIORITY_OPTIONS,
++  STORAGE_KEY, PATIENTS_KEY, statusTableBadgeClass, judgeTestResult, judgeLabResult,
++  computeTrend, isAbnormal, generateProfileSummary, statusBadgeClass,
++} from "../data/labMasterLibrary";
++import { downloadLabReportPDF } from "../utils/labPDF";
++import { StatCard, PageHeader, SearchInput, StatusBadge, DataTable, ActionButton } from "../components/ui";
++
++function TrendBadge({ trend }) {
++  if (!trend) return <span className="text-xs text-gray-400">&mdash;</span>;
++  const { direction, percentChange } = trend;
++  const icon = direction === "up" ? "\u2191" : direction === "down" ? "\u2193" : "\u2192";
++  const cls  = direction === "up" ? "text-red-600" : direction === "down" ? "text-blue-600" : "text-gray-500";
++  return <span className={`text-xs font-bold ${cls}`} title={`${trend.difference} (${percentChange}%)`}>{icon} {percentChange}%</span>;
++}
++
++function CriticalAlertBanner({ profileResults }) {
++  const criticals = Object.entries(profileResults || {}).filter(([, r]) => r?.status === "Critical Low" || r?.status === "Critical High");
++  if (!criticals.length) return null;
++  return (
++    <div className="bg-red-700 text-white rounded-xl p-4 mb-4 flex items-start gap-3 shadow-lg border-2 border-red-400">
++      <span className="text-2xl mt-0.5">&#x1F6A8;</span>
++      <div className="flex-1">
++        <p className="font-bold text-base">CRITICAL LABORATORY ALERT &mdash; Immediate Physician Notification Required</p>
++        <ul className="mt-2 text-sm space-y-1 list-disc list-inside">
++          {criticals.map(([testName, r]) => (
++            <li key={testName}><strong>{testName}:</strong> {r.value} {r.unit} &mdash; {r.status} (Reference: {r.referenceRange})</li>
++          ))}
++        </ul>
++        <div className="mt-3 text-xs bg-red-800/50 rounded-lg p-2 space-y-0.5">
++          <p>Verify sample integrity and patient identity before reporting.</p>
++          <p>Consider repeat testing if result is clinically discordant.</p>
++          <p>Notify attending physician immediately. Document notification time.</p>
++        </div>
++      </div>
++    </div>
++  );
++}
++
++function ProfileResultsTable({ profileResults, profileKey, previousResults = {} }) {
++  if (!profileResults || !Object.keys(profileResults).length) return null;
++  return (
++    <div className="overflow-x-auto rounded-xl border border-slate-200">
++      <table className="w-full text-sm">
++        <thead className="bg-indigo-50 text-indigo-800 text-xs uppercase">
++          <tr>
++            <th className="px-3 py-2.5 text-left">Test</th>
++            <th className="px-3 py-2.5 text-right">Value</th>
++            <th className="px-3 py-2.5 text-center">Unit</th>
++            <th className="px-3 py-2.5 text-center">Status</th>
++            <th className="px-3 py-2.5 text-left">Reference Range</th>
++            <th className="px-3 py-2.5 text-center">Prev</th>
++            <th className="px-3 py-2.5 text-center">Trend</th>
++            <th className="px-3 py-2.5 text-left">Interpretation</th>
++          </tr>
++        </thead>
++        <tbody className="divide-y divide-slate-100">
++          {Object.entries(profileResults).map(([testName, result]) => {
++            const prev  = previousResults[testName];
++            const trend = prev?.value != null ? computeTrend(result?.value, prev.value) : null;
++            const cls   = result?.status?.startsWith("Critical") ? "bg-red-50" : isAbnormal(result) ? "bg-yellow-50/40" : "hover:bg-slate-50";
++            return (
++              <tr key={testName} className={cls}>
++                <td className="px-3 py-2 font-medium text-slate-800 text-xs">{LAB_MASTER_LIBRARY[profileKey]?.tests?.[testName]?.professionalName || testName}</td>
++                <td className="px-3 py-2 text-right font-mono font-semibold text-slate-800">{result?.value ?? <>&mdash;</>}</td>
++                <td className="px-3 py-2 text-center text-slate-500 text-xs">{result?.unit || <>&mdash;</>}</td>
++                <td className="px-3 py-2 text-center"><StatusBadge status={result?.status || "Manual Review"} /></td>
++                <td className="px-3 py-2 text-xs text-slate-500">{result?.referenceRange || <>&mdash;</>}</td>
++                <td className="px-3 py-2 text-center text-xs text-slate-400">{prev?.value ?? <>&mdash;</>}</td>
++                <td className="px-3 py-2 text-center"><TrendBadge trend={trend} /></td>
++                <td className="px-3 py-2 text-xs text-slate-600 max-w-[180px]">{result?.interpretation || <>&mdash;</>}</td>
++              </tr>
++            );
++          })}
++        </tbody>
++      </table>
++    </div>
++  );
++}
++
++function LabSummaryPanel({ profileKey, profileResults, previousResults = {} }) {
++  const summary = useMemo(() => generateProfileSummary(profileKey, profileResults, previousResults), [profileKey, profileResults, previousResults]);
++  if (!summary.lines.length) return null;
++  return (
++    <div className={`rounded-xl border p-4 mt-4 ${summary.hasCritical ? "bg-red-50 border-red-200" : "bg-blue-50 border-blue-200"}`}>
++      <p className={`font-bold text-sm mb-3 ${summary.hasCritical ? "text-red-800" : "text-blue-800"}`}>
++        Laboratory Summary &mdash; {profileKey}
++      </p>
++      <ul className="space-y-1.5 mb-3">
++        {summary.lines.map(({ testName, text, status }) => (
++          <li key={testName} className={`text-xs flex items-start gap-1.5 ${
++            status === "Within Normal Limits" || status === "Normal" ? "text-green-700"
++            : (status === "Critical Low" || status === "Critical High") ? "text-red-700 font-semibold" : "text-amber-700"}`}>
++            <span>{(status === "Within Normal Limits" || status === "Normal") ? "\u2705" : (status === "Critical Low" || status === "Critical High") ? "\uD83D\uDEA8" : "\u26A0\uFE0F"}</span>
++            <span>{text}</span>
++          </li>
++        ))}
++      </ul>
++      {summary.clinicalPatterns.length > 0 && (
++        <div className="border-t border-blue-200 pt-3 mt-2 mb-3">
++          <p className="text-xs font-bold text-indigo-800 mb-2">Clinical Pattern Recognition</p>
++          <ul className="space-y-2">
++            {summary.clinicalPatterns.map(({ id, pattern }) => (
++              <li key={id} className="text-xs bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2 text-indigo-800">{pattern}</li>
++            ))}
++          </ul>
++          <p className="text-xs text-gray-400 italic mt-1">Clinical correlation is recommended for all pattern-based interpretations.</p>
++        </div>
++      )}
++      <div className={`border-t pt-2 text-xs font-semibold ${summary.hasCritical ? "border-red-200 text-red-800" : "border-blue-200 text-blue-800"}`}>
++        Overall Impression: {summary.overallImpression}
++      </div>
++      <p className="text-xs text-gray-400 mt-1 italic">This report is system-assisted and must be reviewed by a qualified medical professional before any clinical decision.</p>
++    </div>
++  );
++}
++
++function Toast({ message, type, onClose }) {
++  useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t); }, [onClose]);
++  const colors = { success: "bg-emerald-600", error: "bg-red-600", warning: "bg-amber-500" };
++  return (
++    <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl text-white shadow-xl flex items-center gap-3 ${colors[type] || "bg-gray-700"}`}>
++      <span className="text-sm font-medium">{message}</span>
++      <button onClick={onClose} className="font-bold text-xl leading-none opacity-80 hover:opacity-100">&times;</button>
++    </div>
++  );
++}
++
++const emptyForm = {
++  testId: "", patientName: "", patientId: "", patientGender: "", patientAge: "",
++  testName: "", category: "", priority: "Routine", requestedBy: "", requestDate: "",
++  resultDate: "", status: "Pending", result: "", profileResults: {}, resultStatus: "",
++  referenceRange: "", interpretation: "", notes: "", previousReportId: "",
++  previousProfileResults: {}, aiClinicalNotes: null, aiDifferentialSuggestions: [],
++  aiRiskPrediction: null, aiComparisonSummary: null, labTechnicianName: "",
++  verifyingDoctor: "", sampleType: "", sampleBarcode: "", sampleCollectedAt: "",
++  sampleReceivedAt: "", sampleProcessedAt: "", attachments: [],
++};
++
++function genId() { return "LAB-" + Date.now().toString().slice(-6); }
++function today() { return new Date().toISOString().split("T")[0]; }
++
++function readArrayFromStorage(key) {
++  try { const v = JSON.parse(localStorage.getItem(key)); return Array.isArray(v) ? v : []; } catch { return []; }
++}
++function dispatchPatientsUpdate() { window.dispatchEvent(new Event("patientsUpdated")); }
++
++export default function LaboratoryPage({ darkMode, initialTab }) {
++  const [searchParams, setSearchParams] = useSearchParams();
++  const urlTab = searchParams.get("tab") || initialTab || "lab";
++  const [activeTab, setActiveTab] = useState(urlTab);
++
++  useEffect(() => {
++    if (initialTab) {
++      setActiveTab(initialTab);
++    }
++  }, [initialTab]);
++
++  useEffect(() => {
++    const tabFromUrl = searchParams.get("tab");
++    if (tabFromUrl && tabFromUrl !== activeTab) {
++      setActiveTab(tabFromUrl);
++    }
++  }, [searchParams]);
++
++  const handleTabChange = (tabId) => {
++    setActiveTab(tabId);
++    setSearchParams({ tab: tabId });
++  };
++
++  const [tests, setTests] = useState([]);
++  const [patients, setPatients] = useState([]);
++  const [form, setForm] = useState(emptyForm);
++  const [editingId, setEditingId] = useState(null);
++  const [showForm, setShowForm] = useState(false);
++  const [search, setSearch] = useState("");
++  const [filterCategory, setFilterCategory] = useState("All");
++  const [filterStatus, setFilterStatus] = useState("All");
++  const [filterPriority, setFilterPriority] = useState("All");
++  const [toast, setToast] = useState(null);
++  const [isLoaded, setIsLoaded] = useState(false);
++  const [viewingTest, setViewingTest] = useState(null);
++
++  useEffect(() => { setTests(readArrayFromStorage(STORAGE_KEY)); setPatients(readArrayFromStorage(PATIENTS_KEY)); setIsLoaded(true); }, []);
++  useEffect(() => {
++    const load = () => setPatients(readArrayFromStorage(PATIENTS_KEY));
++    window.addEventListener("patientsUpdated", load);
++    window.addEventListener("storage", load);
++    return () => { window.removeEventListener("patientsUpdated", load); window.removeEventListener("storage", load); };
++  }, []);
++  useEffect(() => { if (isLoaded) localStorage.setItem(STORAGE_KEY, JSON.stringify(tests)); }, [tests, isLoaded]);
++
++  const showToast = useCallback((message, type = "success") => setToast({ message, type }), []);
++
++  function handleChange(e) {
++    const { name, value } = e.target;
++    setForm((prev) => {
++      const updated = { ...prev, [name]: value };
++      if (name === "result") {
++        const j = judgeLabResult(updated.testName, value);
++        updated.resultStatus = j.status; updated.referenceRange = j.referenceRange; updated.interpretation = j.interpretation;
++      }
++      if (name === "testName") { updated.profileResults = {}; updated.result = ""; updated.resultStatus = ""; updated.referenceRange = ""; updated.interpretation = ""; }
++      return updated;
++    });
++  }
++
++  function handleProfileResultChange(profileKey, testName, value) {
++    const judgement = judgeTestResult(profileKey, testName, value, form.patientGender);
++    setForm((prev) => ({
++      ...prev,
++      profileResults: { ...prev.profileResults, [testName]: { value, unit: judgement.unit, status: judgement.status, referenceRange: judgement.referenceRange, interpretation: judgement.interpretation, isCritical: judgement.isCritical } },
++    }));
++  }
++
++  function openAddForm() { setForm({ ...emptyForm, testId: genId(), requestDate: today() }); setEditingId(null); setShowForm(true); }
++  function openEditForm(test) { setForm({ ...emptyForm, ...test }); setEditingId(test.testId); setShowForm(true); }
++  function closeForm() { setForm(emptyForm); setEditingId(null); setShowForm(false); }
++
++  function validate() {
++    if (!form.patientId) return "Please select a patient.";
++    if (!form.patientName.trim()) return "Patient Name is required.";
++    if (!form.testName.trim()) return "Test Name is required.";
++    if (!form.category) return "Category is required.";
++    if (!form.requestedBy.trim()) return "Requested By is required.";
++    if (!form.requestDate) return "Request Date is required.";
++    return null;
++  }
++
++  function syncLabEventToPatientTimeline(test) {
++    const savedPatients = readArrayFromStorage(PATIENTS_KEY);
++    const updatedPatients = savedPatients.map((patient) => {
++      const isSame = patient.id === test.patientId || patient.name?.toLowerCase() === test.patientName?.toLowerCase();
++      if (!isSame) return patient;
++      const timeline = patient.timeline || [];
++      const ev = { id: `TL-${test.testId}`, labTestId: test.testId, date: test.resultDate || test.requestDate || today(), type: "Lab Test", title: `${test.testName} - ${test.status}`, details: `Lab test ${test.testId} \u2014 ${test.category}. Priority: ${test.priority}. Status: ${test.status}.` };
++      const exists = timeline.some((e) => e.labTestId === test.testId || e.id === `TL-${test.testId}`);
++      return { ...patient, status: test.status === "Completed" ? patient.status : "Lab Test", timeline: exists ? timeline.map((e) => e.labTestId === test.testId || e.id === `TL-${test.testId}` ? { ...e, ...ev } : e) : [...timeline, ev] };
++    });
++    localStorage.setItem(PATIENTS_KEY, JSON.stringify(updatedPatients));
++    setPatients(updatedPatients);
++    dispatchPatientsUpdate();
++  }
++
++  function handleSubmit() {
++    const error = validate();
++    if (error) { showToast(error, "error"); return; }
++    const savedTest = { ...form, resultDate: form.status === "Completed" && !form.resultDate ? today() : form.resultDate };
++    if (editingId) { setTests((prev) => prev.map((t) => (t.testId === editingId ? savedTest : t))); } else { setTests((prev) => [savedTest, ...prev]); }
++    syncLabEventToPatientTimeline(savedTest);
++    showToast(editingId ? "Lab test updated and patient timeline synced." : "Lab test added and patient timeline synced.", "success");
++    closeForm();
++  }
++
++  function handleDelete(testId) {
++    if (!window.confirm("Delete this lab test record?")) return;
++    setTests((prev) => prev.filter((t) => t.testId !== testId));
++    showToast("Record deleted.", "warning");
++  }
++
++  function updateStatus(testId, newStatus) {
++    setTests((prev) => prev.map((test) => {
++      if (test.testId !== testId) return test;
++      const updated = { ...test, status: newStatus, resultDate: newStatus === "Completed" ? today() : test.resultDate };
++      syncLabEventToPatientTimeline(updated);
++      return updated;
++    }));
++    showToast(`Status updated to ${newStatus}.`, "success");
++  }
++
++  const filtered = useMemo(() => tests.filter((test) => {
++    const term = search.toLowerCase();
++    return (test.patientName?.toLowerCase().includes(term) || test.testName?.toLowerCase().includes(term) || test.testId?.toLowerCase().includes(term) || test.requestedBy?.toLowerCase().includes(term)) && (filterCategory === "All" || test.category === filterCategory) && (filterStatus === "All" || test.status === filterStatus) && (filterPriority === "All" || test.priority === filterPriority);
++  }), [tests, search, filterCategory, filterStatus, filterPriority]);
++
++  const stats = useMemo(() => ({
++    pending: tests.filter((t) => t.status === "Pending").length,
++    inProgress: tests.filter((t) => t.status === "In Progress").length,
++    completed: tests.filter((t) => t.status === "Completed").length,
++    emergency: tests.filter((t) => t.priority === "Emergency").length,
++    critical: tests.filter((t) => t.profileResults && Object.values(t.profileResults).some((r) => r?.isCritical)).length,
++  }), [tests]);
++
++  const activeProfileDef = LAB_MASTER_LIBRARY[form.testName];
++  const formHasCritical = useMemo(() => Object.values(form.profileResults || {}).some((r) => r?.isCritical), [form.profileResults]);
++
++  const statusColor = { Pending: "bg-yellow-100 text-yellow-700", "In Progress": "bg-blue-100 text-blue-700", Completed: "bg-green-100 text-green-700", Cancelled: "bg-gray-100 text-gray-500" };
++  const priorityColor = { Routine: "bg-gray-100 text-gray-600", Urgent: "bg-orange-100 text-orange-700", Emergency: "bg-red-100 text-red-700" };
++
++  return (
++    <div className="min-h-screen bg-slate-50">
++      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
++        <PageHeader
++          title="Laboratory & Imaging Services"
++          subtitle="Integrated diagnostics, clinical pathology, test requests & radiology imaging"
++          icon="&#x1F52C;"
++          actions={activeTab === "lab" ? <ActionButton onClick={openAddForm} label="New Test Request" variant="primary" size="md" /> : null}
++        />
++
++        {/* Diagnostic Sub-Navigation */}
++        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border mb-6 bg-white border-slate-200 shadow-sm w-fit">
++          <button
++            onClick={() => handleTabChange("lab")}
++            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
++              activeTab === "lab"
++                ? "bg-indigo-600 text-white shadow"
++                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
++            }`}
++          >
++            <span>🧪</span>
++            <span>Lab Tests & Diagnostics</span>
++          </button>
++          <button
++            onClick={() => handleTabChange("xray")}
++            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
++              activeTab === "xray"
++                ? "bg-indigo-600 text-white shadow"
++                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
++            }`}
++          >
++            <span>🩻</span>
++            <span>X-Ray & Medical Imaging</span>
++          </button>
++        </div>
++
++        {activeTab === "xray" ? (
++          <div className="rounded-2xl">
++            <XRaySharingPage darkMode={darkMode} />
++          </div>
++        ) : (
++          <>
++            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
++              <StatCard label="Pending" value={stats.pending} icon="hourglass" color="yellow" />
++              <StatCard label="In Progress" value={stats.inProgress} icon="sync" color="blue" />
++              <StatCard label="Completed" value={stats.completed} icon="check" color="emerald" />
++              <StatCard label="Emergency" value={stats.emergency} icon="alert" color="rose" />
++              <StatCard label="Critical" value={stats.critical} icon="warning" color="rose" />
++            </div>
++
++        {stats.emergency > 0 && (
++          <div className="bg-red-50 border-l-4 border-red-500 text-red-800 px-4 py-3 rounded-lg mb-3 text-sm flex items-center gap-2">
++            <strong className="text-base">&#x1F6A8;</strong> <strong>{stats.emergency} emergency test(s)</strong> require immediate attention!
++          </div>
++        )}
++        {stats.critical > 0 && (
++          <div className="bg-red-100 border-l-4 border-red-700 text-red-900 px-4 py-3 rounded-lg mb-4 text-sm flex items-center gap-2">
++            <strong>&#x26A0;&#xFE0F;</strong> <strong>{stats.critical} test(s)</strong> have CRITICAL values &mdash; immediate physician notification required!
++          </div>
++        )}
++
++        <div className="flex flex-col sm:flex-row gap-3 mb-5 flex-wrap">
++          <SearchInput value={search} onChange={setSearch} placeholder="Search patient, test, doctor..." />
++          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
++            <option value="All">All Categories</option>
++            {TEST_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
++          </select>
++          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
++            <option value="All">All Statuses</option>
++            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
++          </select>
++          <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className="px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400">
++            <option value="All">All Priorities</option>
++            {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
++          </select>
++        </div>
++
++        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/70 overflow-hidden">
++          <div className="overflow-x-auto">
++            <table className="w-full text-sm text-left">
++              <thead className="bg-slate-50 text-slate-500 uppercase text-xs tracking-wider">
++                <tr>
++                  <th className="px-4 py-3.5 font-semibold">Test ID</th>
++                  <th className="px-4 py-3.5 font-semibold">Patient</th>
++                  <th className="px-4 py-3.5 font-semibold">Profile</th>
++                  <th className="px-4 py-3.5 font-semibold">Category</th>
++                  <th className="px-4 py-3.5 font-semibold">Priority</th>
++                  <th className="px-4 py-3.5 font-semibold">Doctor</th>
++                  <th className="px-4 py-3.5 font-semibold">Date</th>
++                  <th className="px-4 py-3.5 font-semibold">Status</th>
++                  <th className="px-4 py-3.5 font-semibold">Critical</th>
++                  <th className="px-4 py-3.5 font-semibold">Actions</th>
++                </tr>
++              </thead>
++              <tbody className="divide-y divide-slate-100">
++                {filtered.length === 0 ? (
++                  <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-400">No lab tests found. Click "New Test Request" to add one.</td></tr>
++                ) : (
++                  filtered.map((test) => {
++                    const hasCrit = test.profileResults && Object.values(test.profileResults).some((r) => r?.isCritical);
++                    return (
++                      <tr key={test.testId} className={`${hasCrit ? "bg-red-50" : test.priority === "Emergency" ? "bg-orange-50" : "hover:bg-slate-50"} transition-colors`}>
++                        <td className="px-4 py-3 font-mono text-slate-500 text-xs">{test.testId}</td>
++                        <td className="px-4 py-3">
++                          <p className="font-medium text-slate-800">{test.patientName}</p>
++                          <p className="text-xs text-slate-400">{test.patientId}</p>
++                        </td>
++                        <td className="px-4 py-3">
++                          <div className="flex items-center gap-1.5">
++                            {LAB_MASTER_LIBRARY[test.testName] && <span className="text-base">{LAB_MASTER_LIBRARY[test.testName].icon}</span>}
++                            <span className="font-medium text-slate-700">{test.testName}</span>
++                          </div>
++                        </td>
++                        <td className="px-4 py-3 text-slate-600 text-xs">{test.category}</td>
++                        <td className="px-4 py-3"><StatusBadge status={test.priority} /></td>
++                        <td className="px-4 py-3 text-slate-600 text-sm">Dr. {test.requestedBy}</td>
++                        <td className="px-4 py-3 text-slate-500 text-xs">{test.requestDate}</td>
++                        <td className="px-4 py-3">
++                          <select value={test.status} onChange={(e) => updateStatus(test.testId, e.target.value)} className={`px-2 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer ${statusColor[test.status]}`}>
++                            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
++                          </select>
++                        </td>
++                        <td className="px-4 py-3">{hasCrit && <span className="px-2 py-1 bg-red-600 text-white text-xs font-bold rounded-full">Crit</span>}</td>
++                        <td className="px-4 py-3">
++                          <div className="flex gap-1.5 flex-wrap">
++                            <ActionButton onClick={() => setViewingTest(test)} label="View" variant="ghost" size="sm" />
++                            <ActionButton onClick={() => openEditForm(test)} label="Edit" variant="ghost" size="sm" />
++                            <ActionButton onClick={() => downloadLabReportPDF(test)} label="PDF" variant="ghost" size="sm" />
++                            <ActionButton onClick={() => handleDelete(test.testId)} label="Delete" variant="ghost" size="sm" />
++                          </div>
++                        </td>
++                      </tr>
++                    );
++                  })
++                )}
++              </tbody>
++            </table>
++          </div>
++          {filtered.length > 0 && <div className="px-4 py-2.5 text-xs text-slate-400 border-t border-slate-100 bg-slate-50/50">Showing {filtered.length} of {tests.length} test(s)</div>}
++        </div>
++
++        {showForm && (
++          <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={closeForm}>
++            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
++              <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-t-2xl">
++                <h2 className="text-lg font-bold text-white">{editingId ? "Edit Lab Test" : "New Test Request"}</h2>
++                <button onClick={closeForm} className="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
++              </div>
++              <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Test ID</label>
++                  <input type="text" value={form.testId} disabled className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-100 cursor-not-allowed text-slate-500" />
++                </div>
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Patient *</label>
++                  <select value={form.patientId} onChange={(e) => {
++                    const patient = patients.find((p) => p.id === e.target.value);
++                    setForm((prev) => ({ ...prev, patientId: patient?.id || "", patientName: patient?.name || "", patientGender: patient?.gender || "", patientAge: patient?.age || "" }));
++                  }} className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
++                    <option value="">Select Patient</option>
++                    {patients.map((p) => <option key={p.id} value={p.id}>{p.id} \u2013 {p.name}</option>)}
++                  </select>
++                </div>
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Patient ID</label>
++                  <input type="text" value={form.patientId} disabled className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-100 cursor-not-allowed text-slate-500" />
++                </div>
++                {form.patientGender && (
++                  <div className="sm:col-span-2 rounded-lg bg-indigo-50 border border-indigo-200 px-4 py-2 text-xs text-indigo-700 flex gap-4">
++                    <span>Gender: <strong>{form.patientGender}</strong></span>
++                    {form.patientAge && <span>Age: <strong>{form.patientAge} yrs</strong></span>}
++                    <span className="text-indigo-500 italic">(Gender-specific reference ranges will be applied where available)</span>
++                  </div>
++                )}
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Lab Profile *</label>
++                  <select name="testName" value={form.testName} onChange={handleChange} className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
++                    <option value="">Select Lab Profile...</option>
++                    {Object.entries(LAB_MASTER_LIBRARY).map(([key, def]) => <option key={key} value={key}>{def.icon} {def.label}</option>)}
++                  </select>
++                </div>
++                {activeProfileDef && (
++                  <div className="sm:col-span-2 rounded-lg bg-indigo-50 border border-indigo-200 px-4 py-3 flex items-start gap-3">
++                    <span className="text-2xl">{activeProfileDef.icon}</span>
++                    <div>
++                      <p className="text-sm font-semibold text-indigo-800">{activeProfileDef.label}</p>
++                      <p className="text-xs text-indigo-600 mt-0.5">Sample: {activeProfileDef.sampleType}</p>
++                      <p className="text-xs text-indigo-500 mt-1">Tests included: {Object.keys(activeProfileDef.tests).join(", ")}</p>
++                    </div>
++                  </div>
++                )}
++                {formHasCritical && <div className="sm:col-span-2"><CriticalAlertBanner profileResults={form.profileResults} /></div>}
++                {activeProfileDef && (
++                  <div className="sm:col-span-2">
++                    <h3 className="font-semibold text-slate-800 mb-3">Enter Test Values</h3>
++                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
++                      {Object.entries(activeProfileDef.tests).map(([testName, refDef]) => {
++                        const result = form.profileResults?.[testName] || {};
++                        const badgeClass = statusBadgeClass[result.status] || "bg-gray-100 text-gray-600";
++                        return (
++                          <div key={testName} className={`rounded-xl border p-3 ${result.status?.startsWith("Critical") ? "bg-red-50 border-red-300" : isAbnormal(result) ? "bg-yellow-50 border-yellow-200" : "bg-slate-50 border-slate-200"}`}>
++                            <div className="flex items-center justify-between mb-2">
++                              <label className="text-xs font-semibold text-slate-700 leading-tight">{refDef.professionalName || testName}</label>
++                              <span className="text-xs text-slate-400">{refDef.unit || ""}</span>
++                            </div>
++                            <input type="number" value={result.value || ""} onChange={(e) => handleProfileResultChange(form.testName, testName, e.target.value)} placeholder={`${refDef.min}\u2013${refDef.max === 999 ? "+" : refDef.max} ${refDef.unit || ""}`} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
++                            {result.status && (
++                              <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
++                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>{result.status}</span>
++                                <span className="text-xs text-slate-400">Ref: {result.referenceRange || <>&mdash;</>}</span>
++                              </div>
++                            )}
++                            {result.interpretation && result.status !== "Within Normal Limits" && result.status !== "Normal" && <p className="mt-1 text-xs text-slate-500 italic">{result.interpretation}</p>}
++                          </div>
++                        );
++                      })}
++                    </div>
++                    <LabSummaryPanel profileKey={form.testName} profileResults={form.profileResults} previousResults={form.previousProfileResults} />
++                  </div>
++                )}
++                {!activeProfileDef && (
++                  <div className="sm:col-span-2 flex flex-col gap-2">
++                    <label className="text-sm font-medium text-slate-700">Result Value</label>
++                    <input type="number" name="result" value={form.result} onChange={handleChange} placeholder="Enter numeric value" className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
++                    {form.result !== "" && (
++                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
++                        <div className="flex items-center gap-2 mb-1">
++                          <span className="font-semibold text-sm">Auto Result:</span>
++                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold text-white ${form.resultStatus === "Within Normal Limits" || form.resultStatus === "Normal" ? "bg-green-600" : form.resultStatus.includes("Decreased") ? "bg-yellow-500" : form.resultStatus.includes("Critical") ? "bg-red-600" : "bg-orange-500"}`}>{form.resultStatus}</span>
++                        </div>
++                        <p className="text-sm"><strong>Reference:</strong> {form.referenceRange}</p>
++                        <p className="text-sm mt-1"><strong>Interpretation:</strong> {form.interpretation}</p>
++                      </div>
++                    )}
++                  </div>
++                )}
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Category *</label>
++                  <select name="category" value={form.category} onChange={handleChange} className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
++                    <option value="">Select category...</option>
++                    {TEST_CATEGORIES.map((o) => <option key={o} value={o}>{o}</option>)}
++                  </select>
++                </div>
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Priority</label>
++                  <select name="priority" value={form.priority} onChange={handleChange} className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
++                    {PRIORITY_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
++                  </select>
++                </div>
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Requested By (Doctor) *</label>
++                  <input type="text" name="requestedBy" value={form.requestedBy} onChange={handleChange} placeholder="Doctor name" className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
++                </div>
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Request Date *</label>
++                  <input type="date" name="requestDate" value={form.requestDate} onChange={handleChange} className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
++                </div>
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Result Date</label>
++                  <input type="date" name="resultDate" value={form.resultDate} onChange={handleChange} className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
++                </div>
++                <div className="flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Status</label>
++                  <select name="status" value={form.status} onChange={handleChange} className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
++                    {STATUS_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
++                  </select>
++                </div>
++                <div className="sm:col-span-2 flex flex-col gap-1">
++                  <label className="text-sm font-medium text-slate-700">Doctor Notes</label>
++                  <textarea name="notes" value={form.notes} onChange={handleChange} placeholder="Any additional notes or clinical observations..." rows={3} className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
++                </div>
++              </div>
++              <div className="flex justify-end gap-3 px-6 py-4 border-t bg-slate-50 rounded-b-2xl">
++                <ActionButton onClick={closeForm} label="Cancel" variant="default" size="md" />
++                <ActionButton onClick={handleSubmit} label={editingId ? "Save Changes" : "Add Test"} variant="primary" size="md" />
++              </div>
++            </div>
++          </div>
++        )}
++
++        {viewingTest && (
++          <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onClick={() => setViewingTest(null)}>
++            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
++              <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-indigo-700 to-indigo-500 rounded-t-2xl">
++                <div>
++                  <h2 className="text-lg font-bold text-white">Laboratory Result Report</h2>
++                  <p className="text-indigo-200 text-xs mt-0.5">{viewingTest.testId} &mdash; {viewingTest.testName} &mdash; Generated: {new Date().toLocaleString("en-IN", { hour12:true, day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</p>
++                </div>
++                <button onClick={() => setViewingTest(null)} className="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
++              </div>
++              <div className="px-6 py-5 space-y-6">
++                <CriticalAlertBanner profileResults={viewingTest.profileResults} />
++                <section>
++                  <SectionHeading icon="&#x1F464;" title="Patient Details" />
++                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
++                    {[["Report ID", viewingTest.testId],["Patient Name", viewingTest.patientName],["Patient ID", viewingTest.patientId || "\u2014"],["Gender", viewingTest.patientGender || "\u2014"],["Profile", viewingTest.testName],["Category", viewingTest.category],["Priority", viewingTest.priority],["Status", viewingTest.status],["Ordered By", `Dr. ${viewingTest.requestedBy}`],["Request Date", viewingTest.requestDate],["Result Date", viewingTest.resultDate || "\u2014"],["Age", viewingTest.patientAge ? `${viewingTest.patientAge} yrs` : "\u2014"]].map(([k, v]) => (
++                      <div key={k} className="bg-slate-50 rounded-lg px-3 py-2">
++                        <p className="text-xs text-slate-400 font-medium">{k}</p>
++                        <p className="text-sm text-slate-800 font-semibold mt-0.5">{v}</p>
++                      </div>
++                    ))}
++                  </div>
++                </section>
++                <section>
++                  <SectionHeading icon="&#x1F9EA;" title="Sample Information" />
++                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
++                    {[["Sample Type", LAB_MASTER_LIBRARY[viewingTest.testName]?.sampleType || viewingTest.sampleType || "\u2014"],["Barcode", viewingTest.sampleBarcode || "\u2014"],["Collected At", viewingTest.sampleCollectedAt || "\u2014"],["Received At", viewingTest.sampleReceivedAt || "\u2014"],["Processed At", viewingTest.sampleProcessedAt || "\u2014"],["Lab Technician", viewingTest.labTechnicianName || "\u2014"],["Verifying Doctor", viewingTest.verifyingDoctor || "\u2014"]].map(([k, v]) => (
++                      <div key={k} className="bg-slate-50 rounded-lg px-3 py-2">
++                        <p className="text-xs text-slate-400 font-medium">{k}</p>
++                        <p className="text-sm text-slate-800 font-semibold mt-0.5">{v}</p>
++                      </div>
++                    ))}
++                  </div>
++                </section>
++                <section>
++                  <SectionHeading icon={LAB_MASTER_LIBRARY[viewingTest.testName]?.icon || "\uD83D\uDD2C"} title="Profile Results" />
++                  <div className="mt-3">
++                    {viewingTest.profileResults && Object.keys(viewingTest.profileResults).length > 0 ? (
++                      <ProfileResultsTable profileResults={viewingTest.profileResults} profileKey={viewingTest.testName} previousResults={viewingTest.previousProfileResults || {}} />
++                    ) : (
++                      <div className="bg-slate-50 rounded-xl p-4 text-slate-700 whitespace-pre-wrap text-sm">{viewingTest.result || "No result entered yet."}</div>
++                    )}
++                  </div>
++                </section>
++                {(() => {
++                  const summary = generateProfileSummary(viewingTest.testName, viewingTest.profileResults, viewingTest.previousProfileResults || {});
++                  return (
++                    <>
++                      {summary.clinicalPatterns.length > 0 && (
++                        <section>
++                          <SectionHeading icon="clinical" title="Clinical Interpretation" />
++                          <div className="mt-3 space-y-2">
++                            {summary.clinicalPatterns.map(({ id, pattern }) => (
++                              <div key={id} className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{pattern}</div>
++                            ))}
++                            <p className="text-xs text-gray-400 italic">Pattern recognition is based on combined parameter analysis. Clinical correlation is mandatory. This does not constitute a medical diagnosis.</p>
++                          </div>
++                        </section>
++                      )}
++                      {viewingTest.profileResults && Object.keys(viewingTest.profileResults).length > 0 && (
++                        <section>
++                          <SectionHeading icon="summary" title="Overall Laboratory Impression" />
++                          <LabSummaryPanel profileKey={viewingTest.testName} profileResults={viewingTest.profileResults} previousResults={viewingTest.previousProfileResults || {}} />
++                        </section>
++                      )}
++                    </>
++                  );
++                })()}
++                {viewingTest.notes && (
++                  <section>
++                    <SectionHeading icon="notes" title="Doctor Notes" />
++                    <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-slate-700 whitespace-pre-wrap">{viewingTest.notes}</div>
++                  </section>
++                )}
++                <section>
++                  <SectionHeading icon="ai" title="AI Doctor Assistant" badge="Coming Soon" />
++                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
++                    {[{ icon:"\uD83D\uDCD1", label:"Automatic Clinical Notes", desc:"AI-generated clinical narrative based on all result parameters." },{ icon:"clinical", label:"Differential Diagnosis Suggestions", desc:"AI-assisted list of possible diagnoses based on laboratory patterns." },{ icon:"trend", label:"Previous Report AI Comparison", desc:"Trend analysis and interpretation across multiple reports." },{ icon:"risk", label:"Disease Risk Prediction", desc:"Risk scores for common conditions based on multi-parameter analysis." }].map(({ icon, label, desc }) => (
++                      <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex gap-3 items-start opacity-60">
++                        <span className="text-xl">{icon}</span>
++                        <div>
++                          <p className="text-sm font-semibold text-slate-700">{label}</p>
++                          <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
++                        </div>
++                      </div>
++                    ))}
++                  </div>
++                </section>
++                <section>
++                  <div className="bg-slate-100 rounded-xl px-4 py-4 text-xs text-slate-500 italic border border-slate-200">
++                    <p className="font-semibold text-slate-600 not-italic mb-1">Laboratory Disclaimer</p>
++                    This report has been generated by MediCare Pro Laboratory Information System and is intended for use by qualified medical professionals only. All results must be interpreted in the appropriate clinical context. Reference ranges are general adult guidelines and may vary with age, gender, and laboratory-specific methodology. Pattern-based interpretations are algorithmic suggestions and do not constitute a medical diagnosis. The attending physician bears final clinical responsibility for all diagnostic and therapeutic decisions. This is a confidential medical document.
++                  </div>
++                </section>
++              </div>
++              <div className="px-6 py-4 border-t flex justify-between items-center bg-slate-50 rounded-b-2xl">
++                <ActionButton onClick={() => downloadLabReportPDF(viewingTest)} label="Download PDF" variant="primary" size="md" />
++                <ActionButton onClick={() => setViewingTest(null)} label="Close" variant="default" size="md" />
++              </div>
++            </div>
++          </div>
++        )}
++          </>
++        )}
++
++        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
++      </div>
++    </div>
++  );
++}
++
++function SectionHeading({ icon, title, badge }) {
++  return (
++    <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
++      <span className="text-base">{icon}</span>
++      <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">{title}</h3>
++      {badge && <span className="ml-auto text-xs bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full font-medium">{badge}</span>}
++    </div>
++  );
++}
+diff --git a/src/pages/PatientRelationsPage.jsx b/src/pages/PatientRelationsPage.jsx
+new file mode 100644
+index 0000000..5151649
+--- /dev/null
++++ b/src/pages/PatientRelationsPage.jsx
+@@ -0,0 +1,277 @@
++// src/pages/PatientRelationsPage.jsx
++// MediCare Pro — Unified Patient Relations Module
++// Consolidates: Overview, Reports, Complaints, and Contact Messages
++import { useState, useEffect, useMemo } from "react";
++import { useSearchParams } from "react-router-dom";
++import ReportsPage from "./ReportsPage";
++import ComplaintsPage from "./ComplaintsPage";
++import ContactPage from "./ContactPage";
++import { PageHeader, StatCard, StatusBadge, ActionButton } from "../components/ui";
++
++export default function PatientRelationsPage({
++  darkMode,
++  appointments = [],
++  addToast = () => {},
++  initialTab,
++}) {
++  const [searchParams, setSearchParams] = useSearchParams();
++  const urlTab = searchParams.get("tab") || initialTab || "overview";
++  const [activeTab, setActiveTab] = useState(urlTab);
++
++  useEffect(() => {
++    if (initialTab) {
++      setActiveTab(initialTab);
++    }
++  }, [initialTab]);
++
++  useEffect(() => {
++    const tabFromUrl = searchParams.get("tab");
++    if (tabFromUrl && tabFromUrl !== activeTab) {
++      setActiveTab(tabFromUrl);
++    }
++  }, [searchParams]);
++
++  const handleTabChange = (tabId) => {
++    setActiveTab(tabId);
++    setSearchParams({ tab: tabId });
++  };
++
++  // Load complaints and contact metrics from localStorage
++  const complaints = useMemo(() => {
++    try {
++      return JSON.parse(localStorage.getItem("complaints") || "[]");
++    } catch {
++      return [];
++    }
++  }, [activeTab]);
++
++  const stats = useMemo(() => {
++    const totalComplaints = complaints.length;
++    const pendingComplaints = complaints.filter(
++      (c) => c.status === "Pending" || !c.status
++    ).length;
++    const inProgressComplaints = complaints.filter(
++      (c) => c.status === "In Progress" || c.status === "Under Review"
++    ).length;
++    const resolvedComplaints = complaints.filter(
++      (c) => c.status === "Resolved" || c.status === "Closed"
++    ).length;
++    const resolutionRate =
++      totalComplaints > 0
++        ? Math.round((resolvedComplaints / totalComplaints) * 100)
++        : 100;
++
++    return {
++      totalComplaints,
++      pendingComplaints,
++      inProgressComplaints,
++      resolvedComplaints,
++      resolutionRate,
++      departmentsActive: 6,
++    };
++  }, [complaints]);
++
++  const tabs = [
++    { id: "overview", label: "Overview", icon: "📊" },
++    { id: "reports", label: "Operational Reports", icon: "📑" },
++    { id: "complaints", label: "Complaints & Grievances", icon: "💬", badge: stats.pendingComplaints },
++    { id: "contact", label: "Contact & Directory", icon: "📞" },
++  ];
++
++  return (
++    <div className={`min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"} py-8 px-4`}>
++      <div className="max-w-7xl mx-auto">
++        <PageHeader
++          title="Patient Relations & Support"
++          subtitle="Unified coordination for operational analytics, grievance management, and department communications"
++          icon="contact"
++        />
++
++        {/* Tab Sub-Navigation */}
++        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl border mb-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm w-fit">
++          {tabs.map((tab) => {
++            const isActive = activeTab === tab.id;
++            return (
++              <button
++                key={tab.id}
++                onClick={() => handleTabChange(tab.id)}
++                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
++                  isActive
++                    ? "bg-cyan-600 text-white shadow"
++                    : darkMode
++                    ? "text-slate-300 hover:bg-slate-800 hover:text-white"
++                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
++                }`}
++              >
++                <span>{tab.icon}</span>
++                <span>{tab.label}</span>
++                {Boolean(tab.badge && tab.badge > 0) && (
++                  <span
++                    className={`ml-1 px-2 py-0.5 text-xs rounded-full font-bold ${
++                      isActive ? "bg-white text-cyan-700" : "bg-amber-500 text-white"
++                    }`}
++                  >
++                    {tab.badge}
++                  </span>
++                )}
++              </button>
++            );
++          })}
++        </div>
++
++        {/* Tab 1: Overview Summary */}
++        {activeTab === "overview" && (
++          <div className="space-y-6">
++            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
++              <StatCard
++                title="Total Grievances"
++                value={stats.totalComplaints}
++                icon="feedback"
++                color="blue"
++                subtitle="Logged patient feedback"
++              />
++              <StatCard
++                title="Pending Review"
++                value={stats.pendingComplaints}
++                icon="alert"
++                color="amber"
++                subtitle="Requires department follow-up"
++              />
++              <StatCard
++                title="Resolved Matters"
++                value={stats.resolvedComplaints}
++                icon="check"
++                color="emerald"
++                subtitle="Closed with patient consent"
++              />
++              <StatCard
++                title="Resolution Rate"
++                value={`${stats.resolutionRate}%`}
++                icon="trend"
++                color="indigo"
++                subtitle="Overall satisfaction index"
++              />
++            </div>
++
++            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
++              {/* Quick Actions & Departmental Status */}
++              <div
++                className={`p-6 rounded-2xl border shadow-sm ${
++                  darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
++                }`}
++              >
++                <h3 className="text-base font-bold mb-3">Service Channels</h3>
++                <p className="text-xs text-slate-500 mb-4">
++                  Direct channels for patient inquiries, grievance escalations, and performance audits.
++                </p>
++                <div className="space-y-2.5">
++                  <button
++                    onClick={() => handleTabChange("complaints")}
++                    className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition text-left"
++                  >
++                    <div>
++                      <p className="text-sm font-semibold">Register New Complaint</p>
++                      <p className="text-xs text-slate-500">Record feedback from patient desk</p>
++                    </div>
++                    <span className="text-cyan-500 font-bold">→</span>
++                  </button>
++
++                  <button
++                    onClick={() => handleTabChange("reports")}
++                    className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition text-left"
++                  >
++                    <div>
++                      <p className="text-sm font-semibold">View Analytics Reports</p>
++                      <p className="text-xs text-slate-500">Hospital financial and operational audit</p>
++                    </div>
++                    <span className="text-cyan-500 font-bold">→</span>
++                  </button>
++
++                  <button
++                    onClick={() => handleTabChange("contact")}
++                    className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition text-left"
++                  >
++                    <div>
++                      <p className="text-sm font-semibold">Department Contacts</p>
++                      <p className="text-xs text-slate-500">Helpline directory and contact dispatch</p>
++                    </div>
++                    <span className="text-cyan-500 font-bold">→</span>
++                  </button>
++                </div>
++              </div>
++
++              {/* Recent Complaints Log Preview */}
++              <div
++                className={`lg:col-span-2 p-6 rounded-2xl border shadow-sm ${
++                  darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
++                }`}
++              >
++                <div className="flex items-center justify-between mb-4">
++                  <div>
++                    <h3 className="text-base font-bold">Recent Grievance Submissions</h3>
++                    <p className="text-xs text-slate-500">Latest active records logged into MediCare Pro</p>
++                  </div>
++                  <ActionButton
++                    label="Open Complaints Desk"
++                    variant="default"
++                    size="sm"
++                    onClick={() => handleTabChange("complaints")}
++                  />
++                </div>
++
++                {complaints.length === 0 ? (
++                  <div className="text-center py-10 text-sm text-slate-500">
++                    No complaints registered in the system. The patient relations queue is clear.
++                  </div>
++                ) : (
++                  <div className="space-y-3">
++                    {complaints.slice(0, 4).map((item) => (
++                      <div
++                        key={item.id}
++                        className={`p-3.5 rounded-xl border flex items-center justify-between ${
++                          darkMode ? "border-slate-800 bg-slate-950/50" : "border-slate-100 bg-slate-50"
++                        }`}
++                      >
++                        <div>
++                          <div className="flex items-center gap-2">
++                            <span className="font-semibold text-sm">{item.subject}</span>
++                            <span className="text-xs font-mono text-cyan-500">{item.ref}</span>
++                          </div>
++                          <p className="text-xs text-slate-500 mt-0.5">
++                            From: {item.name} &bull; Dept: {item.dept || "General"} &bull; {item.date}
++                          </p>
++                        </div>
++                        <StatusBadge status={item.status || "Pending"} />
++                      </div>
++                    ))}
++                  </div>
++                )}
++              </div>
++            </div>
++          </div>
++        )}
++
++        {/* Tab 2: Operational Reports */}
++        {activeTab === "reports" && (
++          <div className="rounded-2xl">
++            <ReportsPage darkMode={darkMode} appointments={appointments} />
++          </div>
++        )}
++
++        {/* Tab 3: Complaints Desk */}
++        {activeTab === "complaints" && (
++          <div className="rounded-2xl">
++            <ComplaintsPage darkMode={darkMode} addToast={addToast} />
++          </div>
++        )}
++
++        {/* Tab 4: Contact Directory */}
++        {activeTab === "contact" && (
++          <div className="rounded-2xl">
++            <ContactPage darkMode={darkMode} />
++          </div>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/pages/PharmacyPage.jsx b/src/pages/PharmacyPage.jsx
+new file mode 100644
+index 0000000..8ba7168
+--- /dev/null
++++ b/src/pages/PharmacyPage.jsx
+@@ -0,0 +1,501 @@
++import { useState, useEffect, useMemo } from "react";
++import { useSearchParams } from "react-router-dom";
++import BarcodeScanner from "../components/BarcodeScanner";
++import Toast from "../components/pharmacy/Toast";
++import MetricCard from "../components/pharmacy/MetricCard";
++import AlertBanner from "../components/pharmacy/AlertBanner";
++import TableRow from "../components/pharmacy/TableRow";
++import MedicineViewModal from "../components/pharmacy/MedicineViewModal";
++import FormModal from "../components/pharmacy/FormModal";
++import EmptyState from "../components/pharmacy/EmptyState";
++import AlertSection from "../components/pharmacy/AlertSection";
++import MedicinesPage from "./MedicinesPage";
++import PharmacyInventoryPage from "./PharmacyInventoryPage";
++import PrescriptionPage from "./pharmacy/PrescriptionPage";
++import {
++  STORAGE_KEY,
++  CATEGORIES,
++  LOW_STOCK_THRESHOLD,
++  EXPIRY_WARNING_DAYS,
++  emptyForm,
++  getStockStatus,
++  getQty,
++  getPrice,
++  getPurchasePrice,
++  formatCurrencyCompact,
++  isExpired,
++  isExpiringSoon,
++  downloadMedicinePDF,
++  exportUtils,
++} from "../components/pharmacy/pharmacyUtils";
++
++export default function PharmacyPage({ darkMode, initialTab }) {
++  const [searchParams, setSearchParams] = useSearchParams();
++  const urlTab = searchParams.get("tab") || initialTab || "overview";
++  const [activeTab, setActiveTab] = useState(urlTab);
++
++  const [showScanner, setShowScanner] = useState(false);
++  const [scannedCode, setScannedCode] = useState("");
++  const [medicines, setMedicines] = useState([]);
++  const [form, setForm] = useState(emptyForm);
++  const [editingId, setEditingId] = useState(null);
++  const [showForm, setShowForm] = useState(false);
++  const [search, setSearch] = useState("");
++  const [filterCategory, setFilterCategory] = useState("All");
++  const [filterStatus, setFilterStatus] = useState("All");
++  const [toast, setToast] = useState(null);
++  const [viewingMedicine, setViewingMedicine] = useState(null);
++  const [dismissedAlerts, setDismissedAlerts] = useState([]);
++
++  useEffect(() => {
++    if (initialTab) {
++      setActiveTab(initialTab);
++    }
++  }, [initialTab]);
++
++  useEffect(() => {
++    const tabFromUrl = searchParams.get("tab");
++    if (tabFromUrl && tabFromUrl !== activeTab) {
++      setActiveTab(tabFromUrl);
++    }
++  }, [searchParams]);
++
++  const handleTabChange = (tabId) => {
++    setActiveTab(tabId);
++    setSearchParams({ tab: tabId });
++  };
++
++  useEffect(() => {
++    try {
++      const saved = localStorage.getItem(STORAGE_KEY);
++      if (saved) setMedicines(JSON.parse(saved));
++    } catch {
++      setMedicines([]);
++    }
++  }, []);
++
++  useEffect(() => {
++    if (medicines.length > 0) {
++      localStorage.setItem(STORAGE_KEY, JSON.stringify(medicines));
++    }
++  }, [medicines]);
++
++  function showToast(msg, type = "success") {
++    setToast({ message: msg, type });
++  }
++
++  function handleChange(e) {
++    const { name, value } = e.target;
++    setForm((prev) => ({ ...prev, [name]: value }));
++  }
++
++  function openAddForm() {
++    setForm(emptyForm);
++    setEditingId(null);
++    setShowForm(true);
++  }
++
++  function openEditForm(med) {
++    setForm({ ...emptyForm, ...med });
++    setEditingId(med.medicineId);
++    setShowForm(true);
++  }
++
++  function closeForm() {
++    setForm(emptyForm);
++    setEditingId(null);
++    setShowForm(false);
++  }
++
++  function validate() {
++    if (!form.medicineId?.trim()) return "Medicine ID is required.";
++    if (!form.name?.trim()) return "Medicine Name is required.";
++    if (!form.category) return "Category is required.";
++    const qty = Number(form.stockQuantity ?? form.quantity ?? "");
++    if (isNaN(qty) || qty < 0) return "Stock Quantity must be a valid non-negative number.";
++    const price = Number(form.sellingPrice ?? form.price ?? "");
++    if (isNaN(price) || price < 0) return "Selling Price must be a valid non-negative number.";
++    if (!form.supplier?.trim()) return "Supplier is required.";
++    if (!form.expiryDate) return "Expiry Date is required.";
++    return null;
++  }
++
++  function handleSubmit() {
++    const error = validate();
++    if (error) {
++      showToast(error, "error");
++      return;
++    }
++    const record = {
++      ...form,
++      price: form.sellingPrice || form.price || "",
++      quantity: form.stockQuantity || form.quantity || "",
++    };
++    if (editingId) {
++      setMedicines((prev) =>
++        prev.map((m) => (m.medicineId === editingId ? record : m))
++      );
++      showToast("Medicine updated successfully.", "success");
++    } else {
++      if (medicines.find((m) => m.medicineId === form.medicineId.trim())) {
++        showToast("A medicine with this ID already exists.", "error");
++        return;
++      }
++      setMedicines((prev) => [...prev, record]);
++      showToast("Medicine added successfully.", "success");
++    }
++    closeForm();
++  }
++
++  function handleDelete(medicineId) {
++    if (!window.confirm("Delete this medicine record? This cannot be undone.")) return;
++    setMedicines((prev) => prev.filter((m) => m.medicineId !== medicineId));
++    showToast("Medicine deleted.", "warning");
++  }
++
++  const stats = useMemo(() => {
++    const total = medicines.length;
++    const low = medicines.filter((m) => getStockStatus(m) === "Low Stock").length;
++    const expired = medicines.filter((m) => getStockStatus(m) === "Expired").length;
++    const expiringSoon = medicines.filter((m) => getStockStatus(m) === "Expiring Soon").length;
++    const outOfStock = medicines.filter((m) => getStockStatus(m) === "Out of Stock").length;
++    const available = medicines.filter((m) => getStockStatus(m) === "Available").length;
++    const inventoryValue = medicines.reduce((sum, m) => sum + getQty(m) * getPrice(m), 0);
++    const inventoryCost = medicines.reduce((sum, m) => sum + getQty(m) * getPurchasePrice(m), 0);
++    const potentialProfit = inventoryValue - inventoryCost;
++    const categoryBreakdown = medicines.reduce((acc, m) => {
++      const c = m.category || "Other";
++      acc[c] = (acc[c] || 0) + 1;
++      return acc;
++    }, {});
++    return {
++      total,
++      low,
++      expired,
++      expiringSoon,
++      outOfStock,
++      available,
++      inventoryValue,
++      inventoryCost,
++      potentialProfit,
++      categoryBreakdown,
++    };
++  }, [medicines]);
++
++  const alertMedicines = useMemo(
++    () => ({
++      expired: medicines.filter((m) => getStockStatus(m) === "Expired"),
++      expiringSoon: medicines.filter((m) => getStockStatus(m) === "Expiring Soon"),
++      lowStock: medicines.filter((m) => getStockStatus(m) === "Low Stock"),
++      outOfStock: medicines.filter((m) => getStockStatus(m) === "Out of Stock"),
++    }),
++    [medicines]
++  );
++
++  const totalAlerts = stats.expired + stats.expiringSoon + stats.low + stats.outOfStock;
++
++  const filtered = useMemo(() => {
++    return medicines.filter((m) => {
++      const term = search.toLowerCase();
++      const matchSearch =
++        !term ||
++        m.name?.toLowerCase().includes(term) ||
++        m.medicineId?.toLowerCase().includes(term) ||
++        m.supplier?.toLowerCase().includes(term) ||
++        m.genericName?.toLowerCase().includes(term) ||
++        m.batchNumber?.toLowerCase().includes(term);
++      const matchCat = filterCategory === "All" || m.category === filterCategory;
++      const matchStatus = filterStatus === "All" || getStockStatus(m) === filterStatus;
++      return matchSearch && matchCat && matchStatus;
++    });
++  }, [medicines, search, filterCategory, filterStatus]);
++
++  const hasActiveFilters = search || filterCategory !== "All" || filterStatus !== "All";
++
++  const tabs = [
++    { id: "overview", label: "Overview", icon: "📊", badge: totalAlerts },
++    { id: "medicines", label: "Medicine Catalogue", icon: "💊" },
++    { id: "inventory", label: "Inventory Management", icon: "📦" },
++    { id: "dispensing", label: "Dispensing & Prescriptions", icon: "📝" },
++  ];
++
++  return (
++    <div className={`min-h-screen ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
++      <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-8">
++        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
++          <div>
++            <div className="flex items-center gap-2 mb-1">
++              <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center">
++                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                  <path
++                    strokeLinecap="round"
++                    strokeLinejoin="round"
++                    strokeWidth={2}
++                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"
++                  />
++                </svg>
++              </div>
++              <h1 className="text-2xl font-black">Pharmacy Module</h1>
++              {totalAlerts > 0 && (
++                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
++                  {totalAlerts} alerts
++                </span>
++              )}
++            </div>
++            <p className="text-slate-500 text-sm">
++              Integrated medicines catalogue, inventory transactions, stock movements, and dispensing.
++            </p>
++          </div>
++          {activeTab === "overview" && (
++            <div className="flex items-center gap-2">
++              <button
++                onClick={() => exportUtils.inventoryPDF(medicines)}
++                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium hover:border-slate-300 transition shadow-sm"
++              >
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3" />
++                </svg>
++                Export
++              </button>
++              <button
++                onClick={() => setShowScanner(true)}
++                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium hover:border-slate-300 transition shadow-sm"
++              >
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m10-16h-4a2 2 0 00-2 2v4m6 10v-4a2 2 0 00-2-2h-4" />
++                </svg>
++                Scan
++              </button>
++              <button
++                onClick={openAddForm}
++                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition shadow-sm"
++              >
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
++                </svg>
++                Add Medicine
++              </button>
++            </div>
++          )}
++        </div>
++
++        {/* Tab Navigation */}
++        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl border mb-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm w-fit">
++          {tabs.map((tab) => {
++            const isActive = activeTab === tab.id;
++            return (
++              <button
++                key={tab.id}
++                onClick={() => handleTabChange(tab.id)}
++                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
++                  isActive
++                    ? "bg-teal-600 text-white shadow-sm"
++                    : darkMode
++                    ? "text-slate-300 hover:bg-slate-800 hover:text-white"
++                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
++                }`}
++              >
++                <span>{tab.icon}</span>
++                <span>{tab.label}</span>
++                {Boolean(tab.badge && tab.badge > 0) && (
++                  <span
++                    className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-xs font-bold ${
++                      isActive ? "bg-white text-teal-700" : "bg-red-500 text-white"
++                    }`}
++                  >
++                    {tab.badge}
++                  </span>
++                )}
++              </button>
++            );
++          })}
++        </div>
++
++        {/* TAB 1: OVERVIEW */}
++        {activeTab === "overview" && (
++          <div className="space-y-6">
++            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
++              <MetricCard label="Total Medicines" value={stats.total} icon="📦" color="teal" sub={`${stats.available} available`} />
++              <MetricCard label="Inventory Value" value={formatCurrencyCompact(stats.inventoryValue)} icon="💰" color="emerald" sub="At selling price" />
++              <MetricCard label="Inventory Cost" value={formatCurrencyCompact(stats.inventoryCost)} icon="🏷️" color="blue" sub="At purchase price" />
++              <MetricCard label="Potential Profit" value={formatCurrencyCompact(stats.potentialProfit)} icon="📈" color="violet" sub="Sell - Buy (full stock)" alert={stats.potentialProfit < 0} />
++              <MetricCard label="Low Stock" value={stats.low} icon="⚠️" color="amber" sub={`≤${LOW_STOCK_THRESHOLD} units`} alert={stats.low > 0} />
++              <MetricCard label="Expired" value={stats.expired} icon="🚫" color="red" sub="Needs removal" alert={stats.expired > 0} />
++              <MetricCard label="Expiring Soon" value={stats.expiringSoon} icon="⏳" color="orange" sub={`Within ${EXPIRY_WARNING_DAYS} days`} alert={stats.expiringSoon > 0} />
++              <MetricCard label="Out of Stock" value={stats.outOfStock} icon="❌" color="slate" sub="Zero units" alert={stats.outOfStock > 0} />
++            </div>
++
++            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
++              <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4">Inventory by Category</h3>
++              <div className="space-y-3">
++                {Object.entries(stats.categoryBreakdown)
++                  .sort((a, b) => b[1] - a[1])
++                  .map(([cat, count]) => {
++                    const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
++                    return (
++                      <div key={cat} className="flex items-center gap-3">
++                        <span className="text-xs text-slate-500 w-36 truncate">{cat}</span>
++                        <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
++                          <div className="bg-teal-500 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
++                        </div>
++                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 w-8 text-right">
++                          {count}
++                        </span>
++                      </div>
++                    );
++                  })}
++                {Object.keys(stats.categoryBreakdown).length === 0 && (
++                  <p className="text-slate-400 text-sm text-center py-4">No data yet. Add medicines to see analytics.</p>
++                )}
++              </div>
++            </div>
++
++            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
++              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
++                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Stock Health</p>
++                <div className="space-y-2 text-sm">
++                  <div className="flex justify-between">
++                    <span className="text-slate-600 dark:text-slate-300">Available</span>
++                    <span className="font-semibold text-emerald-600">{stats.available}</span>
++                  </div>
++                  <div className="flex justify-between">
++                    <span className="text-slate-600 dark:text-slate-300">Low Stock</span>
++                    <span className="font-semibold text-amber-600">{stats.low}</span>
++                  </div>
++                  <div className="flex justify-between">
++                    <span className="text-slate-600 dark:text-slate-300">Out of Stock</span>
++                    <span className="font-semibold text-red-600">{stats.outOfStock}</span>
++                  </div>
++                </div>
++              </div>
++              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
++                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Expiry Status</p>
++                <div className="space-y-2 text-sm">
++                  <div className="flex justify-between">
++                    <span className="text-slate-600 dark:text-slate-300">Valid</span>
++                    <span className="font-semibold text-emerald-600">
++                      {medicines.filter((m) => !isExpired(m.expiryDate) && !isExpiringSoon(m.expiryDate)).length}
++                    </span>
++                  </div>
++                  <div className="flex justify-between">
++                    <span className="text-slate-600 dark:text-slate-300">Expiring Soon</span>
++                    <span className="font-semibold text-orange-600">{stats.expiringSoon}</span>
++                  </div>
++                  <div className="flex justify-between">
++                    <span className="text-slate-600 dark:text-slate-300">Expired</span>
++                    <span className="font-semibold text-red-600">{stats.expired}</span>
++                  </div>
++                </div>
++              </div>
++              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
++                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Profit Overview</p>
++                <div className="space-y-2 text-sm">
++                  <div className="flex justify-between">
++                    <span className="text-slate-600 dark:text-slate-300">Inventory Cost</span>
++                    <span className="font-semibold">{formatCurrencyCompact(stats.inventoryCost)}</span>
++                  </div>
++                  <div className="flex justify-between">
++                    <span className="text-slate-600 dark:text-slate-300">Sell Value</span>
++                    <span className="font-semibold">{formatCurrencyCompact(stats.inventoryValue)}</span>
++                  </div>
++                  <div className="flex justify-between border-t border-slate-100 dark:border-slate-800 pt-2 mt-2">
++                    <span className="font-semibold">Potential Profit</span>
++                    <span className={`font-bold ${stats.potentialProfit >= 0 ? "text-emerald-600" : "text-red-600"}`}>
++                      {formatCurrencyCompact(stats.potentialProfit)}
++                    </span>
++                  </div>
++                </div>
++              </div>
++            </div>
++
++            {totalAlerts > 0 && (
++              <div className="space-y-4">
++                <h3 className="text-base font-bold">Actionable Stock Alerts</h3>
++                {alertMedicines.expired.length > 0 && (
++                  <AlertSection
++                    title="Expired Medicines"
++                    color="red"
++                    icon="🚫"
++                    medicines={alertMedicines.expired}
++                    badge={`${alertMedicines.expired.length} medicines`}
++                    description="These medicines have passed their expiry date and must be removed from circulation immediately."
++                    onEdit={openEditForm}
++                    onDelete={handleDelete}
++                    onView={setViewingMedicine}
++                  />
++                )}
++                {alertMedicines.expiringSoon.length > 0 && (
++                  <AlertSection
++                    title="Expiring Within 30 Days"
++                    color="orange"
++                    icon="⏳"
++                    medicines={alertMedicines.expiringSoon}
++                    badge={`${alertMedicines.expiringSoon.length} medicines`}
++                    description="These medicines will expire within 30 days."
++                    onEdit={openEditForm}
++                    onDelete={handleDelete}
++                    onView={setViewingMedicine}
++                  />
++                )}
++                {alertMedicines.lowStock.length > 0 && (
++                  <AlertSection
++                    title="Low Stock"
++                    color="amber"
++                    icon="⚠️"
++                    medicines={alertMedicines.lowStock}
++                    badge={`${alertMedicines.lowStock.length} medicines`}
++                    description={`Stock quantity is ≤${LOW_STOCK_THRESHOLD} units.`}
++                    onEdit={openEditForm}
++                    onDelete={handleDelete}
++                    onView={setViewingMedicine}
++                  />
++                )}
++              </div>
++            )}
++          </div>
++        )}
++
++        {/* TAB 2: MEDICINES CATALOGUE */}
++        {activeTab === "medicines" && (
++          <div className="rounded-2xl">
++            <MedicinesPage darkMode={darkMode} />
++          </div>
++        )}
++
++        {/* TAB 3: INVENTORY MANAGEMENT */}
++        {activeTab === "inventory" && (
++          <div className="rounded-2xl">
++            <PharmacyInventoryPage />
++          </div>
++        )}
++
++        {/* TAB 4: DISPENSING & PRESCRIPTIONS */}
++        {activeTab === "dispensing" && (
++          <div className="rounded-2xl">
++            <PrescriptionPage darkMode={darkMode} />
++          </div>
++        )}
++      </div>
++
++      {viewingMedicine && (
++        <MedicineViewModal medicine={viewingMedicine} onClose={() => setViewingMedicine(null)} onEdit={openEditForm} />
++      )}
++      {showForm && (
++        <FormModal form={form} editingId={editingId} onChange={handleChange} onSubmit={handleSubmit} onClose={closeForm} />
++      )}
++      {showScanner && (
++        <BarcodeScanner
++          onScan={(code) => {
++            setScannedCode(code);
++            setShowScanner(false);
++            setForm((prev) => ({ ...prev, medicineId: code, barcode: code }));
++            openAddForm();
++            showToast(`Barcode scanned: ${code}`, "success");
++          }}
++          onClose={() => setShowScanner(false)}
++        />
++      )}
++      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
++    </div>
++  );
++}
+diff --git a/src/pages/pharmacy/PrescriptionPage.jsx b/src/pages/pharmacy/PrescriptionPage.jsx
+new file mode 100644
+index 0000000..8122bb1
+--- /dev/null
++++ b/src/pages/pharmacy/PrescriptionPage.jsx
+@@ -0,0 +1,645 @@
++// src/pages/PrescriptionPage.jsx
++// MediCare Pro — Prescription & Pharmacy Management
++// Phase 6 Part 2 — localStorage persistence, QR payload, rule-based engine
++
++import { useState, useEffect, useMemo, useCallback } from "react";
++import PrescriptionBuilder from "../../components/pharmacy/PrescriptionBuilder";
++
++// ─── QR Payload Builder ───────────────────────────────────────────────────────
++const buildQRPayload = (prescription, medicines) => {
++  const payload = {
++    rxId:      prescription.prescription_id,
++    patId:     prescription.patient_id,
++    patient:   prescription.patient_name,
++    doctor:    prescription.doctor_name || "—",
++    date:      prescription.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
++    diagnosis: prescription.diagnosis || "",
++    drugs:     medicines.map((m) => ({
++      name: m.medicine_name,
++      dose: m.dosage_strength,
++      freq: m.frequency,
++      dur:  m.duration,
++    })),
++  };
++  return JSON.stringify(payload);
++};
++
++// ─── Status helpers ────────────────────────────────────────────────────────────
++const STATUS_COLORS = {
++  Active:     "bg-green-100 text-green-700",
++  Dispensed:  "bg-blue-100 text-blue-700",
++  Cancelled:  "bg-red-100 text-red-700",
++  Expired:    "bg-slate-200 text-slate-500",
++};
++
++const STATUSES = ["Active", "Dispensed", "Cancelled", "Expired"];
++
++const emptyForm = () => ({
++  patient_id:    "",
++  patient_name:  "",
++  doctor_name:   "",
++  department:    "",
++  diagnosis:     "",
++  notes:         "",
++  status:        "Active",
++  medicines:     [],
++});
++
++// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
++export default function PrescriptionPage({ darkMode }) {
++  const [prescriptions, setPrescriptions] = useState(() => {
++    try {
++      return JSON.parse(localStorage.getItem("prescriptions") || "[]");
++    } catch { return []; }
++  });
++
++  const [patients, setPatients] = useState(() => {
++    try {
++      return JSON.parse(localStorage.getItem("patients") || "[]");
++    } catch { return []; }
++  });
++
++  const [showForm, setShowForm]             = useState(false);
++  const [form, setForm]                     = useState(emptyForm());
++  const [viewRx, setViewRx]                 = useState(null);   // prescription detail modal
++  const [search, setSearch]                 = useState("");
++  const [statusFilter, setStatusFilter]     = useState("All");
++  const [patientFilter, setPatientFilter]   = useState("All");
++  const [patientSearch, setPatientSearch]   = useState("");
++  const [showPatientDrop, setShowPatientDrop] = useState(false);
++
++  // Persist to localStorage
++  useEffect(() => {
++    localStorage.setItem("prescriptions", JSON.stringify(prescriptions));
++    window.dispatchEvent(new CustomEvent("prescriptionsUpdated"));
++  }, [prescriptions]);
++
++  // Sync patients from cross-module updates
++  useEffect(() => {
++    const load = () => {
++      try {
++        setPatients(JSON.parse(localStorage.getItem("patients") || "[]"));
++      } catch {}
++    };
++    window.addEventListener("patientsUpdated", load);
++    window.addEventListener("storage", load);
++    return () => {
++      window.removeEventListener("patientsUpdated", load);
++      window.removeEventListener("storage", load);
++    };
++  }, []);
++
++  // ─── Stats ─────────────────────────────────────────────────────────────────
++  const stats = useMemo(() => ({
++    total:     prescriptions.length,
++    active:    prescriptions.filter((r) => r.status === "Active").length,
++    dispensed: prescriptions.filter((r) => r.status === "Dispensed").length,
++    cancelled: prescriptions.filter((r) => r.status === "Cancelled").length,
++    medicines: prescriptions.reduce((sum, r) => sum + (r.medicines?.length || 0), 0),
++  }), [prescriptions]);
++
++  // ─── Filtered list ─────────────────────────────────────────────────────────
++  const filtered = useMemo(() => prescriptions.filter((r) => {
++    const q = search.toLowerCase();
++    const matchSearch = !q ||
++      r.prescription_id?.toLowerCase().includes(q) ||
++      r.patient_name?.toLowerCase().includes(q) ||
++      r.patient_id?.toLowerCase().includes(q) ||
++      r.doctor_name?.toLowerCase().includes(q) ||
++      r.diagnosis?.toLowerCase().includes(q);
++    const matchStatus  = statusFilter  === "All" || r.status  === statusFilter;
++    const matchPatient = patientFilter === "All" || r.patient_id === patientFilter;
++    return matchSearch && matchStatus && matchPatient;
++  }), [prescriptions, search, statusFilter, patientFilter]);
++
++  // ─── Patient autocomplete in form ──────────────────────────────────────────
++  const filteredPatients = useMemo(() =>
++    patients.filter((p) =>
++      p.name?.toLowerCase().includes(patientSearch.toLowerCase()) ||
++      p.id?.toLowerCase().includes(patientSearch.toLowerCase())
++    ).slice(0, 8),
++    [patients, patientSearch]
++  );
++
++  const selectPatient = (p) => {
++    setForm((f) => ({
++      ...f,
++      patient_id:   p.id,
++      patient_name: p.name,
++      doctor_name:  f.doctor_name || p.primaryDoctor || "",
++      department:   f.department  || p.department    || "",
++    }));
++    setPatientSearch(p.name);
++    setShowPatientDrop(false);
++  };
++
++  // ─── Submit ────────────────────────────────────────────────────────────────
++  const handleSubmit = useCallback(() => {
++    if (!form.patient_id || !form.patient_name) {
++      alert("Please select a patient.");
++      return;
++    }
++    if (form.medicines.length === 0) {
++      alert("Please add at least one medicine.");
++      return;
++    }
++    const hasNames = form.medicines.every((m) => m.medicine_name.trim());
++    if (!hasNames) {
++      alert("Please fill in the medicine name for all entries.");
++      return;
++    }
++
++    const rx_id = `RX-${Date.now()}`;
++    const newRx = {
++      prescription_id: rx_id,
++      patient_id:      form.patient_id,
++      patient_name:    form.patient_name,
++      doctor_name:     form.doctor_name,
++      department:      form.department,
++      diagnosis:       form.diagnosis,
++      notes:           form.notes,
++      status:          form.status || "Active",
++      medicines:       form.medicines,
++      qr_payload:      buildQRPayload({ prescription_id: rx_id, ...form }, form.medicines),
++      created_at:      new Date().toISOString(),
++    };
++
++    setPrescriptions((prev) => [newRx, ...prev]);
++
++    // Also add a timeline entry to the linked patient
++    try {
++      const allPatients = JSON.parse(localStorage.getItem("patients") || "[]");
++      const updated = allPatients.map((p) => {
++        if (p.id !== form.patient_id) return p;
++        return {
++          ...p,
++          timeline: [
++            ...(p.timeline || []),
++            {
++              id:      Date.now(),
++              date:    new Date().toISOString().split("T")[0],
++              type:    "Prescription",
++              title:   "Prescription Issued",
++              details: `Rx ${rx_id}: ${form.medicines.map((m) => m.medicine_name).join(", ")} — Dr. ${form.doctor_name || "Unknown"}`,
++            },
++          ],
++        };
++      });
++      localStorage.setItem("patients", JSON.stringify(updated));
++      window.dispatchEvent(new CustomEvent("patientsUpdated"));
++    } catch {}
++
++    setForm(emptyForm());
++    setPatientSearch("");
++    setShowForm(false);
++  }, [form]);
++
++  const updateStatus = (rx_id, status) => {
++    setPrescriptions((prev) =>
++      prev.map((r) => r.prescription_id === rx_id ? { ...r, status } : r)
++    );
++  };
++
++  const deletePrescription = (rx_id) => {
++    if (!window.confirm("Delete this prescription? This cannot be undone.")) return;
++    setPrescriptions((prev) => prev.filter((r) => r.prescription_id !== rx_id));
++  };
++
++  const resetForm = () => {
++    setForm(emptyForm());
++    setPatientSearch("");
++    setShowForm(false);
++  };
++
++  // ─── Styles ────────────────────────────────────────────────────────────────
++  const bg     = darkMode ? "bg-slate-950 text-white"  : "bg-slate-100 text-slate-900";
++  const cardBg = darkMode ? "bg-slate-900"             : "bg-white";
++  const inputCls = `border rounded-lg px-3 py-2.5 text-sm ${
++    darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
++  } focus:outline-none focus:border-cyan-500 transition-colors`;
++  const labelCls = "text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1 block";
++
++  const StatCard = ({ icon, label, value, color }) => (
++    <div className={`${color} text-white rounded-xl p-4 flex items-center gap-3 shadow`}>
++      <span className="text-2xl">{icon}</span>
++      <div>
++        <p className="text-xs font-medium opacity-80">{label}</p>
++        <p className="text-2xl font-bold leading-tight">{value}</p>
++      </div>
++    </div>
++  );
++
++  // ─── RENDER ────────────────────────────────────────────────────────────────
++  return (
++    <div className={`p-6 min-h-screen ${bg}`}>
++
++      {/* ── Header ── */}
++      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
++        <div>
++          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
++            💊 Prescription Management
++          </h1>
++          <p className="text-slate-500 text-sm mt-0.5">Pharmacy · Drug Interaction Check · QR-Linked Prescriptions</p>
++        </div>
++        <div className="flex items-center gap-3 mt-3 md:mt-0">
++          <span className="text-sm font-medium text-cyan-600">
++            {filtered.length} of {prescriptions.length} Rx
++          </span>
++          <button
++            onClick={() => { resetForm(); setShowForm(!showForm); }}
++            className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
++          >
++            {showForm ? "✕ Close" : "+ New Prescription"}
++          </button>
++        </div>
++      </div>
++
++      {/* ── Stats ── */}
++      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
++        <StatCard icon="📋" label="Total Rx"     value={stats.total}     color="bg-cyan-600"   />
++        <StatCard icon="✅" label="Active"        value={stats.active}    color="bg-green-600"  />
++        <StatCard icon="📦" label="Dispensed"     value={stats.dispensed} color="bg-blue-600"   />
++        <StatCard icon="❌" label="Cancelled"     value={stats.cancelled} color="bg-red-600"    />
++        <StatCard icon="💊" label="Total Meds"    value={stats.medicines} color="bg-purple-600" />
++      </div>
++
++      {/* ── New Prescription Form ── */}
++      {showForm && (
++        <div className={`mb-6 rounded-2xl shadow-lg p-6 ${cardBg}`}>
++          <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
++            📝 New Prescription
++          </h2>
++
++          {/* Section 1 — Patient & Doctor Info */}
++          <div className="mb-5">
++            <p className={labelCls}>Patient & Doctor Information</p>
++            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
++
++              {/* Patient search */}
++              <div className="md:col-span-2 relative">
++                <label className={labelCls}>Select Patient *</label>
++                <input
++                  className={`${inputCls} w-full`}
++                  placeholder="Search by name or ID..."
++                  value={patientSearch}
++                  onChange={(e) => {
++                    setPatientSearch(e.target.value);
++                    setShowPatientDrop(true);
++                    if (!e.target.value) setForm((f) => ({ ...f, patient_id: "", patient_name: "" }));
++                  }}
++                  onFocus={() => setShowPatientDrop(true)}
++                  onBlur={() => setTimeout(() => setShowPatientDrop(false), 200)}
++                />
++                {form.patient_id && (
++                  <p className="text-xs text-cyan-500 mt-1 font-medium">
++                    ✓ {form.patient_id} — {form.patient_name}
++                  </p>
++                )}
++                {showPatientDrop && filteredPatients.length > 0 && (
++                  <div className={`absolute z-30 top-full mt-1 w-full rounded-xl shadow-lg border max-h-52 overflow-y-auto ${
++                    darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
++                  }`}>
++                    {filteredPatients.map((p) => (
++                      <button
++                        key={p.id}
++                        type="button"
++                        className={`w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-50 transition-colors ${darkMode ? "hover:bg-slate-700 hover:text-cyan-400" : ""}`}
++                        onClick={() => selectPatient(p)}
++                      >
++                        <div className="font-semibold">{p.name}</div>
++                        <div className="text-xs text-slate-500">{p.id} · {p.gender} · {p.phone}</div>
++                      </button>
++                    ))}
++                  </div>
++                )}
++                {patients.length === 0 && (
++                  <p className="text-xs text-amber-600 mt-1">No patients found. Register patients first.</p>
++                )}
++              </div>
++
++              <div>
++                <label className={labelCls}>Doctor Name</label>
++                <input
++                  className={`${inputCls} w-full`}
++                  placeholder="Dr. Name"
++                  value={form.doctor_name}
++                  onChange={(e) => setForm({ ...form, doctor_name: e.target.value })}
++                />
++              </div>
++
++              <div>
++                <label className={labelCls}>Department</label>
++                <input
++                  className={`${inputCls} w-full`}
++                  placeholder="e.g. General Medicine"
++                  value={form.department}
++                  onChange={(e) => setForm({ ...form, department: e.target.value })}
++                />
++              </div>
++            </div>
++          </div>
++
++          {/* Section 2 — Diagnosis */}
++          <div className="mb-5">
++            <p className={labelCls}>Clinical Information</p>
++            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
++              <div>
++                <label className={labelCls}>Diagnosis</label>
++                <input
++                  className={`${inputCls} w-full`}
++                  placeholder="Primary diagnosis / indication"
++                  value={form.diagnosis}
++                  onChange={(e) => setForm({ ...form, diagnosis: e.target.value })}
++                />
++              </div>
++              <div>
++                <label className={labelCls}>Clinical Notes</label>
++                <input
++                  className={`${inputCls} w-full`}
++                  placeholder="Additional notes for pharmacist"
++                  value={form.notes}
++                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
++                />
++              </div>
++              <div>
++                <label className={labelCls}>Status</label>
++                <select
++                  className={`${inputCls} w-full`}
++                  value={form.status}
++                  onChange={(e) => setForm({ ...form, status: e.target.value })}
++                >
++                  {STATUSES.map((s) => <option key={s}>{s}</option>)}
++                </select>
++              </div>
++            </div>
++          </div>
++
++          {/* Section 3 — Prescription Builder */}
++          <div className="mb-5">
++            <p className={labelCls}>Medicines</p>
++            <PrescriptionBuilder
++              medicines={form.medicines}
++              onChange={(meds) => setForm({ ...form, medicines: meds })}
++              darkMode={darkMode}
++            />
++          </div>
++
++          {/* Submit */}
++          <div className="flex gap-3 flex-wrap">
++            <button
++              type="button"
++              onClick={handleSubmit}
++              className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors"
++            >
++              ✓ Issue Prescription
++            </button>
++            <button
++              type="button"
++              onClick={resetForm}
++              className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors ${
++                darkMode ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
++              }`}
++            >
++              Cancel
++            </button>
++          </div>
++        </div>
++      )}
++
++      {/* ── Filters ── */}
++      <div className={`flex flex-wrap gap-3 mb-4 p-4 rounded-xl ${cardBg} shadow`}>
++        <input
++          className={`${inputCls} flex-1 min-w-[200px]`}
++          placeholder="🔍 Search by Rx ID, patient, doctor, diagnosis..."
++          value={search}
++          onChange={(e) => setSearch(e.target.value)}
++        />
++        <select
++          className={`${inputCls} min-w-[150px]`}
++          value={statusFilter}
++          onChange={(e) => setStatusFilter(e.target.value)}
++        >
++          <option value="All">All Statuses</option>
++          {STATUSES.map((s) => <option key={s}>{s}</option>)}
++        </select>
++        <select
++          className={`${inputCls} min-w-[180px]`}
++          value={patientFilter}
++          onChange={(e) => setPatientFilter(e.target.value)}
++        >
++          <option value="All">All Patients</option>
++          {patients.map((p) => (
++            <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
++          ))}
++        </select>
++      </div>
++
++      {/* ── Prescription Table ── */}
++      <div className={`rounded-2xl shadow overflow-x-auto ${cardBg}`}>
++        <table className="w-full text-sm min-w-[900px]">
++          <thead className={`${darkMode ? "bg-slate-800" : "bg-slate-50"} border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
++            <tr>
++              {["Rx ID", "Patient", "Doctor", "Diagnosis", "Medicines", "Status", "Date", "Actions"].map((h) => (
++                <th key={h} className="p-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">{h}</th>
++              ))}
++            </tr>
++          </thead>
++          <tbody>
++            {filtered.map((rx) => (
++              <tr
++                key={rx.prescription_id}
++                className={`border-b transition-colors ${darkMode ? "border-slate-800 hover:bg-slate-800" : "border-slate-100 hover:bg-slate-50"}`}
++              >
++                {/* Rx ID */}
++                <td className="p-3">
++                  <span className="font-mono font-bold text-cyan-500 text-xs">{rx.prescription_id}</span>
++                </td>
++                {/* Patient */}
++                <td className="p-3">
++                  <div className="font-semibold text-sm">{rx.patient_name}</div>
++                  <div className="text-xs text-slate-400">{rx.patient_id}</div>
++                </td>
++                {/* Doctor */}
++                <td className="p-3 text-xs">{rx.doctor_name || <span className="text-slate-400">—</span>}</td>
++                {/* Diagnosis */}
++                <td className="p-3 text-xs max-w-[160px] truncate">{rx.diagnosis || <span className="text-slate-400">—</span>}</td>
++                {/* Medicine count */}
++                <td className="p-3">
++                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
++                    rx.medicines?.length > 0 ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-500"
++                  }`}>
++                    {rx.medicines?.length || 0} drug{(rx.medicines?.length || 0) !== 1 ? "s" : ""}
++                  </span>
++                </td>
++                {/* Status */}
++                <td className="p-3">
++                  <select
++                    value={rx.status}
++                    onChange={(e) => updateStatus(rx.prescription_id, e.target.value)}
++                    className={`text-xs font-semibold rounded-full px-2 py-1 border-0 cursor-pointer focus:outline-none ${STATUS_COLORS[rx.status] || "bg-slate-100 text-slate-600"}`}
++                  >
++                    {STATUSES.map((s) => <option key={s}>{s}</option>)}
++                  </select>
++                </td>
++                {/* Date */}
++                <td className="p-3 text-xs text-slate-500">
++                  {rx.created_at ? rx.created_at.split("T")[0] : "—"}
++                </td>
++                {/* Actions */}
++                <td className="p-3">
++                  <div className="flex gap-1.5">
++                    <button
++                      onClick={() => setViewRx(rx)}
++                      className="bg-cyan-600 hover:bg-cyan-700 text-white px-2.5 py-1 rounded text-xs font-medium transition-colors"
++                    >
++                      View
++                    </button>
++                    <button
++                      onClick={() => deletePrescription(rx.prescription_id)}
++                      className="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded text-xs font-medium transition-colors"
++                    >
++                      Del
++                    </button>
++                  </div>
++                </td>
++              </tr>
++            ))}
++            {filtered.length === 0 && (
++              <tr>
++                <td colSpan="8" className="p-10 text-center text-slate-400">
++                  <div className="text-4xl mb-2">💊</div>
++                  <p className="font-medium">No prescriptions found</p>
++                  <p className="text-sm">Issue a new prescription or adjust your filters</p>
++                </td>
++              </tr>
++            )}
++          </tbody>
++        </table>
++      </div>
++
++      {/* ── Prescription Detail Modal ── */}
++      {viewRx && (
++        <PrescriptionModal rx={viewRx} onClose={() => setViewRx(null)} darkMode={darkMode} />
++      )}
++    </div>
++  );
++}
++
++// ─── Prescription Detail Modal ─────────────────────────────────────────────────
++function PrescriptionModal({ rx, onClose, darkMode }) {
++  const cardBg = darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900";
++  const rowCls = darkMode ? "border-slate-700" : "border-slate-100";
++
++  return (
++    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
++      <div className={`${cardBg} rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto`}>
++
++        {/* Modal Header */}
++        <div className="flex items-start justify-between p-6 border-b border-slate-200">
++          <div>
++            <h2 className="text-lg font-bold flex items-center gap-2">
++              💊 {rx.prescription_id}
++            </h2>
++            <p className="text-sm text-slate-500 mt-0.5">{rx.patient_name} · {rx.patient_id}</p>
++          </div>
++          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">×</button>
++        </div>
++
++        <div className="p-6 space-y-6">
++
++          {/* Prescription Info */}
++          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
++            {[
++              ["Doctor",     rx.doctor_name  || "—"],
++              ["Department", rx.department   || "—"],
++              ["Diagnosis",  rx.diagnosis    || "—"],
++              ["Status",     rx.status       || "—"],
++              ["Date",       rx.created_at?.split("T")[0] || "—"],
++              ["Notes",      rx.notes        || "—"],
++            ].map(([label, value]) => (
++              <div key={label}>
++                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">{label}</p>
++                <p className="text-sm font-medium mt-0.5">{value}</p>
++              </div>
++            ))}
++          </div>
++
++          {/* Medicines Table */}
++          <div>
++            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500 mb-3">
++              Medicines ({rx.medicines?.length || 0})
++            </h3>
++            <div className="space-y-3">
++              {(rx.medicines || []).map((med, i) => (
++                <div
++                  key={i}
++                  className={`border rounded-xl p-4 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-slate-50"}`}
++                >
++                  <div className="flex items-center gap-2 mb-2">
++                    <span className="w-6 h-6 rounded-full bg-cyan-600 text-white text-xs flex items-center justify-center font-bold shrink-0">{i + 1}</span>
++                    <span className="font-semibold">{med.medicine_name}</span>
++                    {med.generic_name && <span className="text-xs text-slate-500">({med.generic_name})</span>}
++                    {med.category && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">{med.category}</span>}
++                  </div>
++                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
++                    {[
++                      ["Strength",   med.dosage_strength || "—"],
++                      ["Form",       med.dosage_form     || "—"],
++                      ["Frequency",  med.frequency       || "—"],
++                      ["Duration",   med.duration        || "—"],
++                      ["Timing",     med.timing          || "—"],
++                      ["Route",      med.route           || "—"],
++                      ["Quantity",   med.quantity ? `${med.quantity} units` : "—"],
++                      ["Refills",    med.refills ?? "0"],
++                    ].map(([k, v]) => (
++                      <div key={k}>
++                        <span className="text-slate-500 font-medium">{k}: </span>
++                        <span className="font-semibold">{v}</span>
++                      </div>
++                    ))}
++                  </div>
++                  {med.instructions && (
++                    <p className="text-xs text-slate-500 mt-2 italic">📌 {med.instructions}</p>
++                  )}
++                  {med.warnings?.length > 0 && (
++                    <div className="flex flex-wrap gap-1.5 mt-2">
++                      {med.warnings.map((w, wi) => (
++                        <span key={wi} className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">⚠ {w}</span>
++                      ))}
++                    </div>
++                  )}
++                </div>
++              ))}
++            </div>
++          </div>
++
++          {/* QR Payload */}
++          {rx.qr_payload && (
++            <div>
++              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500 mb-2">QR Code Payload</h3>
++              <div className={`rounded-xl p-4 font-mono text-xs break-all leading-relaxed ${
++                darkMode ? "bg-slate-800 text-cyan-400" : "bg-slate-100 text-slate-700"
++              }`}>
++                {rx.qr_payload}
++              </div>
++              <p className="text-xs text-slate-400 mt-1.5">
++                Encode this string in any QR generator to create a scannable prescription QR code.
++              </p>
++            </div>
++          )}
++        </div>
++
++        <div className="px-6 pb-6">
++          <button
++            onClick={onClose}
++            className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors ${
++              darkMode ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
++            }`}
++          >
++            Close
++          </button>
++        </div>
++      </div>
++    </div>
++  );
++}
+\ No newline at end of file
+-- 
+2.34.1
+

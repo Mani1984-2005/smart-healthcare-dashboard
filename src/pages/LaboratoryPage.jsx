@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import XRaySharingPage from "./XRaySharingPage";
 import {
   LAB_MASTER_LIBRARY, TEST_CATEGORIES, STATUS_OPTIONS, PRIORITY_OPTIONS,
   STORAGE_KEY, PATIENTS_KEY, statusTableBadgeClass, judgeTestResult, judgeLabResult,
@@ -146,7 +148,29 @@ function readArrayFromStorage(key) {
 }
 function dispatchPatientsUpdate() { window.dispatchEvent(new Event("patientsUpdated")); }
 
-export default function LaboratoryPage() {
+export default function LaboratoryPage({ darkMode, initialTab }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab") || initialTab || "lab";
+  const [activeTab, setActiveTab] = useState(urlTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
   const [tests, setTests] = useState([]);
   const [patients, setPatients] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -270,19 +294,51 @@ export default function LaboratoryPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <PageHeader
-          title="Laboratory Information System"
-          subtitle="Professional diagnostics, test requests, results & clinical analysis"
+          title="Laboratory & Imaging Services"
+          subtitle="Integrated diagnostics, clinical pathology, test requests & radiology imaging"
           icon="&#x1F52C;"
-          actions={<ActionButton onClick={openAddForm} label="New Test Request" variant="primary" size="md" />}
+          actions={activeTab === "lab" ? <ActionButton onClick={openAddForm} label="New Test Request" variant="primary" size="md" /> : null}
         />
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          <StatCard label="Pending" value={stats.pending} icon="hourglass" color="yellow" />
-          <StatCard label="In Progress" value={stats.inProgress} icon="sync" color="blue" />
-          <StatCard label="Completed" value={stats.completed} icon="check" color="emerald" />
-          <StatCard label="Emergency" value={stats.emergency} icon="alert" color="rose" />
-          <StatCard label="Critical" value={stats.critical} icon="warning" color="rose" />
+        {/* Diagnostic Sub-Navigation */}
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl border mb-6 bg-white border-slate-200 shadow-sm w-fit">
+          <button
+            onClick={() => handleTabChange("lab")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+              activeTab === "lab"
+                ? "bg-indigo-600 text-white shadow"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <span>🧪</span>
+            <span>Lab Tests & Diagnostics</span>
+          </button>
+          <button
+            onClick={() => handleTabChange("xray")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+              activeTab === "xray"
+                ? "bg-indigo-600 text-white shadow"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <span>🩻</span>
+            <span>X-Ray & Medical Imaging</span>
+          </button>
         </div>
+
+        {activeTab === "xray" ? (
+          <div className="rounded-2xl">
+            <XRaySharingPage darkMode={darkMode} />
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+              <StatCard label="Pending" value={stats.pending} icon="hourglass" color="yellow" />
+              <StatCard label="In Progress" value={stats.inProgress} icon="sync" color="blue" />
+              <StatCard label="Completed" value={stats.completed} icon="check" color="emerald" />
+              <StatCard label="Emergency" value={stats.emergency} icon="alert" color="rose" />
+              <StatCard label="Critical" value={stats.critical} icon="warning" color="rose" />
+            </div>
 
         {stats.emergency > 0 && (
           <div className="bg-red-50 border-l-4 border-red-500 text-red-800 px-4 py-3 rounded-lg mb-3 text-sm flex items-center gap-2">
@@ -615,6 +671,8 @@ export default function LaboratoryPage() {
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
 
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

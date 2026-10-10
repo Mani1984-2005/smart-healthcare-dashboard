@@ -1,6 +1,7 @@
 // Part 3B validators. Kept separate from middleware/validate.js so Part
 // 1-3A's validator file is never touched.
 import { AppError } from '../utils/AppError.js';
+export { validateUuidParam } from './validate.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

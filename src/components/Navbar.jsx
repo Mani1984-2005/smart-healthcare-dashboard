@@ -13,64 +13,50 @@ export default function Navbar({
   const role = user?.role || "Admin";
 
   const roleLinks = {
- Patient: [
-  "Home",
-  "Dashboard",
-  "Doctors",
-  "Contact"
-],
-
-  Receptionist: [
-    "Home",
-    "Dashboard",
-    "Patients",
-    "Doctors",
-    "Billing",
-    "Contact"
-  ],
-
-  Doctor: [
-    "Home",
-    "Dashboard",
-    "Patients",
-    "Laboratory",
-    "Reports"
-  ],
-
-  Admin: [
-    "Home",
-    "Dashboard",
-    "Patients",
-    "Doctors",
-    "Medicines",
-    "Pharmacy",
-    "Inventory",
-    "Billing",
-    "Laboratory",
-    "Staff",
-    "Reports",
-    "Complaints",
-    "Contact",
-    "X-Ray",
-  ],
-
-  Hospital: [
-    "Home",
-    "Dashboard",
-    "Patients",
-    "Doctors",
-    "Medicines",
-    "Pharmacy",
-    "Inventory",
-    "Billing",
-    "Laboratory",
-    "Staff",
-    "Reports",
-    "Complaints",
-    "Contact",
-    "X-Ray",
-  ]
-};
+    Patient: [
+      "Home",
+      "Dashboard",
+      "Doctors",
+      "Patient Relations",
+    ],
+    Receptionist: [
+      "Home",
+      "Dashboard",
+      "Patients",
+      "Doctors",
+      "Billing",
+      "Patient Relations",
+    ],
+    Doctor: [
+      "Home",
+      "Dashboard",
+      "Patients",
+      "Laboratory",
+      "Patient Relations",
+    ],
+    Admin: [
+      "Home",
+      "Dashboard",
+      "Patients",
+      "Doctors",
+      "Pharmacy",
+      "Billing",
+      "Laboratory",
+      "Staff",
+      "Patient Relations",
+    ],
+    Hospital: [
+      "Home",
+      "Dashboard",
+      "Patients",
+      "Doctors",
+      "Pharmacy",
+      "Billing",
+      "Laboratory",
+      "Staff",
+      "Patient Relations",
+    ],
+  };
   const navLinks = roleLinks[role] || roleLinks.Admin;
 
   const handleNavigate = (item) => {

@@ -26,7 +26,6 @@ const NAV_GROUPS = [
     label: "Overview",
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/reports", label: "Reports", icon: BarChart3 },
     ],
   },
   {
@@ -38,32 +37,27 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "Clinical",
+    label: "Clinical & Diagnostics",
     items: [
       { to: "/laboratory", label: "Laboratory", icon: FlaskConical },
-      { to: "/xray", label: "X-Ray & Imaging", icon: ScanLine },
     ],
   },
   {
     label: "Pharmacy",
     items: [
       { to: "/pharmacy", label: "Pharmacy", icon: Pill },
-      { to: "/pharmacy-inventory", label: "Inventory (Enterprise)", icon: Warehouse },
-      { to: "/medicines", label: "Medicines", icon: Pill },
     ],
   },
   {
     label: "Billing",
     items: [
       { to: "/billing", label: "Invoicing", icon: Receipt },
-      { to: "/receipts", label: "Receipts", icon: FileText },
     ],
   },
   {
-    label: "Support",
+    label: "Patient Services",
     items: [
-      { to: "/complaints", label: "Complaints", icon: MessageSquareWarning },
-      { to: "/contact", label: "Contact", icon: Phone },
+      { to: "/patient-relations", label: "Patient Relations", icon: HeartPulse },
       { to: "/settings", label: "Settings", icon: Settings },
     ],
   },

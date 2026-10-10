@@ -14,6 +14,22 @@ import { logger } from './utils/logger.js';
 
 import healthRoutes from './routes/health.routes.js';
 import prescriptionRoutes from './routes/prescriptions.routes.js';
+import aiAnalysisRoutes from './routes/aiAnalysis.routes.js';
+import searchRoutes from './routes/search.routes.js';
+import analyticsRoutes from './routes/analytics.routes.js';
+import prescriptionIntegrationRoutes from './routes/prescriptionIntegration.routes.js';
+import patientRoutes from './routes/patients.routes.js';
+import pharmacyRoutes from './routes/pharmacy.routes.js';
+import labReportRoutes from './routes/labReports.routes.js';
+import billingRoutes from './routes/billing.routes.js';
+import rbacRoutes from './routes/rbac.routes.js';
+import scannerRoutes from './routes/scanner.routes.js';
+import biometricRoutes from './routes/biometric.routes.js';
+import clinicalAssistantRoutes from './routes/clinicalAssistant.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
+import approvalRoutes from './routes/approval.routes.js';
+import versioningRoutes from './routes/versioning.routes.js';
+import { bootstrapWorkflow } from './workflowBootstrap.js';
 
 const app = express();
 
@@ -44,9 +60,29 @@ app.use('/uploads', express.static(UPLOAD_ROOT_DIR));
 // ---------------------------------------------------------------------
 app.use('/api/health', healthRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
+app.use('/api/prescriptions', aiAnalysisRoutes);
+app.use('/api/prescriptions', prescriptionIntegrationRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/pharmacy', pharmacyRoutes);
+app.use('/api/lab-reports', labReportRoutes);
+app.use('/api/invoices', billingRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/auth', rbacRoutes);
+app.use('/api/rbac', rbacRoutes);
+app.use('/api/scanner', scannerRoutes);
+app.use('/api/biometric', biometricRoutes);
+app.use('/api/clinical-assistant', clinicalAssistantRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/approvals', approvalRoutes);
+app.use('/api/versions', versioningRoutes);
+
+// Bootstrap enterprise approval handlers
+bootstrapWorkflow();
 
 app.get('/', (req, res) => {
-  res.json({ service: 'Medicare Pro API', version: '1.0.0 (Part 1: Foundation & OCR)' });
+  res.json({ service: 'Medicare Pro API', version: '3.0.0 (Enterprise Suite)' });
 });
 
 // 404 + centralized error handling — must be last

@@ -9,6 +9,29 @@ import { jsPDF } from "jspdf";
 
 const STORAGE_KEY = "pharmacy_medicines";
 
+const exportUtils = {
+  pdf: (medicine) => {
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text("MediCare Pro — Medicine Report", 14, 20);
+      doc.setFontSize(12);
+      doc.text(`Name: ${medicine?.name || "N/A"}`, 14, 32);
+      doc.text(`Generic Name: ${medicine?.genericName || "N/A"}`, 14, 40);
+      doc.text(`Category: ${medicine?.category || "N/A"}`, 14, 48);
+      doc.text(`Dosage Form: ${medicine?.dosageForm || "N/A"}`, 14, 56);
+      doc.text(`Strength: ${medicine?.strength || "N/A"}`, 14, 64);
+      doc.text(`Stock Quantity: ${medicine?.stock ?? "0"}`, 14, 72);
+      doc.text(`Unit Price: $${medicine?.price ?? "0.00"}`, 14, 80);
+      doc.text(`Manufacturer: ${medicine?.manufacturer || "N/A"}`, 14, 88);
+      doc.text(`Expiry Date: ${medicine?.expiryDate || "N/A"}`, 14, 96);
+      doc.save(`${medicine?.name || "medicine"}-report.pdf`);
+    } catch (e) {
+      console.error("PDF export error:", e);
+    }
+  },
+};
+
 const CATEGORIES = [
   "All",
   "Antibiotic",

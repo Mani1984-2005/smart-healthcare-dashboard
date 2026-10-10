@@ -9,6 +9,7 @@ import {
   findDuplicate, buildQRPayload, dispatchPatientsUpdate, ageDisplay,
 } from "../utils/patientHelpers";
 import { StatCard, StatusBadge, ActionButton, PageHeader, SearchInput, DataTable } from "../components/ui";
+import { fetchPatients, createPatient, updatePatient } from "../api/patients";
 
 const initialPatients = [
   { id: "PAT-1001", name: "Ravi Kumar", age: "32", dob: "", gender: "Male", bloodGroup: "O+", phone: "9876543210", disease: "Fever", address: "Davangere", status: "Waiting", priority: "Normal", registeredDate: "2026-06-15", photo: "", govIdType: "", govIdNumber: "", emergencyContact: "", allergies: "None", medicalHistory: "", visitNotes: "Initial visit" },
@@ -41,6 +42,46 @@ const handleGenerateReport = () => {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ id: "", name: "", age: "", gender: "Male", bloodGroup: "O+", phone: "", disease: "", address: "", status: "Active", priority: "Normal", emergencyContact: "", allergies: "", medicalHistory: "", visitNotes: "", photo: "" });
+  const [apiError, setApiError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverOnline, setServerOnline] = useState(null);
+
+  // Retrieve existing patients from backend on mount
+  useEffect(() => {
+    let mounted = true;
+    fetchPatients({ limit: 50 })
+      .then((res) => {
+        if (!mounted) return;
+        setServerOnline(true);
+        if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((p) => ({
+            id: p.id,
+            mrn: p.mrn,
+            name: p.fullName || p.name,
+            gender: p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : "Unspecified",
+            phone: p.phone || "—",
+            disease: Array.isArray(p.chronicConditions) ? p.chronicConditions.join(", ") : (p.disease || "—"),
+            address: p.address || "",
+            bloodGroup: p.bloodType || "O+",
+            allergies: Array.isArray(p.knownAllergies) ? p.knownAllergies.join(", ") : (p.allergies || "None"),
+            emergencyContact: p.emergencyContactPhone || p.emergencyContact || "—",
+            status: p.isActive ? "Active" : "Discharged",
+            priority: p.priority || "Normal",
+            registeredDate: p.createdAt ? p.createdAt.split("T")[0] : "",
+          }));
+          setPatients(mapped);
+        }
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        console.warn("[PatientsPage] Server check:", err.message);
+        setServerOnline(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("patients", JSON.stringify(patients));
@@ -64,19 +105,50 @@ const handleGenerateReport = () => {
     emergency: patients.filter((p) => p.priority === "Emergency").length,
   }), [patients]);
 
-  const handleSubmit = () => {
-    if (!form.name || !form.age || !form.phone) { alert("Name, Age, and Phone are required."); return; }
-    const newPatient = {
-      ...form,
-      id: form.id || `PAT-${Date.now()}`,
-      registeredDate: form.registeredDate || new Date().toISOString().split("T")[0],
-    };
-    if (patients.find((p) => p.id === newPatient.id)) {
-      setPatients((prev) => prev.map((p) => p.id === newPatient.id ? newPatient : p));
-    } else {
-      setPatients((prev) => [newPatient, ...prev]);
+  const handleSubmit = async () => {
+    if (!form.name || !form.age || !form.phone) {
+      alert("Name, Age, and Phone are required.");
+      return;
     }
-    setShowForm(false); setForm({ id: "", name: "", age: "", gender: "Male", bloodGroup: "O+", phone: "", disease: "", address: "", status: "Active", priority: "Normal", emergencyContact: "", allergies: "", medicalHistory: "", visitNotes: "", photo: "" });
+    setApiError(null);
+    setIsSubmitting(true);
+
+    try {
+      let serverData = null;
+      if (form.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(form.id)) {
+        const res = await updatePatient(form.id, form);
+        if (!res?.success) throw new Error(res?.error?.message || "Failed to update record on server");
+        serverData = res.data;
+      } else {
+        const res = await createPatient(form);
+        if (!res?.success) throw new Error(res?.error?.message || "Failed to create record on server");
+        serverData = res.data;
+      }
+
+      const savedPatient = {
+        ...form,
+        id: serverData?.id || form.id || `PAT-${Date.now()}`,
+        mrn: serverData?.mrn || form.mrn,
+        registeredDate: serverData?.createdAt ? serverData.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
+      };
+
+      if (patients.find((p) => p.id === savedPatient.id)) {
+        setPatients((prev) => prev.map((p) => (p.id === savedPatient.id ? savedPatient : p)));
+      } else {
+        setPatients((prev) => [savedPatient, ...prev]);
+      }
+
+      setShowForm(false);
+      setForm({ id: "", name: "", age: "", gender: "Male", bloodGroup: "O+", phone: "", disease: "", address: "", status: "Active", priority: "Normal", emergencyContact: "", allergies: "", medicalHistory: "", visitNotes: "", photo: "" });
+    } catch (err) {
+      console.error("[Patient API Error]", err);
+      // DO NOT silently fall back to localStorage. Display clear error.
+      setApiError(
+        `Server persistence failed: ${err.message || "Backend API unreachable"}. This record was NOT saved to the database.`
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDelete = (id) => {
@@ -107,6 +179,16 @@ const handleGenerateReport = () => {
                 <button onClick={() => setViewMode("table")} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${viewMode === "table" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Table</button>
                 <button onClick={() => setViewMode("cards")} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${viewMode === "cards" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Cards</button>
               </div>
+              {serverOnline !== null && (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                  serverOnline
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
+                  {serverOnline ? "API Online" : "API Offline"}
+                </span>
+              )}
               <ActionButton icon={() => "＋"} label="Add Patient" primary onClick={() => { setForm({ id: "", name: "", age: "", gender: "Male", bloodGroup: "O+", phone: "", disease: "", address: "", status: "Active", priority: "Normal", emergencyContact: "", allergies: "", medicalHistory: "", visitNotes: "", photo: "" }); setShowForm(true); }} />
               <ActionButton icon={() => "📄"} label="Export" variant="ghost" />
             </>
@@ -299,8 +381,17 @@ const handleGenerateReport = () => {
                 <textarea name="visitNotes" value={form.visitNotes || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} rows={3}
                   className="w-full mt-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all" />
               </div>
+              {apiError && (
+                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2.5">
+                  <span className="text-base leading-none">⚠️</span>
+                  <div className="flex-1">
+                    <p className="font-semibold text-rose-900">Server Save Error</p>
+                    <p className="mt-0.5">{apiError}</p>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
-                <ActionButton icon={() => null} label={form.id ? "Update Patient" : "Register Patient"} primary onClick={handleSubmit} />
+                <ActionButton icon={() => null} label={isSubmitting ? "Saving to Server..." : form.id ? "Update Patient" : "Register Patient"} primary onClick={handleSubmit} disabled={isSubmitting} />
                 <ActionButton icon={() => null} label="Cancel" variant="ghost" onClick={() => setShowForm(false)} />
               </div>
             </div>

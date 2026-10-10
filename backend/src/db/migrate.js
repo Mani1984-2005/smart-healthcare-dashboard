@@ -7,13 +7,18 @@ import { logger } from '../utils/logger.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function migrate() {
-  const sqlPath = path.join(__dirname, 'schema.sql');
-  const sql = fs.readFileSync(sqlPath, 'utf-8');
+  const schemaFiles = ['schema.sql', 'schema_ai.sql', 'schema_enterprise.sql', 'schema_workflow.sql'];
 
   const client = await pool.connect();
   try {
     logger.info('Running database migration...');
-    await client.query(sql);
+    for (const file of schemaFiles) {
+      const sqlPath = path.join(__dirname, file);
+      if (!fs.existsSync(sqlPath)) continue;
+      const sql = fs.readFileSync(sqlPath, 'utf-8');
+      logger.info(`  → applying ${file}`);
+      await client.query(sql);
+    }
     logger.info('✅ Migration complete. Schema is up to date.');
   } catch (err) {
     logger.error('❌ Migration failed', { error: err.message });

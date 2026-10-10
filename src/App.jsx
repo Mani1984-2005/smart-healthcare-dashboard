@@ -27,6 +27,7 @@ const PharmacyPage = lazy(() => import("./pages/PharmacyPage"));
 const PharmacyInventoryPage = lazy(() => import("./pages/PharmacyInventoryPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const XRaySharingPage = lazy(() => import("./pages/XRaySharingPage"));
+const PatientRelationsPage = lazy(() => import("./pages/PatientRelationsPage"));
 
 import { useToast } from "./hooks/usetoast.jsx";
 
@@ -39,30 +40,36 @@ function LoginScreen({ darkMode, onLogin }) {
 
   return (
     <div
-      className={`min-h-screen flex flex-col items-center justify-center transition-all ${
+      className={`min-h-screen flex flex-col items-center justify-center p-4 transition-all ${
         darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-950"
       }`}
     >
-      <h1 className="text-3xl font-bold">MediCare Pro</h1>
-      <p className="mt-3 text-slate-500">Choose your login role</p>
+      <div className={`w-full max-w-md p-8 rounded-2xl shadow-xl border ${
+        darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
+      } text-center`}>
+        <div className="text-4xl mb-2">🏥</div>
+        <h1 className="text-3xl font-bold">MediCare Pro</h1>
+        <p className="mt-2 text-sm text-slate-500">Smart Healthcare Management System</p>
+        <p className="mt-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Select Role to Enter</p>
 
-      <div className="mt-8 flex flex-col gap-3 max-w-sm mx-auto">
-        {roles.map((role) => (
-          <button
-            key={role}
-            onClick={() => onLogin(role)}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg font-semibold"
-          >
-            Login as {role}
-          </button>
-        ))}
+        <div className="mt-4 flex flex-col gap-2.5">
+          {roles.map((role) => (
+            <button
+              key={role}
+              onClick={() => onLogin(role)}
+              className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-all shadow-sm hover:shadow"
+            >
+              Continue as {role}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 function AppLayout() {
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loginAsGuest, loading } = useAuth();
 
   const { toasts, addToast, removeToast } = useToast();
 
@@ -88,7 +95,7 @@ function AppLayout() {
     localStorage.setItem("role", userRole);
   }, [userRole]);
 
-  // ✅ LOGIN FUNCTION (FIXED)
+  // ✅ LOGIN FUNCTION WITH GRACEFUL FALLBACK FOR PREVIEW IFRAME
   const handleLogin = async (role) => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -98,11 +105,19 @@ function AppLayout() {
 
       addToast(
         "Login successful",
-        `Welcome ${result.user.displayName}`,
+        `Welcome ${result.user?.displayName || role}`,
         "success"
       );
     } catch (err) {
-      addToast("Login failed", "Google sign-in failed", "error");
+      console.warn("Google popup sign-in blocked or unavailable in iframe, using role session:", err);
+      loginAsGuest(role);
+      localStorage.setItem("role", role);
+      setUserRole(role);
+      addToast(
+        "Logged in as " + role,
+        "Welcome to MediCare Pro",
+        "success"
+      );
     }
   };
 
@@ -112,8 +127,39 @@ function AppLayout() {
     addToast("Logged out", "You have been signed out.", "info");
   };
 
-  const currentPage = location.pathname.replace("/", "") || "Home";
-  const page = currentPage.charAt(0).toUpperCase() + currentPage.slice(1);
+  const formatCurrentPage = (path) => {
+    if (path === "/" || path === "") return "Home";
+    const cleaned = path.replace(/^\//, "").split("?")[0];
+    if (
+      cleaned === "patient-relations" ||
+      cleaned === "reports" ||
+      cleaned === "complaints" ||
+      cleaned === "contact"
+    ) {
+      return "Patient Relations";
+    }
+    if (
+      cleaned === "pharmacy" ||
+      cleaned === "medicines" ||
+      cleaned === "inventory" ||
+      cleaned === "pharmacy-inventory" ||
+      cleaned === "dispensing" ||
+      cleaned === "prescriptions"
+    ) {
+      return "Pharmacy";
+    }
+    if (cleaned === "laboratory" || cleaned === "x-ray" || cleaned === "xray") {
+      return "Laboratory";
+    }
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  };
+  const page = formatCurrentPage(location.pathname);
+
+  const handleNavigatePage = (p) => {
+    if (p === "Home") navigate("/");
+    else if (p === "Patient Relations") navigate("/patient-relations");
+    else navigate(`/${p.toLowerCase().replace(/\s+/g, "-")}`);
+  };
 
   const pageProps = {
     darkMode,
@@ -139,9 +185,7 @@ function AppLayout() {
     <div className={darkMode ? "dark" : ""}>
       <Navbar
         page={page}
-        setPage={(p) =>
-          navigate(p === "Home" ? "/" : `/${p.toLowerCase()}`)
-        }
+        setPage={handleNavigatePage}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         user={{
@@ -153,24 +197,50 @@ function AppLayout() {
 
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      <Routes>
-        <Route path="/" element={<HomePage {...pageProps} />} />
-        <Route path="/dashboard" element={<DashboardPage {...pageProps} />} />
-        <Route path="/patients" element={<PatientsPage darkMode={darkMode} />} />
-        <Route path="/doctors" element={<DoctorsPage {...pageProps} />} />
-        <Route path="/medicines" element={<MedicinesPage darkMode={darkMode} />} />
-        <Route path="/pharmacy" element={<PharmacyPage darkMode={darkMode} />} />
-        <Route path="/inventory" element={<PharmacyInventoryPage />} />
-        <Route path="/billing" element={<BillingPage />} />
-        <Route path="/laboratory" element={<LaboratoryPage />} />
-        <Route path="/staff" element={<StaffPage darkMode={darkMode} />} />
-        <Route path="/complaints" element={<ComplaintsPage darkMode={darkMode} addToast={addToast} />} />
-        <Route path="/x-ray" element={<XRaySharingPage darkMode={darkMode} />} />
-        <Route path="/contact" element={<ContactPage darkMode={darkMode} />} />
-        <Route path="/reports" element={<ReportsPage darkMode={darkMode} appointments={appointments} />} />
+      <Suspense fallback={<div className="p-10 text-center text-slate-400">Loading module...</div>}>
+        <Routes>
+          <Route path="/" element={<HomePage {...pageProps} />} />
+          <Route path="/dashboard" element={<DashboardPage {...pageProps} />} />
+          <Route path="/patients" element={<PatientsPage darkMode={darkMode} />} />
+          <Route path="/doctors" element={<DoctorsPage {...pageProps} />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Unified Pharmacy Module with backward-compatible deep links */}
+          <Route path="/pharmacy" element={<PharmacyPage darkMode={darkMode} />} />
+          <Route path="/medicines" element={<PharmacyPage darkMode={darkMode} initialTab="medicines" />} />
+          <Route path="/inventory" element={<PharmacyPage darkMode={darkMode} initialTab="inventory" />} />
+          <Route path="/pharmacy-inventory" element={<PharmacyPage darkMode={darkMode} initialTab="inventory" />} />
+          <Route path="/dispensing" element={<PharmacyPage darkMode={darkMode} initialTab="dispensing" />} />
+          <Route path="/prescriptions" element={<PharmacyPage darkMode={darkMode} initialTab="dispensing" />} />
+
+          {/* Unified Laboratory Module with X-Ray integration */}
+          <Route path="/laboratory" element={<LaboratoryPage darkMode={darkMode} />} />
+          <Route path="/x-ray" element={<LaboratoryPage darkMode={darkMode} initialTab="xray" />} />
+          <Route path="/xray" element={<LaboratoryPage darkMode={darkMode} initialTab="xray" />} />
+
+          <Route path="/billing" element={<BillingPage />} />
+          <Route path="/staff" element={<StaffPage darkMode={darkMode} />} />
+
+          {/* Unified Patient Relations Module with legacy deep links */}
+          <Route
+            path="/patient-relations"
+            element={<PatientRelationsPage darkMode={darkMode} appointments={appointments} addToast={addToast} />}
+          />
+          <Route
+            path="/reports"
+            element={<PatientRelationsPage darkMode={darkMode} appointments={appointments} addToast={addToast} initialTab="reports" />}
+          />
+          <Route
+            path="/complaints"
+            element={<PatientRelationsPage darkMode={darkMode} appointments={appointments} addToast={addToast} initialTab="complaints" />}
+          />
+          <Route
+            path="/contact"
+            element={<PatientRelationsPage darkMode={darkMode} appointments={appointments} addToast={addToast} initialTab="contact" />}
+          />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 }

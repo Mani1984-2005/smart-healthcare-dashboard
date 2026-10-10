@@ -3,7 +3,7 @@
 // Phase 6 Part 2 — localStorage persistence, QR payload, rule-based engine
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import PrescriptionBuilder from "../components/pharmacy/PrescriptionBuilder";
+import PrescriptionBuilder from "../../components/pharmacy/PrescriptionBuilder";
 
 // ─── QR Payload Builder ───────────────────────────────────────────────────────
 const buildQRPayload = (prescription, medicines) => {

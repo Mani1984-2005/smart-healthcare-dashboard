@@ -24,18 +24,9 @@ import {
 import BillForm from './BillForm';
 import BillTable from './BillTable';
 import BillPrintTemplate from './BillPrintTemplate';
- const filters = useMemo(() => ({
-  query,
-  status: statusFilter,
-  payer: payerFilter,
-}), [query, statusFilter, payerFilter]);
 const DISPLAY_FONT = "'Manrope', 'Inter', sans-serif";
 const DATA_FONT = "'IBM Plex Mono', 'Roboto Mono', monospace";
-const { data: invoices = [], isLoading } = useInvoices(filters);
 
-const { data: revenueSummary = {} } = useBillingSummary();
-
-const createInvoiceMutation = useCreateInvoice();
 const STATUS_FILTERS = ['All', 'Paid', 'Pending', 'Overdue', 'Draft'];
 const PAYER_FILTERS = ['All payers', 'Self-pay', 'Private insurance', 'Medicare', 'Medicaid'];
 
@@ -159,7 +150,9 @@ function EmptyMount({ label, hint }) {
 export default function NovaInvoice({
   currentUser = { name: 'Billing Administrator', role: 'Finance' },
   revenueSummary = { collected: 0, collectedDelta: 0, outstanding: 0, outstandingDelta: 0, collectionRate: 0, collectionRateDelta: 0, avgDaysToPay: 0, avgDaysToPayDelta: 0 },
-  
+  notifications = [],
+  invoices = [],
+  isLoading = false,
   onCreateInvoice = () => {},
   onRecordPayment = () => {},
   onGenerateStatement = () => {},
