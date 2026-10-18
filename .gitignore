@@ -1,0 +1,95 @@
+# =============================================================================
+# MediCare Pro — .gitignore
+# Healthcare application: treat anything that could carry patient data,
+# credentials, or reproducible delivery artifacts as non-committable.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. Logs
+# -----------------------------------------------------------------------------
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -----------------------------------------------------------------------------
+# 2. Dependencies and build output (reproducible)
+# -----------------------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+build/
+*.local
+
+# -----------------------------------------------------------------------------
+# 3. Editor / OS metadata
+# -----------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# -----------------------------------------------------------------------------
+# 4. Environment files — NEVER commit secrets
+#    (.env.example is a placeholder-only template and IS committed)
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.*.example
+atlas-credentials.env
+
+# -----------------------------------------------------------------------------
+# 5. Database dumps and ad-hoc backups
+# -----------------------------------------------------------------------------
+*.dump
+*.sql.gz
+*.backup
+*.bak
+
+# -----------------------------------------------------------------------------
+# 6. Patient / medical documents — PRIVACY: never commit
+#    Blanket rule so future uploads can never be committed accidentally.
+# -----------------------------------------------------------------------------
+*.pdf
+!docs/**/*.pdf
+uploads/
+backend/uploads/
+*.zip.part
+
+# -----------------------------------------------------------------------------
+# 7. Vendor credential configuration (Firebase project identifiers / web API key)
+# -----------------------------------------------------------------------------
+firebase-applet-config.json
+
+# -----------------------------------------------------------------------------
+# 8. Reproducible delivery artifacts — snapshots of code already in the tree.
+#    Kept on disk for provenance; excluded from version control.
+# -----------------------------------------------------------------------------
+*.zip
+part1/
+part2/
+part3a/
+part3b/
+part3c/
+backend/.backup_phase4b/
+
+# -----------------------------------------------------------------------------
+# 9. Generated / transport artifacts
+# -----------------------------------------------------------------------------
+*.bundle
+patch.zlib.b64
+0001-feat-*.patch
+lint-report.txt
+src-tree.txt
+part1-tree.txt
+redeploy.txt

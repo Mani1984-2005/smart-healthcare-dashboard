@@ -1,0 +1,6 @@
+{
+  "name": "MediCare Pro",
+  "description": "Smart Healthcare Dashboard featuring clinical workflows, patient management, pharmacy, laboratory tests, and billing.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

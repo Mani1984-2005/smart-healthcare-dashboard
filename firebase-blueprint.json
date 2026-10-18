@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account and role profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Doctor", "Pharmacist", "LabTech", "BillingAdmin", "Staff"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "Patient medical record document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "mrn": { "type": "string" },
+        "fullName": { "type": "string", "maxLength": 150 },
+        "dateOfBirth": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female", "other", "unspecified"] },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string" },
+        "address": { "type": "string", "maxLength": 500 },
+        "bloodType": { "type": "string", "maxLength": 10 },
+        "knownAllergies": { "type": "array" },
+        "chronicConditions": { "type": "array" },
+        "primaryPhysician": { "type": "string" },
+        "emergencyContactName": { "type": "string" },
+        "emergencyContactPhone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile document"
+    },
+    "/patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Patient medical record collection"
+    }
+  }
+}

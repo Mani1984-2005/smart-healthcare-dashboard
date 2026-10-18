@@ -1,0 +1,139 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BACKEND: ${{ github.repository }}/medicare-pro-backend
+  IMAGE_FRONTEND: ${{ github.repository }}/medicare-pro-frontend
+
+jobs:
+  lint-and-build-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        workspace: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ${{ matrix.workspace }}/package-lock.json
+      - name: Install
+        working-directory: ${{ matrix.workspace }}
+        run: npm ci
+      - name: Lint
+        if: matrix.workspace == 'frontend'
+        working-directory: frontend
+        run: npm run lint
+      - name: Frontend build check
+        if: matrix.workspace == 'frontend'
+        working-directory: frontend
+        run: npm run build
+
+  backend-integration-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: medicare_app
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: medicare_pro_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U medicare_app" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: "npm", cache-dependency-path: backend/package-lock.json }
+      - working-directory: backend
+        run: npm ci
+      - name: Run migrations against test DB
+        working-directory: backend
+        env:
+          PGHOST: localhost
+          PGUSER: medicare_app
+          PGPASSWORD: test_password
+          PGDATABASE: medicare_pro_test
+        run: npm run migrate
+      - name: Run tests
+        working-directory: backend
+        env:
+          PGHOST: localhost
+          PGUSER: medicare_app
+          PGPASSWORD: test_password
+          PGDATABASE: medicare_pro_test
+        run: npm test --if-present
+
+  build-and-push:
+    needs: [lint-and-build-check, backend-integration-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - context: backend
+            image: medicare-pro-backend
+          - context: frontend
+            image: medicare-pro-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.context }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Manual promotion to production: trigger via "Run workflow" or a tag push,
+  # after verifying the `build-and-push` image tag in staging. Kept as a
+  # separate, explicit gate rather than an automatic deploy-on-merge, since
+  # this system handles clinical data.
+  deploy-production:
+    needs: [build-and-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://medicare-pro.example-hospital.org
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Configure cluster credentials
+        run: echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > kubeconfig
+      - name: Run DB migration job
+        env:
+          KUBECONFIG: kubeconfig
+        run: |
+          sed "s#__TAG__#${{ github.sha }}#g; s#REGISTRY#${{ env.REGISTRY }}/${{ github.repository }}#g" \
+            deploy/k8s/40-migrate-job.yaml | kubectl apply -f -
+          kubectl wait --for=condition=complete job/db-migrate -n medicare-pro --timeout=180s
+          kubectl delete job/db-migrate -n medicare-pro
+      - name: Roll out backend + frontend
+        env:
+          KUBECONFIG: kubeconfig
+        run: |
+          kubectl set image deployment/backend backend=${{ env.REGISTRY }}/${{ github.repository }}/medicare-pro-backend:${{ github.sha }} -n medicare-pro
+          kubectl set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ github.repository }}/medicare-pro-frontend:${{ github.sha }} -n medicare-pro
+          kubectl rollout status deployment/backend -n medicare-pro --timeout=180s
+          kubectl rollout status deployment/frontend -n medicare-pro --timeout=180s
