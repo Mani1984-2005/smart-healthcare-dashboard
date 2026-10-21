@@ -27,14 +27,23 @@ const storage = multer.diskStorage({
     cb(null, UPLOAD_ROOT);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || guessExt(file.mimetype);
+    // The stored extension is derived ONLY from the (allowlisted) mime type —
+    // never from the client-supplied filename. A "payload.html; type=image/jpeg"
+    // upload therefore cannot be stored as .html and later served as
+    // text/html from our own origin (stored-XSS vector).
+    const ext = safeExtForMime(file.mimetype);
     const uniqueName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
     file.generatedFilename = uniqueName; // stash for controller use
     cb(null, uniqueName);
   },
 });
 
-function guessExt(mime) {
+/**
+ * Maps an allowlisted mime type to its canonical extension.
+ * Exported for unit tests. Unknown types map to '' (rejected upstream by
+ * `uploadFileFilter`).
+ */
+export function safeExtForMime(mime) {
   const map = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
@@ -46,7 +55,8 @@ function guessExt(mime) {
   return map[mime] || '';
 }
 
-function fileFilter(req, file, cb) {
+/** Exported for unit tests. */
+export function uploadFileFilter(req, file, cb) {
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
     return cb(AppError.unsupportedMedia(
       `File type "${file.mimetype}" is not supported. Allowed: JPG, PNG, WEBP, HEIC, PDF.`
@@ -57,7 +67,7 @@ function fileFilter(req, file, cb) {
 
 export const upload = multer({
   storage,
-  fileFilter,
+  fileFilter: uploadFileFilter,
   limits: {
     fileSize: env.maxFileSizeMb * 1024 * 1024,
     files: 1,

@@ -106,6 +106,11 @@ export function validateLabReportCreate(req, res, next) {
   if (b.resultValue === undefined || b.resultValue === null || String(b.resultValue).trim() === '') {
     return next(AppError.badRequest('"resultValue" is required.'));
   }
+  if (String(b.resultValue).length > 50) {
+    // Column is VARCHAR(50) — reject oversized values here instead of letting
+    // PostgreSQL raise an unhandled 22001 field-overflow error.
+    return next(AppError.badRequest('"resultValue" must be 50 characters or fewer.'));
+  }
   if (b.abnormalFlag && !ABNORMAL_FLAGS.has(b.abnormalFlag)) {
     return next(AppError.badRequest(`Invalid "abnormalFlag". Must be one of: ${[...ABNORMAL_FLAGS].join(', ')}.`));
   }
@@ -122,8 +127,40 @@ export function validateInvoiceStatusUpdate(req, res, next) {
   if (b.status && !INVOICE_STATUSES.has(b.status)) {
     return next(AppError.badRequest(`Invalid "status". Must be one of: ${[...INVOICE_STATUSES].join(', ')}.`));
   }
-  if (b.amountPaid !== undefined && Number.isNaN(Number(b.amountPaid))) {
-    return next(AppError.badRequest('"amountPaid" must be a number.'));
+  if (b.amountPaid !== undefined) {
+    const amount = Number(b.amountPaid);
+    if (!Number.isFinite(amount) || amount < 0) {
+      return next(AppError.badRequest('"amountPaid" must be a non-negative number.'));
+    }
+    b.amountPaid = amount;
+  }
+  next();
+}
+
+/**
+ * Validates the free-form body accepted by POST /api/prescriptions/:id/invoice.
+ * Financial inputs must be bounded: an unvalidated taxRate previously allowed
+ * negative taxes (invoice total below subtotal) and NaN dueInDays crashed
+ * with a 500 when converted to a date.
+ */
+export function validateInvoiceGenerationRequest(req, res, next) {
+  const b = req.body || {};
+  if (b.taxRate !== undefined) {
+    const taxRate = Number(b.taxRate);
+    if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1) {
+      return next(AppError.badRequest('"taxRate" must be a number between 0 and 1 (e.g. 0.18 for 18%).'));
+    }
+    b.taxRate = taxRate;
+  }
+  if (b.dueInDays !== undefined) {
+    const days = Number(b.dueInDays);
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      return next(AppError.badRequest('"dueInDays" must be an integer between 1 and 365.'));
+    }
+    b.dueInDays = days;
+  }
+  if (b.force !== undefined && typeof b.force !== 'boolean') {
+    return next(AppError.badRequest('"force" must be a boolean.'));
   }
   next();
 }

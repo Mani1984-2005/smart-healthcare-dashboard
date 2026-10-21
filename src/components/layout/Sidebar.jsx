@@ -17,6 +17,8 @@ import {
   FlaskConical, Receipt, FileText, BarChart3, ScanLine, MessageSquareWarning,
   Phone, Settings, ChevronsLeft, ChevronsRight, X, HeartPulse,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { canAccessRoute } from "../../services/navigationPolicy";
 
 // ── Nav structure — grouped by clinical area ─────────────────────────────────
 // Edit labels/icons freely; routes (`to`) match what's been built so far.
@@ -65,6 +67,20 @@ const NAV_GROUPS = [
 ];
 
 export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }) {
+  // Phase 2D — hide entries whose required backend permission this session does
+  // not hold (see services/navigationPolicy.js). Role-gated entries (/staff)
+  // check the backend-issued roles instead. Cosmetic only: the backend
+  // enforces the same gates on every request, so hiding is not a control.
+  const auth = useAuth() ?? {};
+  const permissions = auth.permissions ?? [];
+  const roles = auth.roles ?? [];
+  const visibleGroups = NAV_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => canAccessRoute(item.to, permissions, roles)),
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
     <>
       {/* Mobile overlay backdrop */}
@@ -111,7 +127,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
 
         {/* ── Nav groups ─────────────────────────────────────────────────── */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-          {NAV_GROUPS.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.label}>
               {!collapsed && (
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400 dark:text-slate-500 px-3 mb-1.5">

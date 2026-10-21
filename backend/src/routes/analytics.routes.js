@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireAnyPermission } from '../middleware/authorize.js';
+import { requirePermission } from '../middleware/authorize.js';
 import { PERMISSIONS } from '../config/roles.js';
 import { getAnalyticsDashboard } from '../controllers/analytics.controller.js';
 
@@ -8,7 +8,9 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/dashboard', requireAnyPermission(PERMISSIONS.PATIENT_READ, PERMISSIONS.BILLING_READ, PERMISSIONS.PRESCRIPTION_READ), getAnalyticsDashboard);
+// Staff-only: the dashboard aggregates every patient's data, so billing:read and
+// prescription:read (both held by the patient portal) are no longer accepted here.
+router.get('/dashboard', requirePermission(PERMISSIONS.PATIENT_READ), getAnalyticsDashboard);
 
 export default router;
 

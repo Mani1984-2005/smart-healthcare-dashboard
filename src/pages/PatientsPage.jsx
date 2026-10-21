@@ -72,6 +72,13 @@ export default function PatientsPage({ darkMode }) {
         if (!mounted) return;
         console.warn("[PatientsPage] Server check:", err.message);
         setServerOnline(false);
+        // Phase 2D — the demo/local list is a fallback, never a silent success.
+        // 403 means the backend refused this role's permissions; say so plainly.
+        if (err?.isForbidden) {
+          setApiError("Access denied: your backend-issued role does not include patient:read. Records below are local demo data, not server data.");
+        } else {
+          setApiError(`Patient list unavailable (${err?.message || "request failed"}). Records below are local demo data, not server data.`);
+        }
       });
 
     return () => {
@@ -188,7 +195,18 @@ export default function PatientsPage({ darkMode }) {
   };
 
   const handleDelete = (id) => {
-    if (!window.confirm("Delete this patient record?")) return;
+    // Stabilization — truthful UX: the backend exposes no DELETE route for
+    // patients (see backend/src/routes/patients.routes.js: only POST /, GET,
+    // GET /:id and PATCH /:id exist). Removing a SERVER record (UUID id) from
+    // this screen would only clear local state + localStorage, and the record
+    // would silently reappear on the next successful fetch. Say so instead of
+    // pretending the deletion succeeded. Only local demo records (non-UUID
+    // ids) have localStorage as their source of truth and can be removed here.
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      setApiError("This record lives on the server and the backend has no patient DELETE endpoint, so it was NOT removed. It would reappear on the next sync.");
+      return;
+    }
+    if (!window.confirm("Delete this local demo record?")) return;
     setPatients((prev) => prev.filter((p) => p.id !== id));
   };
 

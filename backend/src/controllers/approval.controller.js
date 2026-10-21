@@ -33,7 +33,12 @@ export const getRequest = asyncHandler(async (req, res) => {
 
 export const decide = asyncHandler(async (req, res) => {
   const { decision, note } = req.body || {};
-  const updated = await approvalService.decide(req.params.id, { decision, decidedBy: req.user?.id, note });
+  const updated = await approvalService.decide(req.params.id, {
+    decision,
+    decidedBy: req.user?.id,
+    note,
+    deciderRoles: req.roles || [],
+  });
 
   await recordAudit({
     userId: req.user?.id,

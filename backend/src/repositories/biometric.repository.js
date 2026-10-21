@@ -47,11 +47,17 @@ export async function insertChallenge(data, client = pool) {
   return rows[0];
 }
 
-export async function consumeChallenge(challengeId, client = pool) {
+// Atomically marks an unused, unexpired challenge as consumed and returns it,
+// or null when it does not exist / is already used / expired. When `purpose`
+// is provided the challenge must also match it, so a registration ceremony
+// can never consume an authentication challenge (and vice versa).
+export async function consumeChallenge(challengeId, purpose = null, client = pool) {
   const { rows } = await client.query(
     `UPDATE biometric_challenges SET consumed_at = now()
-     WHERE id = $1 AND consumed_at IS NULL AND expires_at > now() RETURNING *`,
-    [challengeId]
+     WHERE id = $1 AND consumed_at IS NULL AND expires_at > now()
+       AND ($2::text IS NULL OR purpose = $2)
+     RETURNING *`,
+    [challengeId, purpose]
   );
   return rows[0] || null;
 }

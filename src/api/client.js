@@ -1,6 +1,10 @@
 // src/api/client.js
 // Fetch-based apiClient with consistent error handling and support for GET, POST, PATCH, DELETE
 
+import {
+  getToken, clearAuthSession, notifySessionExpired,
+} from '../services/authToken.js';
+
 async function parseResponse(res) {
   const contentType = res.headers.get('content-type') || '';
   let data = null;
@@ -23,6 +27,21 @@ async function parseResponse(res) {
     const err = new Error(message);
     err.status = res.status;
     err.data = data;
+
+    // Phase 2D — 401 means the stored session is dead: drop it so no further
+    // request can reuse the token, and tell the app to return to /login.
+    // Only notify when a session actually existed; an anonymous 401 (e.g. a
+    // page fetched before signing in) must not fire events in a loop.
+    if (res.status === 401) {
+      const hadSession = Boolean(getToken());
+      clearAuthSession({ includeSessionData: false });
+      if (hadSession) notifySessionExpired();
+    }
+
+    // 403 = authenticated but not permitted. The session stays intact; callers
+    // must surface "access denied" rather than falling back to demo data.
+    if (res.status === 403) err.isForbidden = true;
+
     throw err;
   }
 

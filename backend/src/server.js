@@ -31,6 +31,10 @@ import clinicalAssistantRoutes from './routes/clinicalAssistant.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import approvalRoutes from './routes/approval.routes.js';
 import versioningRoutes from './routes/versioning.routes.js';
+// SECURITY (Phase 5): the mount below (app.use('/api/files', fileRoutes))
+// references this binding — it must be imported or the whole app fails to
+// evaluate with a ReferenceError before start() ever runs.
+import fileRoutes from './routes/files.routes.js';
 import { bootstrapWorkflow } from './workflowBootstrap.js';
 
 const app = express();
@@ -44,7 +48,17 @@ app.use(cors({ origin: env.clientOrigin, credentials: true }));
 app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan(env.isProd ? 'combined' : 'dev'));
+// ACCESS LOGS (Phase 2F / task C): morgan's built-in 'combined' and 'dev'
+// formats log the FULL URL, query string included. GET /api/search?q=<term>
+// embeds search terms — often patient names — and id-carrying query params,
+// which do not belong in access logs. The custom :request-path token below
+// logs the path only; the rest of each format is unchanged in spirit.
+morgan.token('request-path', (req) => (req.originalUrl || '').split('?')[0]);
+app.use(morgan(
+  env.isProd
+    ? ':remote-addr - :remote-user [:date[clf]] ":request-path :http-version" :status :res[content-length] ":referrer" ":user-agent"'
+    : ':method :request-path :status :response-time ms',
+));
 
 // Basic rate limiting on the API surface (enterprise hardening)
 const apiLimiter = rateLimit({
@@ -55,8 +69,12 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
-// Serve uploaded files (originals + preprocessed) statically
-app.use('/uploads', express.static(UPLOAD_ROOT_DIR));
+// SECURITY (Phase 5): uploaded prescription scans (PHI) are NO LONGER served
+// by a public static /uploads mount. They are only reachable through the
+// authenticated, permission-checked, ownership-scoped /api/files routes
+// (routes/files.routes.js), whose responses keep the hardened headers
+// (nosniff, sandbox CSP, no-store). Old /uploads URLs now 404.
+app.use('/api/files', fileRoutes);
 
 // ---------------------------------------------------------------------
 // Routes
@@ -103,11 +121,10 @@ async function start() {
     process.exit(1);
   }
 
-  try {
-    await checkDbConnection();
-  } catch (err) {
-    logger.error('Could not connect to PostgreSQL on startup', { error: err.message });
-    logger.warn('Server will still start — fix DB config and run `npm run migrate`.');
+  const dbOk = await checkDbConnection();
+  if (!dbOk) {
+    logger.error('PostgreSQL is NOT reachable. The API will still start, but every database-backed request will fail with a real error (no fabricated data is ever returned).');
+    logger.warn('Fix by setting PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE, then run `npm run migrate`.');
   }
 
   app.listen(env.port, () => {

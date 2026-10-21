@@ -1,14 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-function required(name, fallback) {
-  const value = process.env[name] ?? fallback;
-  if (value === undefined) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
-
 function resolveClientOrigin() {
   if (process.env.CLIENT_ORIGIN) {
     const list = process.env.CLIENT_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
@@ -31,11 +23,19 @@ export const env = {
   clientOrigin: resolveClientOrigin(),
 
   db: {
-    host: required('PGHOST', 'localhost'),
+    // PostgreSQL connection target. There are deliberately NO default
+    // credentials: falling back to "postgres/postgres" is a well-known
+    // insecure default that has no place in a healthcare system. Missing
+    // values fall through to standard libpq resolution (PG* env vars,
+    // ~/.pgpass, OS user) and any misconfiguration surfaces as a REAL
+    // connection/authentication error — never as a silent fallback.
+    // The migration runner additionally requires an explicit MIGRATION_TARGET
+    // declaration before it will touch any database (see config/migrationTarget.js).
+    host: process.env.PGHOST || 'localhost',
     port: Number(process.env.PGPORT || 5432),
-    user: required('PGUSER', 'postgres'),
-    password: required('PGPASSWORD', 'postgres'),
-    database: required('PGDATABASE', 'medicare_pro'),
+    user: process.env.PGUSER || undefined,
+    password: process.env.PGPASSWORD || undefined,
+    database: process.env.PGDATABASE || undefined,
   },
 
   uploadDir: process.env.UPLOAD_DIR || 'uploads',

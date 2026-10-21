@@ -1,5 +1,6 @@
 import { AppError } from '../utils/AppError.js';
 import { logger } from '../utils/logger.js';
+import { ROLES } from '../config/roles.js';
 import * as approvalRepo from '../repositories/approval.repository.js';
 import * as notificationService from './notification.service.js';
 import * as versioningService from './versioning.service.js';
@@ -15,6 +16,8 @@ import * as versioningService from './versioning.service.js';
  */
 const handlers = new Map();
 
+const KNOWN_ROLES = new Set(Object.values(ROLES));
+
 export function registerApprovalHandler(entityType, action, handler) {
   handlers.set(`${entityType}:${action}`, handler);
 }
@@ -23,9 +26,22 @@ function keyFor(entityType, action) {
   return `${entityType}:${action}`;
 }
 
+function assertKnownRole(roleName, fieldName) {
+  if (!KNOWN_ROLES.has(roleName)) {
+    throw AppError.badRequest(`Unknown ${fieldName} "${roleName}". Must be one of: ${Object.values(ROLES).join(', ')}.`);
+  }
+  return roleName;
+}
+
 export async function createRequest({ entityType, entityId, action, requestedBy, requiredRole, payload, reason }) {
+  // The required reviewer role defaults to admin and is validated against the
+  // known role vocabulary — a caller cannot invent a role string that no one
+  // holds (which would make the request un-decidable and bypass the
+  // required-role check in decide()).
+  const effectiveRequiredRole = assertKnownRole(requiredRole || ROLES.ADMIN, 'requiredRole');
+
   const request = await approvalRepo.insertApprovalRequest({
-    entityType, entityId, action, requestedBy, requiredRole, payload, reason,
+    entityType, entityId, action, requestedBy, requiredRole: effectiveRequiredRole, payload, reason,
   });
 
   await approvalRepo.insertAction({ approvalRequestId: request.id, actorId: requestedBy, action: 'submitted', note: reason });
@@ -55,12 +71,27 @@ export async function getRequest(id) {
   return { request, actions };
 }
 
-export async function decide(id, { decision, decidedBy, note }) {
+export async function decide(id, { decision, decidedBy, note, deciderRoles = [] }) {
   if (!['approve', 'reject'].includes(decision)) throw AppError.badRequest('"decision" must be "approve" or "reject".');
 
   const request = await approvalRepo.findById(id);
   if (!request) throw AppError.notFound('Approval request not found.');
   if (request.status !== 'pending') throw AppError.conflict(`Request is already "${request.status}".`);
+
+  // Separation of duties: the requester can never decide their own request.
+  if (request.requested_by && decidedBy && String(request.requested_by) === String(decidedBy)) {
+    throw new AppError('Self-approval is not allowed: you cannot decide a request you created.', 403, 'FORBIDDEN');
+  }
+
+  // The decider must actually hold the role this request requires (defense
+  // against approving financial/clinical side effects with the wrong role).
+  if (request.required_role && !deciderRoles.includes(request.required_role)) {
+    throw new AppError(
+      `This request requires the "${request.required_role}" role to be decided.`,
+      403,
+      'FORBIDDEN',
+    );
+  }
 
   const status = decision === 'approve' ? 'approved' : 'rejected';
   const updated = await approvalRepo.updateStatus(id, { status, decidedBy, decisionNote: note });
@@ -106,8 +137,9 @@ export async function escalate(id, { escalatedBy, note, newRequiredRole }) {
 
   await approvalRepo.insertAction({ approvalRequestId: id, actorId: escalatedBy, action: 'escalated', note });
   // Escalation re-targets the required reviewer role; the request itself
-  // stays "pending" so it remains actionable.
-  const requiredRole = newRequiredRole || 'admin';
+  // stays "pending" so it remains actionable. The role is validated against
+  // the known vocabulary — escalation cannot invent an unknown role.
+  const requiredRole = assertKnownRole(newRequiredRole || ROLES.ADMIN, 'newRequiredRole');
   const updated = await approvalRepo.updateRequiredRole(id, requiredRole);
   return { ...updated, escalated: true };
 }

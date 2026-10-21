@@ -435,7 +435,8 @@ export default function NovaInvoice({
 
         <div className="flex items-center gap-1.5 text-[11px] text-[#8B99A7] pt-1">
           <Clock3 className="w-3.5 h-3.5" />
-          Figures reflect the most recent sync with the billing database.
+          Revenue cards read GET /api/billing/summary, which is not connected yet — they
+          currently show 0. The invoice table above reflects the loaded billing data.
         </div>
       </main>
 

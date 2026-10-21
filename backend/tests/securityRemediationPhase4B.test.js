@@ -9,12 +9,20 @@ import { mintDevToken, verifyAccessToken } from '../src/services/keycloakAdapter
 import { authenticate } from '../src/middleware/auth.js';
 import { requirePermission, requireRole, requireAnyPermission } from '../src/middleware/authorize.js';
 import { PERMISSIONS, ROLES } from '../src/config/roles.js';
+import * as rbacService from '../src/services/rbac.service.js';
 import patientRoutes from '../src/routes/patients.routes.js';
 import prescriptionRoutes from '../src/routes/prescriptions.routes.js';
 import pharmacyRoutes from '../src/routes/pharmacy.routes.js';
 import billingRoutes from '../src/routes/billing.routes.js';
 import rbacRoutes from '../src/routes/rbac.routes.js';
 import { errorHandler } from '../src/middleware/errorHandler.js';
+
+// Phase 2B: the published insecure fallback secret is no longer accepted for
+// signing or verification (services/keycloakAdapter.service.js), so this suite
+// configures an explicit local secret for every dev token it mints.
+const savedDevJwtSecret = authEnv.devJwtSecret;
+before(() => { authEnv.devJwtSecret = 'phase4b-remediation-test-secret-not-for-production'; });
+after(() => { authEnv.devJwtSecret = savedDevJwtSecret; });
 
 describe('Phase 4B Security Remediation Verification Suite', () => {
   describe('1. Production Startup Safety & Fail-Closed Guardrails', () => {
@@ -112,7 +120,48 @@ describe('Phase 4B Security Remediation Verification Suite', () => {
     let server;
     let baseUrl;
 
+    // Deterministic in-memory RBAC repository (no PostgreSQL required).
+    // The service layer fails closed on DB errors by design; this seam keeps
+    // these authorization tests hermetic while exercising the real
+    // authenticate/authorize middleware chain.
+    const fakeRbacRepo = (() => {
+      const users = new Map();
+      const userRoles = new Map();
+      let seq = 0;
+      return {
+        async findUserBySubject(subject) {
+          for (const u of users.values()) if (u.keycloak_subject_id === subject) return u;
+          return null;
+        },
+        async findUserByEmail(email) {
+          for (const u of users.values()) if (u.email === email) return u;
+          return null;
+        },
+        async upsertUserFromToken({ subject, email, fullName }) {
+          seq += 1;
+          const user = {
+            id: `00000000-0000-0000-0000-0000000001${String(seq).padStart(2, '0')}`,
+            keycloak_subject_id: subject,
+            email: email || null,
+            full_name: fullName || 'User',
+          };
+          users.set(user.id, user);
+          return user;
+        },
+        async listRolesForUser(userId) { return [...(userRoles.get(userId) || [])]; },
+        async assignRoleToUser(userId, roleName) {
+          if (!userRoles.has(userId)) userRoles.set(userId, new Set());
+          userRoles.get(userId).add(roleName);
+          return { name: roleName };
+        },
+        async revokeRoleFromUser() { return false; },
+        async listPermissionsForRoles() { return []; }, // -> documented defaults
+        async listRoles() { return []; },
+      };
+    })();
+
     before(async () => {
+      rbacService.__setRepositoryForTests(fakeRbacRepo);
       const app = express();
       app.use(express.json());
       app.use('/api/patients', patientRoutes);
@@ -132,6 +181,7 @@ describe('Phase 4B Security Remediation Verification Suite', () => {
     });
 
     after(async () => {
+      rbacService.__setRepositoryForTests(null);
       if (server) {
         await new Promise((resolve) => server.close(resolve));
       }
@@ -231,6 +281,12 @@ describe('Phase 4B Security Remediation Verification Suite', () => {
 
       assert.notEqual(res.status, 401, 'Should not fail authentication');
       assert.notEqual(res.status, 403, 'Doctor must have patient:read permission');
+      if (res.status >= 500) {
+        // Honest handling: without a real database the request fails at the
+        // DATA layer. Verify the failure really is the data layer (not authz).
+        const body = await res.json();
+        assert.equal(body.error.code, 'INTERNAL_ERROR');
+      }
     });
 
     test('Non-admin role is rejected on /api/auth/roles admin management endpoint', async () => {

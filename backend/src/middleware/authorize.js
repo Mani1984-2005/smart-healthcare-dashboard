@@ -1,5 +1,13 @@
 import { AppError } from '../utils/AppError.js';
-import { authEnv } from '../config/authEnv.js';
+
+// SECURITY (Phase 2B): every fail-open clause of the form
+//   `if (!authEnv.authEnabled && !req.roles) return next();`
+// has been REMOVED. Those clauses skipped the gate entirely whenever
+// authentication was disabled and no principal had been attached, so a route
+// that was ever mounted without `authenticate` silently became public.
+// The gates below now always evaluate: an anonymous caller holds an empty
+// role/permission set and is denied (403) like any other under-privileged
+// caller. AUTH_ENABLED never authorizes anyone.
 
 /**
  * Requires the authenticated principal to hold at least one of the given
@@ -7,7 +15,6 @@ import { authEnv } from '../config/authEnv.js';
  */
 export function requireRole(...allowedRoles) {
   return (req, res, next) => {
-    if (!authEnv.authEnabled && !req.roles) return next();
     const roles = req.roles || [];
     if (!roles.some((r) => allowedRoles.includes(r))) {
       return next(new AppError(
@@ -24,7 +31,6 @@ export function requireRole(...allowedRoles) {
  */
 export function requirePermission(...requiredPermissions) {
   return (req, res, next) => {
-    if (!authEnv.authEnabled && !req.permissions) return next();
     const granted = new Set(req.permissions || []);
     const missing = requiredPermissions.filter((p) => !granted.has(p));
     if (missing.length) {
@@ -42,7 +48,6 @@ export function requirePermission(...requiredPermissions) {
  */
 export function requireAnyPermission(...permissions) {
   return (req, res, next) => {
-    if (!authEnv.authEnabled && !req.permissions) return next();
     const granted = new Set(req.permissions || []);
     const hasAny = permissions.some((p) => granted.has(p));
     if (!hasAny) {
@@ -60,7 +65,6 @@ export function requireAnyPermission(...permissions) {
  */
 export function requireSelfOrRole(resourceOwnerId, ...allowedRoles) {
   return (req, res, next) => {
-    if (!authEnv.authEnabled && !req.roles) return next();
     const ownerId = typeof resourceOwnerId === 'function' ? resourceOwnerId(req) : resourceOwnerId;
     if (req.user && req.user.id === ownerId) return next();
     const roles = req.roles || [];
@@ -68,4 +72,3 @@ export function requireSelfOrRole(resourceOwnerId, ...allowedRoles) {
     return next(new AppError('You do not have access to this resource', 403, 'FORBIDDEN'));
   };
 }
-

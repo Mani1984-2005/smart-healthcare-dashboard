@@ -3,10 +3,11 @@ import pool from '../config/db.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { logger } from '../utils/logger.js';
-import { computeChecksum, toPublicPath, safeDelete } from '../services/storage.service.js';
+import { computeChecksum, safeDelete } from '../services/storage.service.js';
 import { preprocessImage, isImageMimeType } from '../services/imagePreprocess.service.js';
 import { runImageOcr, runPdfExtraction } from '../services/ocr.service.js';
 import { recordAudit, auditContextFromRequest } from '../services/audit.service.js';
+import { isPatientPortalCaller } from '../services/recordAccess.service.js';
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -22,6 +23,17 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
 
   const checksum = await computeChecksum(file.path);
 
+  // Attribute the upload to the REAL authenticated user (dev-jwt/keycloak
+  // identities are provisioned into `users` by rbac.service.getOrProvisionUser).
+  // SECURITY (Phase 2B): the anonymous "dev-disabled" fallback identity no
+  // longer exists — `authenticate` rejects every unauthenticated request — so
+  // this always resolves to the real user. The seeded system user below is kept
+  // only as a defensive fallback for the (currently unreachable) missing-id
+  // case, to avoid an FK violation.
+  const uploaderId = req.authMode && req.authMode !== 'disabled' && req.user?.id
+    ? req.user.id
+    : SYSTEM_USER_ID;
+
   // 1. Persist the initial "uploaded" record
   const insertResult = await pool.query(
     `INSERT INTO prescriptions
@@ -30,7 +42,7 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'uploaded')
      RETURNING *`,
     [
-      SYSTEM_USER_ID,
+      uploaderId,
       file.originalname,
       file.filename,
       file.path,
@@ -44,6 +56,7 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
 
   await recordAudit({
     prescriptionId: prescription.id,
+    userId: req.user?.id,
     action: 'FILE_UPLOADED',
     details: { filename: file.originalname, sizeBytes: file.size, mimeType: file.mimetype, uploadSource },
     ...auditCtx,
@@ -67,12 +80,12 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
           image_width = $3, image_height = $4 WHERE id = $1`,
         [prescription.id, preprocessedPath, dimensions.width, dimensions.height]
       );
-      await recordAudit({ prescriptionId: prescription.id, action: 'OCR_STARTED', ...auditCtx });
+      await recordAudit({ prescriptionId: prescription.id, userId: req.user?.id, action: 'OCR_STARTED', ...auditCtx });
 
       ocrResult = await runImageOcr(preprocessedPath);
     } else if (file.mimetype === 'application/pdf') {
       await pool.query(`UPDATE prescriptions SET status = 'ocr_running' WHERE id = $1`, [prescription.id]);
-      await recordAudit({ prescriptionId: prescription.id, action: 'OCR_STARTED', ...auditCtx });
+      await recordAudit({ prescriptionId: prescription.id, userId: req.user?.id, action: 'OCR_STARTED', ...auditCtx });
 
       ocrResult = await runPdfExtraction(file.path);
     } else {
@@ -94,6 +107,7 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
 
     await recordAudit({
       prescriptionId: prescription.id,
+      userId: req.user?.id,
       action: 'OCR_COMPLETED',
       details: { confidence: ocrResult.confidence, durationMs: ocrResult.durationMs, textLength: ocrResult.text.length },
       ...auditCtx,
@@ -101,16 +115,22 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
   } catch (err) {
     logger.error('OCR pipeline failed', { prescriptionId: prescription.id, error: err.message });
 
+    // Public response policy (see middleware/errorHandler.js): raw
+    // tesseract/sharp/pdf-parse messages can embed absolute paths and
+    // internals, and this field is serialized back to API clients — so only
+    // a coarse, fixed reason is persisted. The real error stays in the
+    // server log above.
     const failResult = await pool.query(
       `UPDATE prescriptions SET status = 'ocr_failed', error_message = $2 WHERE id = $1 RETURNING *`,
-      [prescription.id, err.message]
+      [prescription.id, 'OCR processing failed. See server logs for details.']
     );
     prescription = failResult.rows[0];
 
     await recordAudit({
       prescriptionId: prescription.id,
+      userId: req.user?.id,
       action: 'OCR_FAILED',
-      details: { error: err.message },
+      details: { error: 'OCR_PIPELINE_FAILED' },
       ...auditCtx,
     });
     // Note: we do NOT throw here — the upload itself succeeded. The client
@@ -130,15 +150,29 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
 export const listPrescriptions = asyncHandler(async (req, res) => {
   const { page, limit, offset } = req.pagination;
 
+  // PATIENT-ISOLATION: a patient-portal caller (pure "patient" role) only ever
+  // sees prescriptions they uploaded themselves. Ownership comes exclusively
+  // from the schema-backed prescriptions.user_id -> users.id link — never from
+  // request parameters or token role claims. Staff callers see the full list
+  // (already gated by prescription:read).
+  const patientScoped = isPatientPortalCaller(req);
+  const rowsParams = patientScoped ? [limit, offset, req.user?.id] : [limit, offset];
+  const rowsWhere = patientScoped ? 'WHERE user_id = $3' : '';
+
   const [rows, count] = await Promise.all([
     pool.query(
-      `SELECT * FROM prescriptions ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      `SELECT * FROM prescriptions ${rowsWhere} ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+      rowsParams
     ),
-    pool.query(`SELECT COUNT(*)::int AS total FROM prescriptions`),
+    pool.query(
+      patientScoped
+        ? `SELECT COUNT(*)::int AS total FROM prescriptions WHERE user_id = $1`
+        : `SELECT COUNT(*)::int AS total FROM prescriptions`,
+      patientScoped ? [req.user?.id] : []
+    ),
   ]);
 
-  await recordAudit({ action: 'PRESCRIPTION_LIST_VIEWED', ...auditContextFromRequest(req) });
+  await recordAudit({ userId: req.user?.id, action: 'PRESCRIPTION_LIST_VIEWED', ...auditContextFromRequest(req) });
 
   res.json({
     success: true,
@@ -165,6 +199,7 @@ export const getPrescription = asyncHandler(async (req, res) => {
 
   await recordAudit({
     prescriptionId: id,
+    userId: req.user?.id,
     action: 'PRESCRIPTION_VIEWED',
     ...auditContextFromRequest(req),
   });
@@ -191,6 +226,7 @@ export const deletePrescription = asyncHandler(async (req, res) => {
 
   await recordAudit({
     prescriptionId: id,
+    userId: req.user?.id,
     action: 'FILE_DELETED',
     details: { filename: record.original_filename },
     ...auditContextFromRequest(req),
@@ -221,8 +257,15 @@ function serializePrescription(row) {
   return {
     id: row.id,
     originalFilename: row.original_filename,
-    fileUrl: toPublicPath(row.file_path),
-    preprocessedUrl: row.preprocessed_path ? toPublicPath(row.preprocessed_path) : null,
+    // URL CONTRACT (Phase 5): prescription scans are reachable ONLY through
+    // the authenticated, permission-checked, ownership-gated download route —
+    // the public static /uploads mount no longer exists. The URLs are keyed by
+    // the prescription UUID already present in this row (never by a filename
+    // or a client-supplied path), and the field names are unchanged so no
+    // consumer contract breaks. Files that are absent on disk resolve to the
+    // route's generic 404.
+    fileUrl: `/api/files/prescriptions/${row.id}`,
+    preprocessedUrl: row.preprocessed_path ? `/api/files/prescriptions/${row.id}/preprocessed` : null,
     fileSizeBytes: Number(row.file_size_bytes),
     mimeType: row.mime_type,
     uploadSource: row.upload_source,

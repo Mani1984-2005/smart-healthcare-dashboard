@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/authorize.js';
+import { requirePrescriptionAccess } from '../middleware/recordAccess.js';
 import { PERMISSIONS } from '../config/roles.js';
-import { validateUuidParam, validateLinkPatientRequest, validateDispenseRequest } from '../middleware/validate.js';
+import { validateUuidParam, validateLinkPatientRequest, validateDispenseRequest, validateInvoiceGenerationRequest } from '../middleware/validate.js';
 import { linkPrescriptionToPatient } from '../controllers/patients.controller.js';
 import { dispenseMedicine, listDispensationsForPrescription } from '../controllers/pharmacy.controller.js';
 import { listPrescriptionLabReports } from '../controllers/labReports.controller.js';
@@ -18,11 +19,11 @@ router.use(authenticate);
 router.post('/:id/link-patient', requirePermission(PERMISSIONS.PRESCRIPTION_WRITE), validateUuidParam('id'), validateLinkPatientRequest, linkPrescriptionToPatient);
 
 router.post('/:id/dispense', requirePermission(PERMISSIONS.PHARMACY_DISPENSE), validateUuidParam('id'), validateDispenseRequest, dispenseMedicine);
-router.get('/:id/dispensations', requirePermission(PERMISSIONS.PRESCRIPTION_READ), validateUuidParam('id'), listDispensationsForPrescription);
+router.get('/:id/dispensations', requirePermission(PERMISSIONS.PRESCRIPTION_READ), validateUuidParam('id'), requirePrescriptionAccess('id'), listDispensationsForPrescription);
 
-router.get('/:id/lab-reports', requirePermission(PERMISSIONS.PRESCRIPTION_READ), validateUuidParam('id'), listPrescriptionLabReports);
+router.get('/:id/lab-reports', requirePermission(PERMISSIONS.PRESCRIPTION_READ), validateUuidParam('id'), requirePrescriptionAccess('id'), listPrescriptionLabReports);
 
-router.post('/:id/invoice', requirePermission(PERMISSIONS.BILLING_WRITE), validateUuidParam('id'), generateInvoice);
+router.post('/:id/invoice', requirePermission(PERMISSIONS.BILLING_WRITE), validateUuidParam('id'), validateInvoiceGenerationRequest, generateInvoice);
 
 export default router;
 

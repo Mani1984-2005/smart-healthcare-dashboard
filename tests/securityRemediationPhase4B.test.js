@@ -8,12 +8,73 @@ import { mintDevToken, verifyAccessToken } from '../backend/src/services/keycloa
 import { authenticate } from '../backend/src/middleware/auth.js';
 import { requirePermission, requireRole, requireAnyPermission } from '../backend/src/middleware/authorize.js';
 import { PERMISSIONS, ROLES } from '../backend/src/config/roles.js';
+import * as rbacService from '../backend/src/services/rbac.service.js';
 import patientRoutes from '../backend/src/routes/patients.routes.js';
 import prescriptionRoutes from '../backend/src/routes/prescriptions.routes.js';
 import pharmacyRoutes from '../backend/src/routes/pharmacy.routes.js';
 import billingRoutes from '../backend/src/routes/billing.routes.js';
 import rbacRoutes from '../backend/src/routes/rbac.routes.js';
 import { errorHandler } from '../backend/src/middleware/errorHandler.js';
+
+// Phase 2B: the published insecure fallback secret is no longer accepted for
+// signing or verification (backend/src/services/keycloakAdapter.service.js),
+// so this suite configures an explicit local secret for every dev token it mints.
+const savedDevJwtSecret = authEnv.devJwtSecret;
+before(() => { authEnv.devJwtSecret = 'phase4b-root-suite-test-secret-not-for-production'; });
+after(() => { authEnv.devJwtSecret = savedDevJwtSecret; });
+
+// -----------------------------------------------------------------------------
+// Repository isolation (see also backend/tests/rbacVerification.test.js).
+//
+// The route tests below exercise the REAL routers and middleware, so
+// `authenticate` resolves identity through rbac.service — which, with no
+// repository installed, calls the real PostgreSQL-backed repository. Without a
+// reachable, credentialed database that lookup fails inside authentication
+// (pg SASL error) and every authenticated request returns 500, masking the
+// authorization behavior under test. The rbac.service test seam
+// (__setRepositoryForTests) swaps in a deterministic in-memory repository for
+// this suite only; production code paths always see the real repository.
+//
+// listPermissionsForRoles() intentionally returns [] so resolvePermissions
+// falls back to the documented least-privilege defaults in config/roles.js —
+// the same default role permissions production uses on a fresh install — rather
+// than a permission set duplicated in this test file.
+// -----------------------------------------------------------------------------
+function createFakeRbacRepo() {
+  const users = new Map();
+  const userRoles = new Map();
+  let seq = 0;
+  return {
+    async findUserBySubject(subject) {
+      for (const u of users.values()) if (u.keycloak_subject_id === subject) return u;
+      return null;
+    },
+    async findUserByEmail(email) {
+      for (const u of users.values()) if (u.email === email) return u;
+      return null;
+    },
+    async upsertUserFromToken({ subject, email, fullName }) {
+      seq += 1;
+      const user = {
+        id: `00000000-0000-0000-0000-0000000000${String(seq).padStart(2, '0')}`,
+        keycloak_subject_id: subject,
+        email: email || null,
+        full_name: fullName || 'User',
+      };
+      users.set(user.id, user);
+      return user;
+    },
+    async listRolesForUser(userId) { return [...(userRoles.get(userId) || [])]; },
+    async assignRoleToUser(userId, roleName) {
+      if (!userRoles.has(userId)) userRoles.set(userId, new Set());
+      userRoles.get(userId).add(roleName);
+      return { name: roleName };
+    },
+    async revokeRoleFromUser() { return false; },
+    async listPermissionsForRoles() { return []; },
+    async listRoles() { return []; },
+  };
+}
 
 describe('Phase 4B Security Remediation Verification Suite', () => {
   describe('1. Production Startup Safety & Fail-Closed Guardrails', () => {
@@ -112,6 +173,10 @@ describe('Phase 4B Security Remediation Verification Suite', () => {
     let baseUrl;
 
     before(async () => {
+      // Install the in-memory repository BEFORE accepting requests so identity
+      // and permission resolution never touches PostgreSQL in this suite.
+      rbacService.__setRepositoryForTests(createFakeRbacRepo());
+
       const app = express();
       app.use(express.json());
       app.use('/api/patients', patientRoutes);
@@ -131,6 +196,9 @@ describe('Phase 4B Security Remediation Verification Suite', () => {
     });
 
     after(async () => {
+      // Always restore the real repository — runs even when a test fails, so no
+      // repository override leaks beyond this suite.
+      rbacService.__setRepositoryForTests(null);
       if (server) {
         await new Promise((resolve) => server.close(resolve));
       }
@@ -228,8 +296,12 @@ describe('Phase 4B Security Remediation Verification Suite', () => {
         },
       });
 
-      // The request passes authentication & authorization checks and reaches the controller/db
-      // (Returns 500 ECONNREFUSED since Postgres is disconnected in mock test environment)
+      // Authentication and authorization succeed via the in-memory repository
+      // (doctor holds patient:read); the request then reaches the controller,
+      // whose real patients repository has no database in this hermetic
+      // environment, so the response is a 500. The assertions below verify the
+      // security property: the doctor is neither rejected (401) nor forbidden
+      // (403). Allow-direction status codes are covered by the DB-backed suites.
       assert.notEqual(res.status, 401, 'Should not fail authentication');
       assert.notEqual(res.status, 403, 'Doctor must have patient:read permission');
     });

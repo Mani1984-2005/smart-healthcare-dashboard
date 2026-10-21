@@ -50,8 +50,18 @@ export const revokeRole = asyncHandler(async (req, res) => {
 /**
  * DEV-ONLY endpoint: mints a locally-signed JWT so the rest of the API
  * can be exercised with realistic roles before Keycloak is provisioned.
- * Strictly prohibited in production environments or when a real Keycloak
- * JWKS endpoint is configured.
+ *
+ * Triple-gated, fail-closed:
+ *   1. never in production (and only in development/test environments);
+ *   2. disabled unless the operator sets ALLOW_DEV_TOKENS=true explicitly —
+ *      an accidental deployment with NODE_ENV unset must not expose it;
+ *   3. privileged roles (admin/system) can NEVER be minted here, even when
+ *      enabled — privilege escalation through a token-minting endpoint is
+ *      exactly what this guard exists to prevent. Privileged roles are
+ *      assigned through the authenticated RBAC admin API only.
+ *   4. (Phase 2F / R2) least privilege by default: a request that omits
+ *      `roles` mints a ROLE-LESS token, which resolves to the patient-portal
+ *      fallback on use — never a clinician. Malformed role input is refused.
  */
 export const issueDevToken = asyncHandler(async (req, res) => {
   const currentEnv = process.env.NODE_ENV || 'development';
@@ -64,8 +74,46 @@ export const issueDevToken = asyncHandler(async (req, res) => {
   if (authEnv.keycloak.jwksUri) {
     throw AppError.badRequest('Dev token issuance is disabled once KEYCLOAK_JWKS_URI is configured.');
   }
-  const { subject = 'dev-user-1', email = 'dev@medicare-pro.local', fullName = 'Dev User', roles = [ROLES.DOCTOR] } = req.body || {};
-  const token = mintDevToken({ subject, email, fullName, roles });
-  res.json({ success: true, data: { accessToken: token, expiresIn: '8h', roles } });
+  if (process.env.ALLOW_DEV_TOKENS !== 'true') {
+    throw new AppError(
+      'Development token issuance is disabled. Set ALLOW_DEV_TOKENS=true explicitly for local development.',
+      403,
+      'FORBIDDEN',
+    );
+  }
+  const body = req.body || {};
+  const { subject = 'dev-user-1', email = 'dev@medicare-pro.local', fullName = 'Dev User' } = body;
+  if (typeof subject !== 'string' || !subject.trim()) {
+    throw AppError.badRequest('"subject" must be a non-empty string.');
+  }
+  if (typeof email !== 'string' || !email.trim()) {
+    throw AppError.badRequest('"email" must be a non-empty string.');
+  }
+  if (typeof fullName !== 'string' || !fullName.trim()) {
+    throw AppError.badRequest('"fullName" must be a non-empty string.');
+  }
+  // SECURITY (Phase 2F / R2): least privilege by default. The former default
+  // of [doctor] meant a request that OMITTED `roles` silently minted a
+  // clinician token. A role-less token resolves to the patient-portal
+  // fallback on use (services/rbac.service.js getOrProvisionUser), and
+  // malformed role input (a bare string, numbers, nested objects) is refused
+  // with 400 instead of being coerced into a token. A development session
+  // must state the roles it needs, explicitly.
+  if (body.roles !== undefined && !Array.isArray(body.roles)) {
+    throw AppError.badRequest('"roles" must be an array of role names.');
+  }
+  if (Array.isArray(body.roles) && body.roles.some((r) => typeof r !== 'string' || !r.trim())) {
+    throw AppError.badRequest('"roles" must contain only non-empty role names.');
+  }
+  const requestedRoles = (body.roles || []).map((r) => r.trim());
+  const privileged = requestedRoles.filter((r) => [ROLES.ADMIN, ROLES.SYSTEM].includes(r));
+  if (privileged.length) {
+    throw AppError.badRequest(
+      `Privileged role(s) cannot be minted via the dev-token endpoint: ${privileged.join(', ')}. ` +
+        'Assign privileged roles through the authenticated RBAC admin API.',
+    );
+  }
+  const token = mintDevToken({ subject, email, fullName, roles: requestedRoles });
+  res.json({ success: true, data: { accessToken: token, expiresIn: '8h', roles: requestedRoles } });
 });
 

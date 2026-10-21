@@ -1,4 +1,5 @@
 import { AppError } from '../utils/AppError.js';
+import { withTransaction } from '../config/db.js';
 import * as labRepo from '../repositories/labReports.repository.js';
 import * as patientsRepo from '../repositories/patients.repository.js';
 import { correlateLabWithMedicines } from '../data/labCorrelationRules.js';
@@ -7,30 +8,35 @@ export async function createLabReport(input) {
   const patient = await patientsRepo.findPatientById(input.patientId);
   if (!patient) throw AppError.notFound('Patient not found');
 
-  const report = await labRepo.insertLabReport(input);
+  // Report + safety flags are one atomic unit: a flag-insert failure must not
+  // leave a half-written report behind (and vice versa).
+  return withTransaction(async (client) => {
+    const report = await labRepo.insertLabReport(input, client);
 
-  // If this lab result is tied to a prescription, cross-check it against
-  // that prescription's already-extracted medicines for safety flags.
-  let flags = [];
-  if (input.prescriptionId) {
-    const medicines = await labRepo.findLatestExtractedMedicinesForPrescription(input.prescriptionId);
-    const correlated = correlateLabWithMedicines(
-      { testCode: input.testCode || input.testName, abnormalFlag: input.abnormalFlag },
-      medicines
-    );
-    for (const flag of correlated) {
-      const saved = await labRepo.insertLabMedicineFlag({
-        labReportId: report.id,
-        prescriptionId: input.prescriptionId,
-        medicineName: flag.medicineName,
-        severity: flag.severity,
-        description: flag.description,
-      });
-      flags.push(saved);
+    // If this lab result is tied to a prescription, cross-check it against
+    // that prescription's already-extracted medicines for safety flags.
+    const flags = [];
+    if (input.prescriptionId) {
+      const medicines = await labRepo.findLatestExtractedMedicinesForPrescription(input.prescriptionId, client);
+      const correlated = correlateLabWithMedicines(
+        { testCode: input.testCode || input.testName, abnormalFlag: input.abnormalFlag },
+        medicines
+      );
+      for (const flag of correlated) {
+        // eslint-disable-next-line no-await-in-loop
+        const saved = await labRepo.insertLabMedicineFlag({
+          labReportId: report.id,
+          prescriptionId: input.prescriptionId,
+          medicineName: flag.medicineName,
+          severity: flag.severity,
+          description: flag.description,
+        }, client);
+        flags.push(saved);
+      }
     }
-  }
 
-  return { report, safetyFlags: flags };
+    return { report, safetyFlags: flags };
+  });
 }
 
 export async function getLabReport(id) {

@@ -13,6 +13,7 @@ export const generateInvoice = asyncHandler(async (req, res) => {
 
   if (!reused) {
     await recordAudit({
+      userId: req.user?.id,
       prescriptionId,
       action: 'INVOICE_CREATED',
       details: { invoiceId: invoice.id, invoiceNumber: invoice.invoice_number, total: invoice.total_amount },
@@ -26,6 +27,7 @@ export const generateInvoice = asyncHandler(async (req, res) => {
 export const getInvoice = asyncHandler(async (req, res) => {
   const { invoice, lineItems } = await billingService.getInvoice(req.params.invoiceId);
   await recordAudit({
+    userId: req.user?.id,
     prescriptionId: invoice.prescription_id,
     action: 'INVOICE_VIEWED',
     details: { invoiceId: invoice.id },
@@ -42,9 +44,10 @@ export const listPatientInvoices = asyncHandler(async (req, res) => {
 export const updateInvoiceStatus = asyncHandler(async (req, res) => {
   const invoice = await billingService.updateInvoiceStatus(req.params.invoiceId, req.body);
   await recordAudit({
+    userId: req.user?.id,
     prescriptionId: invoice.prescription_id,
     action: 'INVOICE_STATUS_CHANGED',
-    details: { invoiceId: invoice.id, status: invoice.status },
+    details: { invoiceId: invoice.id, status: invoice.status, amountPaid: invoice.amount_paid },
     ...auditContextFromRequest(req),
   });
   res.json({ success: true, data: billingService.serializeInvoice(invoice) });

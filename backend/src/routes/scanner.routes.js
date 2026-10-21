@@ -12,7 +12,9 @@ const router = Router();
 
 router.post('/barcode/lookup', authenticate, validateBarcodeLookup, lookupBarcode);
 router.post('/barcode/register', authenticate, requirePermission(PERMISSIONS.PHARMACY_DISPENSE), validateBarcodeRegister, registerBarcode);
-router.post('/qr/lookup', authenticate, validateQrLookup, lookupQr);
+// QR lookup can resolve to a FULL patient record (PHI), so it requires
+// patient:read — unlike barcode lookup, which only resolves catalog items.
+router.post('/qr/lookup', authenticate, requirePermission(PERMISSIONS.PATIENT_READ), validateQrLookup, lookupQr);
 router.post('/qr/patients/:patientId', authenticate, validateUuidParam('patientId'), requirePermission(PERMISSIONS.PATIENT_WRITE), generatePatientQr);
 router.post('/qr/prescriptions/:id', authenticate, validateUuidParam('id'), requirePermission(PERMISSIONS.PRESCRIPTION_WRITE), generatePrescriptionQr);
 

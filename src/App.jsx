@@ -35,8 +35,15 @@ import { useToast } from "./hooks/usetoast.jsx";
 
 import { useAuth } from "./context/AuthContext";
 import { useLanguage } from "./context/LanguageContext";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "./firebase";
+// Phase 2D: Firebase/Google sign-in was removed from the session path on
+// purpose. The backend only verifies Keycloak RS256 or local HS256 JWTs
+// (backend/src/services/keycloakAdapter.service.js), so a Firebase ID token
+// could never authorise an API call here. See docs/LOCAL_DEV_AUTHENTICATION.md
+import {
+  resolveBackendRole,
+  subscribeSessionExpired,
+} from "./services/authToken";
+import { canAccessRoute } from "./services/navigationPolicy";
 
 import MedicalLogo from "./components/MedicalLogo";
 
@@ -167,6 +174,10 @@ function LoginScreen({ darkMode, onLogin }) {
           <p className="text-slate-100 text-lg sm:text-xl lg:text-2xl font-medium max-w-2xl mx-auto leading-relaxed">
             {t("select_role_desc")}
           </p>
+          {/* Phase 2D: honest labelling of what this login screen actually does */}
+          <p className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/15 text-amber-300 text-xs sm:text-sm font-bold border border-amber-400/30 backdrop-blur-md">
+            ⚠ Local development authentication — demo only, not for real patient operations
+          </p>
         </div>
 
         {/* Premium Translucent Role Cards Grid */}
@@ -197,6 +208,11 @@ function LoginScreen({ darkMode, onLogin }) {
                   <div className="text-xs sm:text-sm font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-widest mb-1">{role}</div>
                   <h3 className="font-extrabold text-xl sm:text-2xl leading-snug mb-2.5">{title}</h3>
                   <p className={`text-sm sm:text-base leading-relaxed ${loginDark ? "text-slate-300" : "text-slate-600"}`}>{desc}</p>
+                  {!resolveBackendRole(role) && (
+                    <p className="mt-2 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                      No backend identity — cannot sign in here
+                    </p>
+                  )}
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-sm sm:text-base font-bold text-cyan-600 dark:text-cyan-400 group-hover:translate-x-1 transition-transform">
@@ -218,16 +234,37 @@ function LoginScreen({ darkMode, onLogin }) {
   );
 }
 
+// Phase 2D — UI-only route guard. Cosmetic navigation aid; backend routes
+// still run authenticate + requirePermission, so this grants nothing.
+function AccessDenied() {
+  return (
+    <div className="p-10 max-w-2xl mx-auto text-center">
+      <div className="text-4xl font-black mb-3">Access denied</div>
+      <p className="text-slate-400 leading-relaxed">
+        Your backend-issued role does not include the permission this page requires.
+        The server would reject the same request anyway — sign in with a different
+        portal role if you need this module.
+      </p>
+    </div>
+  );
+}
+
+function RequirePermission({ children }) {
+  const { permissions, roles } = useAuth();
+  const location = useLocation();
+  // Role-gated pages (/staff) check the backend-issued ROLES; the rest check
+  // permissions. Either way this is cosmetic — the backend re-checks every
+  // request with authenticate + requireRole/requirePermission.
+  if (!canAccessRoute(location.pathname, permissions, roles)) return <AccessDenied />;
+  return children;
+}
+
 function AppLayout() {
-  const { user, logout, loginAsGuest, loading } = useAuth();
+  const { user, roleLabel, permissions, loading, login, logout } = useAuth();
 
   const { toasts, addToast, removeToast } = useToast();
 
   const [darkMode, setDarkMode] = useState(false);
-
-  const [userRole, setUserRole] = useState(
-    () => localStorage.getItem("role") || "Admin"
-  );
 
   const [appointments, setAppointments] = useState([]);
   const [selectedDoctorFromPage, setSelectedDoctorFromPage] = useState(null);
@@ -239,41 +276,33 @@ function AppLayout() {
     localStorage.setItem("theme", "light");
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("role", userRole);
-  }, [userRole]);
+  // Cached query data belongs to one signed-in user: drop it whenever the
+  // session ends, whether explicitly (logout) or by 401 (token invalidated).
+  useEffect(() => subscribeSessionExpired(() => queryClient.clear()), []);
 
-  // ✅ LOGIN FUNCTION WITH GRACEFUL FALLBACK FOR PREVIEW IFRAME
-  const handleLogin = async (role) => {
+  // LOGIN — every path here goes through the backend's dev-token endpoint.
+  // Nothing fabricates a user, a role or a token, and every failure leaves the
+  // user logged out with a visible error.
+  const handleLogin = async (portalRole) => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-
-      localStorage.setItem("role", role);
-      setUserRole(role);
-
+      const identity = await login(portalRole);
+      queryClient.clear();
       addToast(
-        "Login successful",
-        `Welcome ${result.user?.displayName || role}`,
+        "Signed in (local development)",
+        `Authenticated as ${identity?.user?.full_name || identity?.user?.email || portalRole}.`,
         "success"
       );
       navigate("/dashboard");
     } catch (err) {
-      console.warn("Google popup sign-in blocked or unavailable in iframe, using role session:", err);
-      loginAsGuest(role);
-      localStorage.setItem("role", role);
-      setUserRole(role);
-      addToast(
-        "Logged in as " + role,
-        "Welcome to MediCare Pro",
-        "success"
-      );
-      navigate("/dashboard");
+      // Unsupported portal card, dev tokens disabled, wrong environment, or a
+      // backend that is not running — all reported, none of them "logged in".
+      addToast("Sign-in failed", err?.message || "Could not obtain a development token.", "error");
     }
   };
 
-  // ✅ LOGOUT FIXED
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
+    queryClient.clear();
     addToast("Logged out", "You have been signed out.", "info");
     navigate("/");
   };
@@ -321,8 +350,10 @@ function AppLayout() {
 
   const pageProps = {
     darkMode,
-    userRole,
-    user: user ? { name: user.name || user.email || "Mani", role: userRole } : null,
+    // Backend-issued role label (derived from /api/auth/me), never a card choice
+    userRole: roleLabel,
+    user: user ? { name: user.name || user.email, role: roleLabel, email: user.email } : null,
+    permissions,
     appointments,
     setAppointments,
     addToast,
@@ -354,36 +385,36 @@ function AppLayout() {
                 darkMode={darkMode}
                 setDarkMode={setDarkMode}
                 user={{
-                  name: user?.name || user?.email || "Mani",
-                  role: userRole,
+                  name: user?.name || user?.email,
+                  role: roleLabel,
                   email: user?.email,
                 }}
                 onLogout={handleLogout}
               >
                 <Routes>
                   <Route path="/dashboard" element={<DashboardPage {...pageProps} />} />
-                  <Route path="/patients" element={<PatientsPage darkMode={darkMode} />} />
+                  <Route path="/patients" element={<RequirePermission><PatientsPage darkMode={darkMode} /></RequirePermission>} />
                   <Route path="/doctors" element={<DoctorsPage {...pageProps} />} />
 
                   {/* Unified Pharmacy Module with backward-compatible deep links */}
-                  <Route path="/pharmacy" element={<PharmacyPage darkMode={darkMode} />} />
-                  <Route path="/medicines" element={<PharmacyPage darkMode={darkMode} initialTab="medicines" />} />
-                  <Route path="/inventory" element={<PharmacyPage darkMode={darkMode} initialTab="inventory" />} />
-                  <Route path="/pharmacy-inventory" element={<PharmacyPage darkMode={darkMode} initialTab="inventory" />} />
-                  <Route path="/dispensing" element={<PharmacyPage darkMode={darkMode} initialTab="dispensing" />} />
-                  <Route path="/prescriptions" element={<PharmacyPage darkMode={darkMode} initialTab="dispensing" />} />
+                  <Route path="/pharmacy" element={<RequirePermission><PharmacyPage darkMode={darkMode} /></RequirePermission>} />
+                  <Route path="/medicines" element={<RequirePermission><PharmacyPage darkMode={darkMode} initialTab="medicines" /></RequirePermission>} />
+                  <Route path="/inventory" element={<RequirePermission><PharmacyPage darkMode={darkMode} initialTab="inventory" /></RequirePermission>} />
+                  <Route path="/pharmacy-inventory" element={<RequirePermission><PharmacyPage darkMode={darkMode} initialTab="inventory" /></RequirePermission>} />
+                  <Route path="/dispensing" element={<RequirePermission><PharmacyPage darkMode={darkMode} initialTab="dispensing" /></RequirePermission>} />
+                  <Route path="/prescriptions" element={<RequirePermission><PharmacyPage darkMode={darkMode} initialTab="dispensing" /></RequirePermission>} />
 
                   {/* Unified Laboratory Module with X-Ray and Specimen Intake integration */}
-                  <Route path="/laboratory" element={<LaboratoryPage darkMode={darkMode} />} />
-                  <Route path="/x-ray" element={<LaboratoryPage darkMode={darkMode} initialTab="xray" />} />
-                  <Route path="/xray" element={<LaboratoryPage darkMode={darkMode} initialTab="xray" />} />
-                  <Route path="/specimens" element={<LaboratoryPage darkMode={darkMode} initialTab="specimens" />} />
-                  <Route path="/specimen-intake" element={<LaboratoryPage darkMode={darkMode} initialTab="specimens" />} />
-                  <Route path="/specimen" element={<LaboratoryPage darkMode={darkMode} initialTab="specimens" />} />
+                  <Route path="/laboratory" element={<RequirePermission><LaboratoryPage darkMode={darkMode} /></RequirePermission>} />
+                  <Route path="/x-ray" element={<RequirePermission><LaboratoryPage darkMode={darkMode} initialTab="xray" /></RequirePermission>} />
+                  <Route path="/xray" element={<RequirePermission><LaboratoryPage darkMode={darkMode} initialTab="xray" /></RequirePermission>} />
+                  <Route path="/specimens" element={<RequirePermission><LaboratoryPage darkMode={darkMode} initialTab="specimens" /></RequirePermission>} />
+                  <Route path="/specimen-intake" element={<RequirePermission><LaboratoryPage darkMode={darkMode} initialTab="specimens" /></RequirePermission>} />
+                  <Route path="/specimen" element={<RequirePermission><LaboratoryPage darkMode={darkMode} initialTab="specimens" /></RequirePermission>} />
                   <Route path="/emergency" element={<EmergencyPage darkMode={darkMode} />} />
 
-                  <Route path="/billing" element={<BillingPage />} />
-                  <Route path="/staff" element={<StaffPage darkMode={darkMode} />} />
+                  <Route path="/billing" element={<RequirePermission><BillingPage /></RequirePermission>} />
+                  <Route path="/staff" element={<RequirePermission><StaffPage darkMode={darkMode} /></RequirePermission>} />
 
                   {/* Unified Patient Relations Module with legacy deep links */}
                   <Route

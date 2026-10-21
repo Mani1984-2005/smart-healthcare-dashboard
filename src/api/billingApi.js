@@ -1,29 +1,23 @@
 // src/api/billingApi.js
+// Phase 2D — routed through the shared apiClient so these calls carry the
+// backend-issued Bearer token and inherit its 401 (session invalidated) and
+// 403 (access denied) handling. They previously used bare `fetch`, so the
+// backend rejected every one of them with 401. Return shapes are unchanged:
+// each function still resolves to the parsed response body.
+
+import { apiClient } from "./client.js";
 
 export const fetchInvoices = async (filters) => {
-  const params = new URLSearchParams(filters);
-
-  const res = await fetch(`/api/billing/invoices?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch invoices");
-
-  return res.json();
+  const { data } = await apiClient.get("/billing/invoices", { params: filters });
+  return data;
 };
 
 export const fetchBillingSummary = async () => {
-  const res = await fetch(`/api/billing/summary`);
-  if (!res.ok) throw new Error("Failed to fetch summary");
-
-  return res.json();
+  const { data } = await apiClient.get("/billing/summary");
+  return data;
 };
 
-export const createInvoice = async (data) => {
-  const res = await fetch(`/api/billing/invoices`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error("Invoice creation failed");
-
-  return res.json();
+export const createInvoice = async (payload) => {
+  const { data } = await apiClient.post("/billing/invoices", payload);
+  return data;
 };

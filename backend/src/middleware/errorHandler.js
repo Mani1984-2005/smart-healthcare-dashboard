@@ -22,11 +22,13 @@ export function errorHandler(err, req, res, next) {
     }
   }
 
-  // Normalize PostgreSQL errors
+  // Normalize PostgreSQL errors. Constraint NAMES are internal schema
+  // details: they are logged server-side (below) but never echoed into the
+  // HTTP response.
   if (err.code === '23505') {
-    error = AppError.badRequest('Duplicate record detected', { constraint: err.constraint });
+    error = AppError.badRequest('Duplicate record detected');
   } else if (err.code === '23503') {
-    error = AppError.badRequest('Referenced record does not exist', { constraint: err.constraint });
+    error = AppError.badRequest('Referenced record does not exist');
   } else if (err.code === '22P02') {
     error = AppError.badRequest('Invalid identifier format supplied');
   }
@@ -35,21 +37,35 @@ export function errorHandler(err, req, res, next) {
   const statusCode = isAppError ? error.statusCode : 500;
   const code = isAppError ? error.code : 'INTERNAL_ERROR';
 
+  // The real detail (including driver messages, constraint names and stack)
+  // is logged server-side only. It never reaches the HTTP response.
+  // `originalUrl` with the query string stripped (not `req.path`, which can be
+  // mount-relative inside routers) keeps e.g. /api/search?q=<patient name>
+  // out of the error log while still identifying the route.
   logger.error(error.message, {
     statusCode,
     code,
-    path: req.originalUrl,
+    path: (req.originalUrl || '').split('?')[0],
     method: req.method,
-    stack: env.isProd ? undefined : error.stack,
+    constraint: err.constraint,
+    stack: error.stack,
   });
+
+  // Public response policy:
+  //   * AppError messages are authored in this codebase and are safe to show.
+  //   * Raw driver/runtime messages are NOT. PostgreSQL authentication and
+  //     connection errors embed usernames and connection details, and runtime
+  //     errors embed absolute local file paths. Those stay in the server log.
+  const publicMessage = isAppError
+    ? error.message || 'An unexpected error occurred'
+    : 'An internal error occurred while processing the request';
 
   res.status(statusCode).json({
     success: false,
     error: {
       code,
-      message: error.message || 'An unexpected error occurred',
-      details: isAppError ? error.details : undefined,
-      ...(env.isProd ? {} : { stack: error.stack }),
+      message: publicMessage,
+      ...(isAppError && error.details ? { details: error.details } : {}),
     },
   });
 }
