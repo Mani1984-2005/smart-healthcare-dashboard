@@ -1,12 +1,26 @@
+
 import path from 'path';
 import pool from '../config/db.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { logger } from '../utils/logger.js';
-import { computeChecksum, toPublicPath, safeDelete } from '../services/storage.service.js';
-import { preprocessImage, isImageMimeType } from '../services/imagePreprocess.service.js';
-import { runImageOcr, runPdfExtraction } from '../services/ocr.service.js';
-import { recordAudit, auditContextFromRequest } from '../services/audit.service.js';
+import {
+  computeChecksum,
+  toPublicPath,
+  safeDelete,
+} from '../services/storage.service.js';
+import {
+  preprocessImage,
+  isImageMimeType,
+} from '../services/imagePreprocess.service.js';
+import {
+  runImageOcr,
+  runPdfExtraction,
+} from '../services/ocr.service.js';
+import {
+  recordAudit,
+  auditContextFromRequest,
+} from '../services/audit.service.js';
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -22,7 +36,7 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
 
   const checksum = await computeChecksum(file.path);
 
-  // 1. Persist the initial "uploaded" record
+  // 1. Persist the initial uploaded record.
   const insertResult = await pool.query(
     `INSERT INTO prescriptions
       (user_id, original_filename, stored_filename, file_path, file_size_bytes,
@@ -40,18 +54,27 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
       checksum,
     ]
   );
+
   let prescription = insertResult.rows[0];
 
   await recordAudit({
     prescriptionId: prescription.id,
     action: 'FILE_UPLOADED',
-    details: { filename: file.originalname, sizeBytes: file.size, mimeType: file.mimetype, uploadSource },
+    details: {
+      filename: file.originalname,
+      sizeBytes: file.size,
+      mimeType: file.mimetype,
+      uploadSource,
+    },
     ...auditCtx,
   });
 
-  // 2. Preprocess + OCR pipeline (synchronous for Part 1 — no queue yet)
+  // 2. Preprocessing + OCR pipeline.
   try {
-    await pool.query(`UPDATE prescriptions SET status = 'preprocessing' WHERE id = $1`, [prescription.id]);
+    await pool.query(
+      `UPDATE prescriptions SET status = 'preprocessing' WHERE id = $1`,
+      [prescription.id]
+    );
 
     let ocrResult;
     let preprocessedPath = null;
@@ -59,62 +82,118 @@ export const uploadPrescription = asyncHandler(async (req, res) => {
 
     if (isImageMimeType(file.mimetype)) {
       const pre = await preprocessImage(file.path);
+
       preprocessedPath = pre.preprocessedPath;
-      dimensions = { width: pre.width, height: pre.height };
+      dimensions = {
+        width: pre.width,
+        height: pre.height,
+      };
 
       await pool.query(
-        `UPDATE prescriptions SET status = 'ocr_running', preprocessed_path = $2,
-          image_width = $3, image_height = $4 WHERE id = $1`,
-        [prescription.id, preprocessedPath, dimensions.width, dimensions.height]
+        `UPDATE prescriptions SET
+           status = 'ocr_running',
+           preprocessed_path = $2,
+           image_width = $3,
+           image_height = $4
+         WHERE id = $1`,
+        [
+          prescription.id,
+          preprocessedPath,
+          dimensions.width,
+          dimensions.height,
+        ]
       );
-      await recordAudit({ prescriptionId: prescription.id, action: 'OCR_STARTED', ...auditCtx });
+
+      await recordAudit({
+        prescriptionId: prescription.id,
+        action: 'OCR_STARTED',
+        ...auditCtx,
+      });
 
       ocrResult = await runImageOcr(preprocessedPath);
     } else if (file.mimetype === 'application/pdf') {
-      await pool.query(`UPDATE prescriptions SET status = 'ocr_running' WHERE id = $1`, [prescription.id]);
-      await recordAudit({ prescriptionId: prescription.id, action: 'OCR_STARTED', ...auditCtx });
+      await pool.query(
+        `UPDATE prescriptions SET status = 'ocr_running' WHERE id = $1`,
+        [prescription.id]
+      );
+
+      await recordAudit({
+        prescriptionId: prescription.id,
+        action: 'OCR_STARTED',
+        ...auditCtx,
+      });
 
       ocrResult = await runPdfExtraction(file.path);
     } else {
-      throw AppError.unsupportedMedia(`Cannot run OCR on mime type: ${file.mimetype}`);
+      throw AppError.unsupportedMedia(
+        `Cannot run OCR on mime type: ${file.mimetype}`
+      );
     }
 
+    // 3. Persist OCR output and the actual engine used.
     const updateResult = await pool.query(
       `UPDATE prescriptions SET
          status = 'ocr_complete',
          raw_ocr_text = $2,
          ocr_confidence = $3,
          ocr_duration_ms = $4,
-         ocr_language = $5
+         ocr_language = $5,
+         ocr_engine = $6
        WHERE id = $1
        RETURNING *`,
-      [prescription.id, ocrResult.text, ocrResult.confidence, ocrResult.durationMs, process.env.OCR_LANG || 'eng']
+      [
+        prescription.id,
+        ocrResult.text,
+        ocrResult.confidence,
+        ocrResult.durationMs,
+        process.env.OCR_LANG || 'eng',
+        ocrResult.engine,
+      ]
     );
+
     prescription = updateResult.rows[0];
 
+    // 4. Record engine information in the audit trail.
     await recordAudit({
       prescriptionId: prescription.id,
       action: 'OCR_COMPLETED',
-      details: { confidence: ocrResult.confidence, durationMs: ocrResult.durationMs, textLength: ocrResult.text.length },
+      details: {
+        engine: ocrResult.engine,
+        confidence: ocrResult.confidence,
+        durationMs: ocrResult.durationMs,
+        textLength: ocrResult.text.length,
+      },
       ...auditCtx,
     });
   } catch (err) {
-    logger.error('OCR pipeline failed', { prescriptionId: prescription.id, error: err.message });
+    logger.error('OCR pipeline failed', {
+      prescriptionId: prescription.id,
+      error: err.message,
+    });
 
     const failResult = await pool.query(
-      `UPDATE prescriptions SET status = 'ocr_failed', error_message = $2 WHERE id = $1 RETURNING *`,
+      `UPDATE prescriptions SET
+         status = 'ocr_failed',
+         ocr_engine = NULL,
+         error_message = $2
+       WHERE id = $1
+       RETURNING *`,
       [prescription.id, err.message]
     );
+
     prescription = failResult.rows[0];
 
     await recordAudit({
       prescriptionId: prescription.id,
       action: 'OCR_FAILED',
-      details: { error: err.message },
+      details: {
+        error: err.message,
+      },
       ...auditCtx,
     });
-    // Note: we do NOT throw here — the upload itself succeeded. The client
-    // sees status: 'ocr_failed' and can offer a retry.
+
+    // Upload succeeded even though OCR failed.
+    // The client can see ocr_failed and offer a retry.
   }
 
   res.status(201).json({
@@ -132,13 +211,20 @@ export const listPrescriptions = asyncHandler(async (req, res) => {
 
   const [rows, count] = await Promise.all([
     pool.query(
-      `SELECT * FROM prescriptions ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+      `SELECT * FROM prescriptions
+       ORDER BY created_at DESC
+       LIMIT $1 OFFSET $2`,
       [limit, offset]
     ),
-    pool.query(`SELECT COUNT(*)::int AS total FROM prescriptions`),
+    pool.query(
+      `SELECT COUNT(*)::int AS total FROM prescriptions`
+    ),
   ]);
 
-  await recordAudit({ action: 'PRESCRIPTION_LIST_VIEWED', ...auditContextFromRequest(req) });
+  await recordAudit({
+    action: 'PRESCRIPTION_LIST_VIEWED',
+    ...auditContextFromRequest(req),
+  });
 
   res.json({
     success: true,
@@ -157,7 +243,11 @@ export const listPrescriptions = asyncHandler(async (req, res) => {
  */
 export const getPrescription = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const result = await pool.query(`SELECT * FROM prescriptions WHERE id = $1`, [id]);
+
+  const result = await pool.query(
+    `SELECT * FROM prescriptions WHERE id = $1`,
+    [id]
+  );
 
   if (result.rows.length === 0) {
     throw AppError.notFound('Prescription not found');
@@ -169,7 +259,10 @@ export const getPrescription = asyncHandler(async (req, res) => {
     ...auditContextFromRequest(req),
   });
 
-  res.json({ success: true, data: serializePrescription(result.rows[0]) });
+  res.json({
+    success: true,
+    data: serializePrescription(result.rows[0]),
+  });
 });
 
 /**
@@ -178,39 +271,63 @@ export const getPrescription = asyncHandler(async (req, res) => {
  */
 export const deletePrescription = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const result = await pool.query(`SELECT * FROM prescriptions WHERE id = $1`, [id]);
+
+  const result = await pool.query(
+    `SELECT * FROM prescriptions WHERE id = $1`,
+    [id]
+  );
 
   if (result.rows.length === 0) {
     throw AppError.notFound('Prescription not found');
   }
+
   const record = result.rows[0];
 
-  await pool.query(`DELETE FROM prescriptions WHERE id = $1`, [id]);
+  await pool.query(
+    `DELETE FROM prescriptions WHERE id = $1`,
+    [id]
+  );
+
   await safeDelete(record.file_path);
-  if (record.preprocessed_path) await safeDelete(record.preprocessed_path);
+
+  if (record.preprocessed_path) {
+    await safeDelete(record.preprocessed_path);
+  }
 
   await recordAudit({
     prescriptionId: id,
     action: 'FILE_DELETED',
-    details: { filename: record.original_filename },
+    details: {
+      filename: record.original_filename,
+    },
     ...auditContextFromRequest(req),
   });
 
-  res.json({ success: true, data: { id } });
+  res.json({
+    success: true,
+    data: { id },
+  });
 });
 
 /**
  * GET /api/prescriptions/:id/audit
- * Returns the audit trail for a single prescription (traceability).
+ * Returns the audit trail for a single prescription.
  */
 export const getPrescriptionAuditTrail = asyncHandler(async (req, res) => {
   const { id } = req.params;
+
   const result = await pool.query(
     `SELECT id, action, details, ip_address, user_agent, created_at
-     FROM audit_logs WHERE prescription_id = $1 ORDER BY created_at ASC`,
+     FROM audit_logs
+     WHERE prescription_id = $1
+     ORDER BY created_at ASC`,
     [id]
   );
-  res.json({ success: true, data: result.rows });
+
+  res.json({
+    success: true,
+    data: result.rows,
+  });
 });
 
 // ---------------------------------------------------------------------
@@ -222,13 +339,18 @@ function serializePrescription(row) {
     id: row.id,
     originalFilename: row.original_filename,
     fileUrl: toPublicPath(row.file_path),
-    preprocessedUrl: row.preprocessed_path ? toPublicPath(row.preprocessed_path) : null,
+    preprocessedUrl: row.preprocessed_path
+      ? toPublicPath(row.preprocessed_path)
+      : null,
     fileSizeBytes: Number(row.file_size_bytes),
     mimeType: row.mime_type,
     uploadSource: row.upload_source,
     status: row.status,
     rawOcrText: row.raw_ocr_text,
-    ocrConfidence: row.ocr_confidence !== null ? Number(row.ocr_confidence) : null,
+    ocrConfidence:
+      row.ocr_confidence !== null
+        ? Number(row.ocr_confidence)
+        : null,
     ocrEngine: row.ocr_engine,
     ocrLanguage: row.ocr_language,
     ocrDurationMs: row.ocr_duration_ms,

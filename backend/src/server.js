@@ -14,6 +14,7 @@ import { logger } from './utils/logger.js';
 
 import healthRoutes from './routes/health.routes.js';
 import prescriptionRoutes from './routes/prescriptions.routes.js';
+import prescriptionUploadsRoutes from './routes/prescriptionUploads.routes.js';
 import aiAnalysisRoutes from './routes/aiAnalysis.routes.js';
 import searchRoutes from './routes/search.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
@@ -60,6 +61,8 @@ app.use('/uploads', express.static(UPLOAD_ROOT_DIR));
 // ---------------------------------------------------------------------
 app.use('/api/health', healthRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
+// Isolated PaddleOCR prescription-upload workflow (separate tables + access gate)
+app.use('/api/prescription-uploads', prescriptionUploadsRoutes);
 app.use('/api/prescriptions', aiAnalysisRoutes);
 app.use('/api/prescriptions', prescriptionIntegrationRoutes);
 app.use('/api/search', searchRoutes);

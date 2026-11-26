@@ -28,6 +28,7 @@ const PharmacyInventoryPage = lazy(() => import("./pages/PharmacyInventoryPage")
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const XRaySharingPage = lazy(() => import("./pages/XRaySharingPage"));
 const PatientRelationsPage = lazy(() => import("./pages/PatientRelationsPage"));
+const PrescriptionOcrPage = lazy(() => import("./pages/PrescriptionOcrPage"));
 
 import { useToast } from "./hooks/usetoast.jsx";
 
@@ -219,6 +220,9 @@ function AppLayout() {
 
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/staff" element={<StaffPage darkMode={darkMode} />} />
+
+          {/* PaddleOCR prescription document intake (isolated upload workflow) */}
+          <Route path="/prescription-ocr" element={<PrescriptionOcrPage {...pageProps} />} />
 
           {/* Unified Patient Relations Module with legacy deep links */}
           <Route

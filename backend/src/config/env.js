@@ -1,28 +1,56 @@
+
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 function required(name, fallback) {
   const value = process.env[name] ?? fallback;
+
   if (value === undefined) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
+
   return value;
 }
 
 function resolveClientOrigin() {
   if (process.env.CLIENT_ORIGIN) {
-    const list = process.env.CLIENT_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
+    const list = process.env.CLIENT_ORIGIN
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     return list.length === 1 ? list[0] : list;
   }
+
   return process.env.NODE_ENV === 'production'
     ? 'http://localhost:8080'
-    : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+    : [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173',
+      ];
 }
 
 function resolvePort() {
-  if (process.env.BACKEND_PORT) return Number(process.env.BACKEND_PORT);
-  if (process.env.NODE_ENV === 'production' && process.env.PORT) return Number(process.env.PORT);
+  if (process.env.BACKEND_PORT) {
+    return Number(process.env.BACKEND_PORT);
+  }
+
+  if (process.env.NODE_ENV === 'production' && process.env.PORT) {
+    return Number(process.env.PORT);
+  }
+
   return 5000;
+}
+
+function resolveBoolean(name, fallback = false) {
+  const value = process.env[name];
+
+  if (value === undefined) return fallback;
+
+  return value.trim().toLowerCase() === 'true';
 }
 
 export const env = {
@@ -41,6 +69,25 @@ export const env = {
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
   maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 15),
   ocrLang: process.env.OCR_LANG || 'eng',
+
+  // OCR engine configuration
+  // Supported engines: paddleocr and tesseract
+  ocrEngine: (process.env.OCR_ENGINE || 'tesseract').trim().toLowerCase(),
+
+  // Local PaddleOCR service
+  paddleOcrUrl: (
+    process.env.PADDLEOCR_URL || 'http://127.0.0.1:8001'
+  ).replace(/\/+$/, ''),
+
+  // PaddleOCR API authentication
+  paddleOcrToken: process.env.PADDLEOCR_API_TOKEN || '',
+
+  // Optional Tesseract fallback
+  // Disabled by default
+  ocrFallbackToTesseract: resolveBoolean(
+    'OCR_FALLBACK_TO_TESSERACT',
+    false
+  ),
 
   isProd: (process.env.NODE_ENV || 'development') === 'production',
 };
