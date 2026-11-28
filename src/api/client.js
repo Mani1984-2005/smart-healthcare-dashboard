@@ -1,5 +1,17 @@
 // src/api/client.js
 // Fetch-based apiClient with consistent error handling and support for GET, POST, PATCH, DELETE
+async function getAuthHeaders(extra = {}) {
+  const headers = { ...(extra || {}) };
+  if (typeof globalThis.__MEDICARE_AUTH_GET_TOKEN__ === "function") {
+    try {
+      const token = await globalThis.__MEDICARE_AUTH_GET_TOKEN__();
+      if (token) headers.Authorization = `Bearer ${token}`;
+    } catch {
+      // The backend will return 401 if the protected request cannot authenticate.
+    }
+  }
+  return headers;
+}
 
 async function parseResponse(res) {
   const contentType = res.headers.get('content-type') || '';
@@ -36,45 +48,49 @@ export const apiClient = {
       const q = new URLSearchParams(config.params).toString();
       url += (url.includes('?') ? '&' : '?') + q;
     }
+    const headers = await getAuthHeaders({ Accept: "application/json", ...(config.headers || {}) });
     const res = await fetch(url, {
       method: 'GET',
-      headers: { Accept: 'application/json', ...(config.headers || {}) },
+      headers,
     });
     return parseResponse(res);
   },
 
   post: async (endpoint, body, config = {}) => {
     const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const headers = await getAuthHeaders({
+      Accept: 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(config.headers || {}),
+    });
     const res = await fetch(`/api${endpoint}`, {
       method: 'POST',
       body: isFormData ? body : JSON.stringify(body),
-      headers: {
-        Accept: 'application/json',
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...(config.headers || {}),
-      },
+      headers,
     });
     return parseResponse(res);
   },
 
   patch: async (endpoint, body, config = {}) => {
     const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const headers = await getAuthHeaders({
+      Accept: 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(config.headers || {}),
+    });
     const res = await fetch(`/api${endpoint}`, {
       method: 'PATCH',
       body: isFormData ? body : JSON.stringify(body),
-      headers: {
-        Accept: 'application/json',
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...(config.headers || {}),
-      },
+      headers,
     });
     return parseResponse(res);
   },
 
   delete: async (endpoint, config = {}) => {
+    const headers = await getAuthHeaders({ Accept: 'application/json', ...(config.headers || {}) });
     const res = await fetch(`/api${endpoint}`, {
       method: 'DELETE',
-      headers: { Accept: 'application/json', ...(config.headers || {}) },
+      headers,
     });
     return parseResponse(res);
   },

@@ -1,0 +1,20 @@
+import { resolvePlaywrightCore } from "../lib/playwrightResolver.mjs";
+import { startDevServer } from "../lib/devServer.mjs";
+import { createSession, gotoPath } from "../lib/harness.mjs";
+
+const r = resolvePlaywrightCore();
+const server = await startDevServer({});
+const browser = await r.api.chromium.launch({ headless: true, executablePath: r.executablePath });
+const session = await createSession(browser, server.baseUrl, process.argv[3] || "admin", {});
+const page = session.page;
+page.on("console", (m) => console.log(`[console.${m.type()}] ${m.text().slice(0, 300)}`));
+page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
+page.on("request", (req) => { if (req.url().includes("/api/")) console.log(`[req] ${req.method()} ${req.url()}`); });
+await gotoPath(session, process.argv[2] || "/patients");
+console.log("URL:", page.url());
+console.log("has aside:", await page.locator("aside").count());
+console.log("BODY:", (await page.locator("body").innerText().catch(() => "<err>")).replace(/\s+/g, " ").slice(0, 900));
+console.log("NOTES:", session.notes);
+console.log("CONSOLE ERRORS:", session.consoleErrors);
+await browser.close();
+await server.stop();

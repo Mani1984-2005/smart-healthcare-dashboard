@@ -28,7 +28,7 @@ export default function SmartFilterBar({ darkMode, onChange, patients = [] }) {
     handler(searchInput);
   }, [searchInput]);
 
-  useEffect(() => { onChange?.(criteria); }, [criteria]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onChange?.(criteria); }, [criteria]);
 
   const toggleStatus = (status) => {
     setCriteria((c) => {

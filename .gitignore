@@ -33,3 +33,10 @@ dist-ssr
 
 # Private prescription OCR storage (medical documents — never commit)
 backend/private-prescription-uploads/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
